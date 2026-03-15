@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-primary: var(--primary);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-secondary: var(--secondary);
+  --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+}
+
+:root {
+  color-scheme: light;
+  --background: oklch(0.98 0.003 255);
+  --foreground: oklch(0.18 0.006 255);
+  --primary: oklch(0.74 0.16 160);
+  --secondary: oklch(0.96 0.003 255);
+  --panel: oklch(0.985 0.002 255);
+  --card: oklch(0.99 0.002 255);
+  --muted: oklch(0.92 0.004 255);
+  --accent: oklch(0.79 0.16 160);
+  --border: oklch(0.89 0.004 255);
+}
+
+* {
+  border-color: var(--border);
+  box-sizing: border-box;
+}
