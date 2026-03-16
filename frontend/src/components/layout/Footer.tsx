@@ -11,7 +11,7 @@ export function Footer() {
           <div className="lg:col-span-2">
             <div className="flex items-center gap-1">
               <img src="/logo.png" alt="SEOGEO Logo" className="h-12 w-12 object-contain" />
-              <span className="text-2xl font-bold tracking-tight uppercase">SEOGEO</span>
+              <span className="font-display text-2xl font-bold tracking-tight uppercase">SEOGEO</span>
             </div>
             <p className="mt-6 max-w-sm text-lg leading-relaxed text-foreground/60">
               Helping businesses navigate the intersection of traditional search and generative AI.
@@ -20,7 +20,7 @@ export function Footer() {
 
           {/* Links Columns */}
           <div>
-            <h4 className="font-bold text-foreground">Company</h4>
+            <h4 className="font-display font-bold text-foreground">Company</h4>
             <ul className="mt-6 space-y-4">
               <li><a href="#" className="text-foreground/60 transition hover:text-primary">About Us</a></li>
               <li><a href="#" className="text-foreground/60 transition hover:text-primary">Blog</a></li>
@@ -30,7 +30,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-bold text-foreground">Legal</h4>
+            <h4 className="font-display font-bold text-foreground">Legal</h4>
             <ul className="mt-6 space-y-4">
               <li><a href="#" className="text-foreground/60 transition hover:text-primary">Privacy Policy</a></li>
               <li><a href="#" className="text-foreground/60 transition hover:text-primary">Terms of Service</a></li>
@@ -40,7 +40,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-bold text-foreground">Contact</h4>
+            <h4 className="font-display font-bold text-foreground">Contact</h4>
             <ul className="mt-6 space-y-4">
               <li><a href="mailto:support@seogeocheck.com" className="text-foreground/60 transition hover:text-primary">Support</a></li>
               <li><a href="mailto:hello@seogeocheck.com" className="text-foreground/60 transition hover:text-primary">Business</a></li>

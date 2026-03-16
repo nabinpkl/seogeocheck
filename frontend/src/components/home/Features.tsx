@@ -9,7 +9,7 @@ export function Features() {
     <section id="features" className="bg-white py-24">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Advanced insights without the complexity
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-foreground/60">
@@ -39,7 +39,7 @@ export function Features() {
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary transition-colors group-hover:bg-primary group-hover:text-white">
                 {feature.icon}
               </div>
-              <h3 className="mt-6 text-xl font-bold text-foreground">{feature.title}</h3>
+              <h3 className="mt-6 font-display text-xl font-bold text-foreground">{feature.title}</h3>
               <p className="mt-4 text-foreground/60 leading-relaxed">{feature.description}</p>
             </div>
           ))}
@@ -56,7 +56,7 @@ export function Features() {
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Globe className="h-6 w-6" />
             </div>
-            <h2 className="text-4xl font-bold tracking-tight text-foreground">
+            <h2 className="font-display text-4xl font-bold tracking-tight text-foreground">
               Your data, visualized for <span className="text-primary">clarity</span>.
             </h2>
             <p className="text-lg leading-relaxed text-foreground/70">

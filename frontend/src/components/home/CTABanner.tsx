@@ -10,7 +10,7 @@ export function CTABanner() {
       
       <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
         <div className="flex flex-col items-center">
-          <h2 className="max-w-3xl text-4xl font-extrabold tracking-tight md:text-6xl">
+          <h2 className="max-w-3xl font-display text-4xl font-extrabold tracking-tight md:text-6xl">
             Ready to future-proof your presence?
           </h2>
           <p className="mt-8 max-w-2xl text-xl text-white/80 leading-relaxed">

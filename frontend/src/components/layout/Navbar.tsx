@@ -38,7 +38,7 @@ export function Navbar() {
       <nav className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-2">
         <div className="flex items-center gap-1">
           <img src="/logo.png" alt="SEOGEO Logo" className="h-10 w-10 object-contain" />
-          <span className="text-xl font-bold tracking-tight text-foreground uppercase">SEOGEO</span>
+          <span className="font-display text-xl font-bold tracking-tight text-foreground uppercase">SEOGEO</span>
         </div>
         <div className="hidden items-center gap-8 md:flex">
           <div className="flex items-center gap-8">

@@ -21,7 +21,7 @@ export function Hero() {
           transition={{ duration: 0.6 }}
           className="flex flex-col items-center text-center"
         >
-          <h1 className="max-w-4xl text-5xl font-extrabold tracking-tight md:text-7xl">
+          <h1 className="max-w-4xl font-display text-5xl font-extrabold tracking-tight md:text-7xl">
             Get your website seen by <span className="text-primary italic">AI Search Engines</span>.
           </h1>
           
@@ -54,7 +54,7 @@ export function Hero() {
                 <span className="flex h-10 w-16 items-center justify-center rounded-full bg-primary/10 text-xs font-bold tracking-widest text-primary">
                   {item.label}
                 </span>
-                <h3 className="mt-6 text-xl font-bold text-foreground">{item.title}</h3>
+                <h3 className="mt-6 font-display text-xl font-bold text-foreground">{item.title}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-foreground/60">{item.desc}</p>
               </div>
             ))}
