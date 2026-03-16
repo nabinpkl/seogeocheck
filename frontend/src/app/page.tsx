@@ -2,50 +2,49 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Loader2, ScanSearch, Terminal } from "lucide-react";
+import { Search, Globe, ShieldCheck, Zap, ArrowRight, CheckCircle2, RotateCcw } from "lucide-react";
 
 type MachineState = "IDLE" | "SCANNING" | "COMPLETE";
-
-const EXAMPLES = [
-  { label: "Discord", url: "https://discord.com" },
-  { label: "Figma", url: "https://figma.com" },
-  { label: "Stripe", url: "https://stripe.com" },
-] as const;
 
 export default function Page() {
   const [machineState, setMachineState] = React.useState<MachineState>("IDLE");
   const [url, setUrl] = React.useState("");
-
-  // These will eventually be driven by your Java/WASM backend
   const [score, setScore] = React.useState(0);
   const [logs, setLogs] = React.useState<string[]>([]);
+  const [isScrolled, setIsScrolled] = React.useState(false);
 
-  // Mocking the "WASM Instant Check" -> "Java SSE Stream" flow
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const beginScan = (nextUrl: string) => {
     if (!nextUrl.trim()) return;
-    setUrl(nextUrl);
+    const cleanUrl = nextUrl.startsWith("http") ? nextUrl : `https://${nextUrl}`;
+    setUrl(cleanUrl);
     setMachineState("SCANNING");
-    setLogs(["[SYSTEM] Initiating WASM edge-check..."]);
+    setLogs(["Connecting to your website..."]);
     setScore(0);
 
-    // Simulate WASM instant <500ms hit
+    // Human-friendly logs
     setTimeout(() => {
-      setScore(25);
-      setLogs(prev => [...prev, "[WASM] Local DOM Check: PASS", "[SYSTEM] Connecting to Java 25 Loom Workers..."]);
-    }, 400);
+      setScore(15);
+      setLogs(prev => [...prev, "Analyzing page structure and layout...", "Checking mobile accessibility..."]);
+    }, 800);
 
-    // Simulate waiting for Lighthouse Sidecar
     setTimeout(() => {
-      setScore(60);
-      setLogs(prev => [...prev, "[NODE] Lighthouse Sidecar: Entity extraction complete.", "[JAVA] Analyzing JSON-LD schema depth..."]);
-    }, 2000);
+      setScore(45);
+      setLogs(prev => [...prev, "Reading content for AI search engines...", "Evaluating trustworthiness signals..."]);
+    }, 2200);
 
-    // Simulate completion
     setTimeout(() => {
-      setScore(88);
+      setScore(82);
       setMachineState("COMPLETE");
-      setLogs(prev => [...prev, "[SYSTEM] Audit complete. Review findings below."]);
-    }, 3600);
+      setLogs(prev => [...prev, "Audit complete. Your visibility report is ready."]);
+    }, 4500);
   };
 
   const resetScan = () => {
@@ -63,231 +62,374 @@ export default function Page() {
   const isScanning = machineState === "SCANNING";
 
   return (
-    <main className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/30">
-      <section className="relative border-b border-zinc-200/80 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded bg-zinc-900 text-xs font-bold text-white">SG</div>
-            <div>
-              <div className="text-sm font-semibold tracking-widest text-zinc-900">SEOGEO</div>
-              <div className="text-xs text-zinc-500">SEO + GEO check platform</div>
+    <main className="min-h-screen bg-background text-foreground font-sans">
+      {/* Sticky Navigation */}
+      <header className="sticky top-0 z-50 w-full">
+        <AnimatePresence>
+          {isScrolled && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="absolute inset-0 z-0 border-b border-border shadow-md"
+            >
+              {/* Navbar Background Image overlay */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: 'url("/hero-bg.png")' }}
+              />
+              <div className="absolute inset-0 bg-white/95 backdrop-blur-xl" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <nav className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-2">
+
+          <div className="flex items-center gap-1">
+            <img src="/logo.png" alt="SEOGEO Logo" className="h-10 w-10 object-contain" />
+            <span className="text-xl font-bold tracking-tight text-foreground uppercase">SEOGEO</span>
+          </div>
+          <div className="hidden items-center gap-8 md:flex">
+            <div className="flex items-center gap-8">
+              <a href="#features" className="text-sm font-medium text-foreground/80 transition hover:text-primary">Features</a>
+              <a href="#how-it-works" className="text-sm font-medium text-foreground/80 transition hover:text-primary">How it works</a>
+            </div>
+            
+            <div className="h-5 w-px bg-border/25" /> {/* Vertical Separator */}
+
+            <div className="flex items-center gap-3">
+              <button className="rounded-full border border-border px-5 py-2 text-sm font-semibold text-foreground/70 transition hover:border-primary/50 hover:text-primary">
+                Sign In
+              </button>
+              <button className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]">
+                Try For Free
+              </button>
             </div>
           </div>
+        </nav>
+      </header>
 
-          <nav className="flex flex-wrap items-center gap-2 text-sm text-zinc-600">
-            <a className="rounded-full px-3 py-1.5 transition hover:bg-zinc-100 hover:text-zinc-900" href="#why">Why SEOGEO</a>
-            <a className="rounded-full px-3 py-1.5 transition hover:bg-zinc-100 hover:text-zinc-900" href="#audit">Check SEO</a>
-            <a
-              className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50"
-              href="https://github.com/nabin/seogeocheck.com"
-              target="_blank"
-              rel="noreferrer"
-            >
-              GitHub
-            </a>
-          </nav>
-        </div>
-      </section>
+      {/* Hero Section - Pulled up to sit behind the transparent navbar */}
+      <section className="relative -mt-16 overflow-hidden pt-32 pb-16 lg:pt-40 lg:pb-24">
+        {/* Background Image with Overlay */}
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: 'url("/hero-bg.png")' }}
+        />
+        <div className="absolute inset-0 z-10 bg-white/90 backdrop-blur-[2px]" />
 
-      <section
-        id="hero"
-        className="relative border-y border-emerald-100 bg-[radial-gradient(circle_at_12%_18%,rgba(16,185,129,0.18),transparent_34%),radial-gradient(circle_at_88%_8%,rgba(14,165,233,0.14),transparent_36%),linear-gradient(to_bottom,#f0fdf4,#ecfeff)] py-14 md:py-20"
-      >
-        <div className={`mx-auto grid max-w-6xl gap-10 px-6 ${machineState === "IDLE" ? "" : "lg:grid-cols-2 lg:items-start"}`}>
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-700">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-              Sub-second perceived performance.
-            </div>
 
-            <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-6xl">
-              Check SEO + GEO signals <span className="text-emerald-600">in seconds</span>
+        <div className="relative z-20 mx-auto max-w-7xl px-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex flex-col items-center text-center"
+          >
+            <h1 className="max-w-4xl text-5xl font-extrabold tracking-tight md:text-7xl">
+              Get your website seen by <span className="text-primary italic">AI Search Engines</span>.
             </h1>
-
-            <p className="max-w-xl text-lg text-zinc-600">
-              SEOGEO combines instant edge checks with deep automated validation so your team can improve discoverability across search, answer engine (AEO), and AI results.
+            
+            <p className="mt-8 max-w-2xl text-lg text-foreground/70 md:text-xl md:leading-relaxed">
+              Ensure your business stays visible as search evolution accelerates. We analyze your site's health for traditional search and the new world of generative answer engines.
             </p>
 
-            <form id="check" onSubmit={handleSubmit} className="relative max-w-xl">
-              <ScanSearch className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                disabled={isScanning}
-                placeholder="https://yourbrand.com"
-                className="w-full rounded-2xl border border-zinc-200 bg-white py-5 pl-14 pr-36 text-lg text-zinc-900 placeholder-zinc-500 outline-none transition-all focus:border-emerald-400/70 focus:ring-4 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-              />
-              <button
-                type="submit"
-                disabled={isScanning || !url}
-                className="absolute bottom-2 right-2 top-2 flex items-center gap-2 rounded-xl bg-zinc-900 px-6 font-semibold text-white transition hover:bg-zinc-800 disabled:bg-zinc-300 disabled:text-zinc-500"
-              >
-                {isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
-                {isScanning ? "Analyzing" : "Start check"}
-              </button>
+            <form onSubmit={handleSubmit} className="mt-12 w-full max-w-4xl">
+              <div className="relative group flex items-center rounded-2xl border border-border bg-white p-2 shadow-2xl shadow-black/5 transition-all focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5">
+                <input
+                  type="text"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  disabled={isScanning}
+                  placeholder="Enter your website URL (e.g., myshop.com)"
+                  className="h-14 w-full bg-transparent px-6 text-lg outline-none placeholder:text-foreground/30"
+                />
+                <button
+                  type="submit"
+                  className="h-14 rounded-xl bg-primary px-8 text-lg font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap min-w-[200px]"
+                >
+                  {isScanning ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      >
+                        <RotateCcw className="h-5 w-5" />
+                      </motion.div>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      Check Visibility
+                      <ArrowRight className="h-5 w-5" />
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="mt-8 flex items-center justify-center gap-3 text-sm font-medium text-foreground/50">
+                <span className="flex items-center gap-1.5 rounded-full bg-primary/5 px-3 py-1 text-primary">
+                  Free SEO & AI visibility check
+                </span>
+                <span className="h-1 w-1 rounded-full bg-foreground/10" />
+                <span>Small fee for backlink discovery</span>
+              </div>
             </form>
 
-            <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-600">
-              <span>Try an example:</span>
-              {EXAMPLES.map((ex) => (
-                <button
-                  key={ex.label}
-                  type="button"
-                  onClick={() => beginScan(ex.url)}
-                  className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-zinc-700 transition hover:border-zinc-300 hover:text-zinc-900"
-                >
-                  {ex.label}
-                </button>
+            {/* Explanation Sections: SEO, GEO, AEO */}
+            <div className="mt-20 grid w-full gap-8 md:grid-cols-3">
+              {[
+                {
+                  label: "SEO",
+                  title: "Traditional Search",
+                  desc: "Optimizing your site so people can find you easily on Google and Bing search results."
+                },
+                {
+                  label: "GEO",
+                  title: "AI Search Results",
+                  desc: "Helping AI models like ChatGPT and Perplexity find and recommend your brand to users."
+                },
+                {
+                  label: "AEO",
+                  title: "Direct Answer Engines",
+                  desc: "Ensuring your content is clear enough for voice assistants and AI to use as a direct answer."
+                }
+              ].map((item, idx) => (
+                <div key={idx} className="flex flex-col items-center rounded-3xl border border-border/50 bg-white/40 p-8 backdrop-blur-sm transition-colors hover:bg-white/60">
+                  <span className="flex h-10 w-16 items-center justify-center rounded-full bg-primary/10 text-xs font-bold tracking-widest text-primary">
+                    {item.label}
+                  </span>
+                  <h3 className="mt-6 text-xl font-bold text-foreground">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-foreground/60">{item.desc}</p>
+                </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          {machineState !== "IDLE" && (
-            <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-lg">
-              <div className="flex items-center justify-between text-sm text-zinc-600">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span>Live check preview</span>
-                </div>
-                <span className="rounded-full border border-zinc-200 px-2 py-0.5">Beta</span>
-              </div>
-              <div className="mt-6 grid gap-4">
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <div className="flex items-center justify-between text-xs text-zinc-500">
-                    <span>Check score</span>
-                    <span className="font-semibold text-zinc-900">{score}/100</span>
+          <AnimatePresence>
+            {machineState !== "IDLE" && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="mt-16 overflow-hidden rounded-3xl border border-border bg-white shadow-2xl"
+              >
+                <div className="grid md:grid-cols-[1fr_300px]">
+                  <div className="p-8 md:p-12">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-3 w-3 rounded-full ${isScanning ? "animate-pulse bg-primary" : "bg-green-500"}`} />
+                      <h3 className="font-bold text-foreground/80">Current Audit Status</h3>
+                    </div>
+                    
+                    <div className="mt-8 space-y-4">
+                      {logs.map((log, i) => (
+                        <motion.div 
+                          key={i}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="flex items-start gap-3 text-lg text-foreground/70"
+                        >
+                          <CheckCircle2 className={`mt-1 h-5 w-5 shrink-0 ${i === logs.length - 1 && isScanning ? "text-primary/40" : "text-green-500"}`} />
+                          <span>{log}</span>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{ width: `${Math.min(score, 100)}%` }}
-                    />
-                  </div>
-                </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <div className="flex items-center justify-between text-xs text-zinc-500">
-                    <span>Status</span>
-                    <span className="font-semibold text-zinc-900">{machineState.toLowerCase()}</span>
+                  <div className="flex flex-col items-center justify-center bg-secondary/20 p-8 md:border-l md:border-border">
+                    <div className="text-sm font-bold uppercase tracking-widest text-foreground/40">Visibility Score</div>
+                    <div className="mt-2 text-7xl font-black text-primary">
+                      {score}
+                      <span className="text-2xl text-foreground/20">/100</span>
+                    </div>
+                    {machineState === "COMPLETE" && (
+                      <button
+                        onClick={resetScan}
+                        className="mt-8 rounded-xl border border-primary/20 bg-white px-6 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/5"
+                      >
+                        Run New Check
+                      </button>
+                    )}
                   </div>
-                  <p className="mt-3 text-sm text-zinc-600">
-                    {machineState === "SCANNING"
-                      ? "Streaming check events in real time."
-                      : "Check complete. Scroll down for the full log."
-                    }
-                  </p>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
 
-      <section id="why" className="relative py-8 md:py-12">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="text-3xl font-bold tracking-tight text-zinc-900">Why SEOGEO?</h2>
-          <p className="mt-4 max-w-3xl text-lg text-zinc-600">
-            Most SEO tools rely on static crawls. SEOGEO is designed for modern search behavior with fast checks, deeper validation, and clear signals your team can act on.
-          </p>
-
-          <div className="mt-10 grid gap-8 md:grid-cols-3">
-            <div className="border-l-2 border-emerald-300 pl-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <ScanSearch className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-zinc-900">Fast first feedback</h3>
-              <p className="mt-2 text-sm text-zinc-600">
-                Catch critical SEO and GEO issues immediately so teams can iterate before a full report finishes.
-              </p>
-            </div>
-
-            <div className="border-l-2 border-sky-300 pl-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
-                <Terminal className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-zinc-900">Built for scale</h3>
-              <p className="mt-2 text-sm text-zinc-600">
-                Get results fast so you can iterate quickly and keep moving.
-              </p>
-            </div>
-
-            <div className="border-l-2 border-amber-300 pl-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                <ArrowUpRight className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-zinc-900">Actionable outcomes</h3>
-              <p className="mt-2 text-sm text-zinc-600">
-                Get practical findings mapped to your pages so SEO, content, and engineering teams can move quickly.
-              </p>
-            </div>
+      {/* Refined Features Section */}
+      <section id="features" className="bg-white py-24">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Advanced insights without the complexity
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-foreground/60">
+              We go beyond the basics to give you a clear roadmap for improving your digital presence.
+            </p>
           </div>
-        </div>
-      </section>
 
-      <AnimatePresence>
-        {machineState !== "IDLE" && (
-          <motion.section
-            id="audit-log"
+          <div className="mt-16 grid gap-12 md:grid-cols-3">
+            {[
+              {
+                icon: <Zap className="h-6 w-6" />,
+                title: "Real-Time Monitoring",
+                description: "Watch your visibility signals change in real-time as you update your content and site structure."
+              },
+              {
+                icon: <ArrowRight className="h-6 w-6" />,
+                title: "Smart Action Plans",
+                description: "Stop guessing. Get a prioritized checklist of exactly what to change to be seen by AI and users."
+              },
+              {
+                icon: <ShieldCheck className="h-6 w-6" />,
+                title: "Authority Building",
+                description: "Verify your site's trustworthiness signals that AI engines use to decide which sources to cite."
+              }
+            ].map((feature, i) => (
+              <div key={i} className="group rounded-3xl border border-border p-8 transition-colors hover:border-primary/20 hover:bg-primary/5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary transition-colors group-hover:bg-primary group-hover:text-white">
+                  {feature.icon}
+                </div>
+                <h3 className="mt-6 text-xl font-bold text-foreground">{feature.title}</h3>
+                <p className="mt-4 text-foreground/60 leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+
+          <motion.div 
             initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative py-10"
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="mt-24 grid items-center gap-12 lg:grid-cols-2"
           >
-            <div className="mx-auto grid max-w-6xl gap-6 px-6 lg:grid-cols-[1.1fr_380px]">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-6 font-mono text-sm shadow-lg">
-                <div className="mb-3 flex items-center gap-2 border-b border-zinc-200 pb-3 text-zinc-600">
-                  <Terminal className="h-4 w-4" />
-                  <span>Check stream (SSE)</span>
-                </div>
-                <div className="flex h-[260px] flex-col gap-2 overflow-y-auto">
-                  {logs.map((log, i) => (
-                    <div key={i} className={log.includes("PASS") ? "text-emerald-600" : "text-zinc-700"}>
-                      <span className="mr-2 text-zinc-500">{`>`}</span>
-                      {log}
-                    </div>
-                  ))}
-
-                  {isScanning && (
-                    <div className="mt-2 flex items-center gap-2 text-zinc-600">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Awaiting next signal...
-                    </div>
-                  )}
-                </div>
+            <div className="flex flex-col gap-6">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Globe className="h-6 w-6" />
               </div>
-
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg">
-                <span className="mb-4 text-sm font-medium uppercase tracking-widest text-zinc-600">SEO + GEO Score</span>
-                <div className="text-7xl font-bold tracking-tighter tabular-nums text-zinc-900">
-                  {score}
-                  <span className="text-3xl text-zinc-500">/100</span>
-                </div>
-                <p className="mt-4 text-center text-xs text-zinc-600">
-                  {machineState === "COMPLETE"
-                    ? "Check complete. Run a new URL or revisit the report."
-                    : score < 30
-                      ? "Analyzing markup..."
-                      : score < 70
-                        ? "Building the entity graph..."
-                        : "Finishing up..."}
-                </p>
-
-                {machineState === "COMPLETE" && (
-                  <button
-                    type="button"
-                    onClick={resetScan}
-                    className="mt-6 rounded-xl bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
-                  >
-                    Run another check
-                  </button>
-                )}
-              </div>
+              <h2 className="text-4xl font-bold tracking-tight text-foreground">
+                Your data, visualized for <span className="text-primary">clarity</span>.
+              </h2>
+              <p className="text-lg leading-relaxed text-foreground/70">
+                We transform complex technical signals into a simple, beautiful dashboard. See exactly how your site performs across traditional search engines and emerging AI answer platforms—all in one place.
+              </p>
+              <ul className="space-y-4">
+                {[
+                  "Clear, jargon-free visibility reporting",
+                  "Cross-platform performance tracking",
+                  "Actionable steps for immediate improvement"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-foreground/80">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                    </div>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </motion.section>
-        )}
-      </AnimatePresence>
+
+            <div className="relative group overflow-hidden rounded-[2.5rem] border border-border bg-white p-3 shadow-2xl shadow-primary/5 transition-all hover:shadow-primary/10">
+              <div className="absolute inset-0 z-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+              <img 
+                src="/illustration.png" 
+                alt="SEOGEO Platform Illustration" 
+                className="relative z-10 w-full rounded-[1.8rem] object-cover shadow-sm"
+              />
+            </div>
+          </motion.div>
+
+        </div>
+      </section>
+
+
+      {/* CTA Banner Section - Full Width */}
+      <section className="relative overflow-hidden bg-primary py-24 text-white">
+        {/* Subtle pattern overlay */}
+        <div className="absolute inset-0 z-0 opacity-10 bg-[radial-gradient(circle_at_20%_20%,white_0%,transparent_50%)]" />
+        
+        <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
+          <div className="flex flex-col items-center">
+            <h2 className="max-w-3xl text-4xl font-extrabold tracking-tight md:text-6xl">
+              Ready to future-proof your presence?
+            </h2>
+            <p className="mt-8 max-w-2xl text-xl text-white/80 leading-relaxed">
+              Join thousands of brands ensuring they stay discoverable in the age of AI. No complex setup, just clear insights.
+            </p>
+            <div className="mt-12 flex flex-wrap justify-center gap-6">
+              <button 
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="h-16 rounded-2xl bg-white px-10 text-xl font-bold text-primary shadow-xl transition-transform hover:scale-[1.03] active:scale-[0.98]"
+              >
+                Run a Free Audit
+              </button>
+              <button className="h-16 rounded-2xl border border-white/30 bg-white/10 px-10 text-xl font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20">
+                Contact Support
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Structured Footer */}
+      <footer className="border-t border-border bg-secondary/10 px-6 py-20 pb-12">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
+            {/* Brand Column */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-1">
+                <img src="/logo.png" alt="SEOGEO Logo" className="h-12 w-12 object-contain" />
+                <span className="text-2xl font-bold tracking-tight uppercase">SEOGEO</span>
+              </div>
+              <p className="mt-6 max-w-sm text-lg leading-relaxed text-foreground/60">
+                Helping businesses navigate the intersection of traditional search and generative AI.
+              </p>
+            </div>
+
+            {/* Links Columns */}
+            <div>
+              <h4 className="font-bold text-foreground">Company</h4>
+              <ul className="mt-6 space-y-4">
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">About Us</a></li>
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">Blog</a></li>
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">Our Mission</a></li>
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">Press Kit</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-foreground">Legal</h4>
+              <ul className="mt-6 space-y-4">
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">Privacy Policy</a></li>
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">Terms of Service</a></li>
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">Cookie Policy</a></li>
+                <li><a href="https://github.com/nabin/seogeocheck.com" className="text-foreground/60 transition hover:text-primary">GitHub</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-foreground">Contact</h4>
+              <ul className="mt-6 space-y-4">
+                <li><a href="mailto:support@seogeocheck.com" className="text-foreground/60 transition hover:text-primary">Support</a></li>
+                <li><a href="mailto:hello@seogeocheck.com" className="text-foreground/60 transition hover:text-primary">Business</a></li>
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">Help Center</a></li>
+                <li><a href="#" className="text-foreground/60 transition hover:text-primary">Status</a></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="mt-20 flex flex-col items-center justify-between border-t border-border pt-8 text-sm text-foreground/40 md:flex-row">
+            <p>© {new Date().getFullYear()} SEOGEO Platform. All rights reserved.</p>
+            <div className="mt-4 flex gap-8 md:mt-0 text-foreground/60">
+              <span>Security Verified</span>
+              <span>Made with ❤️ for Search Evolution</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

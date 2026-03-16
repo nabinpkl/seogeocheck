@@ -15,18 +15,26 @@
 
 :root {
   color-scheme: light;
-  --background: oklch(0.98 0.003 255);
-  --foreground: oklch(0.18 0.006 255);
-  --primary: oklch(0.74 0.16 160);
-  --secondary: oklch(0.96 0.003 255);
-  --panel: oklch(0.985 0.002 255);
-  --card: oklch(0.99 0.002 255);
-  --muted: oklch(0.92 0.004 255);
-  --accent: oklch(0.79 0.16 160);
-  --border: oklch(0.89 0.004 255);
+  --background: oklch(0.99 0.005 165);
+  --foreground: oklch(0.25 0.04 165);
+  --primary: oklch(61.108% 0.14015 158.595);
+  --secondary: oklch(0.94 0.01 165);
+  --panel: oklch(1 0 0);
+  --card: oklch(1 0 0);
+  --muted: oklch(0.96 0.01 165);
+  --accent: oklch(0.85 0.12 165);
+  --border: oklch(0.9 0.02 165);
 }
 
 * {
   border-color: var(--border);
   box-sizing: border-box;
+}
+
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  cursor: pointer;
 }
