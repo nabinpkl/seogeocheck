@@ -6,6 +6,7 @@ import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
 import io.temporal.failure.ActivityFailure;
+import io.temporal.failure.ApplicationFailure;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 
@@ -16,6 +17,8 @@ import java.util.Map;
 
 @WorkflowImpl(taskQueues = "${seogeo.audit.task-queue}")
 public class AuditWorkflowImpl implements AuditWorkflow {
+
+    private static final String LIGHTHOUSE_URL_UNREACHABLE = "LIGHTHOUSE_URL_UNREACHABLE";
 
     private final AuditActivities auditActivities = Workflow.newActivityStub(
             AuditActivities.class,
@@ -108,7 +111,7 @@ public class AuditWorkflowImpl implements AuditWorkflow {
 
     private void handleFailure(String jobId, Exception exception) {
         String internalMessage = rootMessage(exception);
-        String userMessage = "We couldn't finish reviewing this site. Please try again in a moment.";
+        String userMessage = toUserMessage(exception, internalMessage);
         try {
             auditActivities.markFailed(jobId, userMessage);
             auditActivities.appendEvent(jobId, "error", AuditStatus.FAILED, Map.of(
@@ -120,12 +123,33 @@ public class AuditWorkflowImpl implements AuditWorkflow {
         }
     }
 
-    private String rootMessage(Exception exception) {
-        if (exception instanceof ActivityFailure activityFailure && activityFailure.getCause() != null) {
-            return rootMessage((Exception) activityFailure.getCause());
+    private String toUserMessage(Throwable failure, String internalMessage) {
+        if (isUrlUnreachableFailure(failure)) {
+            return "We couldn't reach that URL. Make sure the site is publicly accessible and try again.";
         }
 
-        String message = exception.getMessage();
+        return "We couldn't finish reviewing this site. Please try again in a moment.";
+    }
+
+    private boolean isUrlUnreachableFailure(Throwable failure) {
+        if (failure instanceof ActivityFailure activityFailure && activityFailure.getCause() != null) {
+            return isUrlUnreachableFailure(activityFailure.getCause());
+        }
+
+        if (failure instanceof ApplicationFailure applicationFailure
+                && LIGHTHOUSE_URL_UNREACHABLE.equals(applicationFailure.getType())) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private String rootMessage(Throwable failure) {
+        if (failure instanceof ActivityFailure activityFailure && activityFailure.getCause() != null) {
+            return rootMessage(activityFailure.getCause());
+        }
+
+        String message = failure.getMessage();
         if (message == null || message.isBlank()) {
             return "The audit could not be completed.";
         }

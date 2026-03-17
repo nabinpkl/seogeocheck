@@ -4,6 +4,7 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  AlertCircle,
   ArrowRight,
   BadgeCheck,
   CheckCircle2,
@@ -137,8 +138,16 @@ function formatStatusLabel(status: string, isPending: boolean) {
   }
 }
 
-function formatConnectionLabel(status: string) {
-  switch (status) {
+function formatConnectionLabel(connectionStatus: string, auditStatus: string) {
+  if (auditStatus === "FAILED") {
+    return "Failed";
+  }
+
+  if (auditStatus === "VERIFIED" || auditStatus === "COMPLETE") {
+    return "Complete";
+  }
+
+  switch (connectionStatus) {
     case "open":
       return "On";
     case "connecting":
@@ -158,45 +167,117 @@ function formatCategoryLabel(key: string) {
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
-function PassedCheckCard({ check }: { check: AuditReportCheck }) {
+function recommendedFixesBadgeTone(issueCount: number, findings: AuditReportCheck[]) {
+  if (issueCount === 0) {
+    return "bg-emerald-100 text-emerald-700";
+  }
+
+  if (findings.some((finding) => finding.severity === "high")) {
+    return "bg-rose-100 text-rose-700";
+  }
+
+  return "bg-amber-100 text-amber-700";
+}
+
+function CheckRow({
+  check,
+  kind,
+}: {
+  check: AuditReportCheck;
+  kind: "issue" | "passed";
+}) {
+  const isIssue = kind === "issue";
+
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <CircleCheckBig className="h-4 w-4 text-emerald-600" />
-        <p className="font-semibold text-foreground">
-          {check.label ?? "Passed check"}
-        </p>
-        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
-          Passed
-        </span>
+    <details
+      className={`rounded-2xl border ${
+        isIssue
+          ? "border-border bg-white"
+          : "border-emerald-200 bg-emerald-50/60"
+      }`}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 text-left">
+        {isIssue ? (
+          <ChevronRight className="h-4 w-4 shrink-0 text-primary" />
+        ) : (
+          <CircleCheckBig className="h-4 w-4 shrink-0 text-emerald-600" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-semibold text-foreground">
+            {check.label ?? (isIssue ? "Finding" : "Passed check")}
+          </div>
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {isIssue && check.severity && (
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] ${severityTone(
+                check.severity
+              )}`}
+            >
+              {check.severity}
+            </span>
+          )}
+          {!isIssue && (
+            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+              Passed
+            </span>
+          )}
+        </div>
+      </summary>
+
+      <div className="border-t border-border/70 px-5 py-4 text-sm text-foreground/70">
+        <div className="space-y-2">
+          {isIssue && check.instruction && (
+            <p>
+              <span className="font-semibold text-foreground/80">
+                Recommended fix:
+              </span>{" "}
+              {check.instruction}
+            </p>
+          )}
+          {!isIssue && check.detail && (
+            <p>
+              <span className="font-semibold text-foreground/80">
+                What is working:
+              </span>{" "}
+              {check.detail}
+            </p>
+          )}
+          {check.selector && (
+            <p>
+              <span className="font-semibold text-foreground/80">
+                Page area:
+              </span>{" "}
+              <code className="rounded bg-secondary px-2 py-1 text-xs">
+                {check.selector}
+              </code>
+            </p>
+          )}
+          {check.metric && (
+            <p>
+              <span className="font-semibold text-foreground/80">Metric:</span>{" "}
+              {check.metric}
+            </p>
+          )}
+          {!isIssue && !check.detail && check.instruction && (
+            <p>
+              <span className="font-semibold text-foreground/80">
+                Why this passed:
+              </span>{" "}
+              {check.instruction}
+            </p>
+          )}
+          {isIssue && !check.instruction && check.detail && (
+            <p>
+              <span className="font-semibold text-foreground/80">
+                Recommendation:
+              </span>{" "}
+              {check.detail}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="mt-3 space-y-2 text-sm text-foreground/70">
-        {check.detail && (
-          <p>
-            <span className="font-semibold text-foreground/80">
-              What is working:
-            </span>{" "}
-            {check.detail}
-          </p>
-        )}
-        {check.selector && (
-          <p>
-            <span className="font-semibold text-foreground/80">
-              Page area:
-            </span>{" "}
-            <code className="rounded bg-white px-2 py-1 text-xs">
-              {check.selector}
-            </code>
-          </p>
-        )}
-        {check.metric && (
-          <p>
-            <span className="font-semibold text-foreground/80">Metric:</span>{" "}
-            {check.metric}
-          </p>
-        )}
-      </div>
-    </div>
+    </details>
   );
 }
 
@@ -322,8 +403,10 @@ export function AuditSection() {
       ? report.summary.passedCheckCount
       : reportPassedChecks.length;
   const hasVerifiedSignature = Boolean(report?.signature?.present);
+  const hasAuditFailed = status === "FAILED";
   const isAuditSettled = Boolean(report) || status === "FAILED";
   const isAuditActive = Boolean(jobId) && !isAuditSettled;
+  const showProgressSidebar = !report;
   const categoryScores = report?.categories
     ? Object.entries(report.categories).map(([key, value]) => ({
         key,
@@ -338,6 +421,20 @@ export function AuditSection() {
     !(reportQuery.error instanceof ReportPendingError)
       ? reportQuery.error.message
       : null);
+  const progressValue = hasAuditFailed ? 100 : report ? 100 : currentProgress;
+  const progressLabel = hasAuditFailed ? "Failed" : report ? "Ready" : `${currentProgress}%`;
+  const progressBarClassName = hasAuditFailed ? "bg-rose-500" : "bg-primary";
+  const recommendedFixesBadgeClassName = recommendedFixesBadgeTone(
+    issueCount,
+    reportFindings
+  );
+  const currentStepMessage = hasAuditFailed
+    ? userFacingError ?? "We couldn't finish reviewing this site."
+    : pendingReport
+      ? "Putting the final touches on your results"
+      : report
+        ? "Your results are ready"
+        : "Checking your site";
 
   React.useEffect(() => {
     if (!report || !jobId || focusedResultJobId === jobId || !resultPanelRef.current) {
@@ -368,7 +465,7 @@ export function AuditSection() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full self-stretch">
       <form action={formAction} className="mx-auto mt-20 mb-12 w-full max-w-4xl">
         <div className="group relative flex flex-col rounded-2xl border border-border bg-white p-2 shadow-2xl shadow-black/5 transition-all focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 sm:flex-row sm:items-center">
           <input
@@ -413,9 +510,13 @@ export function AuditSection() {
             initial={{ opacity: 0, scale: 0.97, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
-            className="mt-16 overflow-hidden rounded-3xl border border-border bg-white shadow-2xl"
+            className="mx-auto mt-16 w-full max-w-6xl overflow-hidden rounded-3xl border border-border bg-white shadow-2xl"
           >
-            <div className="grid gap-0 md:grid-cols-[1.35fr_0.85fr]">
+            <div
+              className={`grid gap-0 ${
+                showProgressSidebar ? "md:grid-cols-[1.35fr_0.85fr]" : ""
+              }`}
+            >
               <div className="p-8 md:p-12">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-foreground/60">
@@ -436,7 +537,14 @@ export function AuditSection() {
                 </div>
 
                 <div className="mt-6 flex items-center gap-3 text-foreground/70">
-                  {report ? (
+                  {hasAuditFailed ? (
+                    <>
+                      <AlertCircle className="h-5 w-5 text-rose-500" />
+                      <p className="text-lg font-semibold text-rose-700">
+                        We hit a problem reviewing your site
+                      </p>
+                    </>
+                  ) : report ? (
                     <>
                       <BadgeCheck className="h-5 w-5 text-emerald-500" />
                       <p className="text-lg font-semibold">
@@ -477,7 +585,9 @@ export function AuditSection() {
                         <div
                           key={String(event.eventId)}
                           className={`rounded-2xl border px-5 py-4 ${
-                            isPassedCheck(event.checkStatus)
+                            event.type === "error"
+                              ? "border-rose-200 bg-rose-50"
+                              : isPassedCheck(event.checkStatus)
                               ? "border-emerald-200 bg-emerald-50/70"
                               : "border-border/70 bg-secondary/20"
                           }`}
@@ -485,7 +595,9 @@ export function AuditSection() {
                           <div className="flex flex-wrap items-center gap-3">
                             <CheckCircle2
                               className={`h-5 w-5 ${
-                                isIssueCheck(event.checkStatus)
+                                event.type === "error"
+                                  ? "text-rose-500"
+                                  : isIssueCheck(event.checkStatus)
                                   ? "text-primary"
                                   : isPassedCheck(event.checkStatus)
                                     ? "text-emerald-500"
@@ -646,8 +758,8 @@ export function AuditSection() {
                       </div>
                     )}
 
-                    <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-                      <div className="space-y-4">
+                    <div className="space-y-6">
+                      <section className="space-y-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <h3 className="text-lg font-semibold text-foreground">
@@ -657,7 +769,9 @@ export function AuditSection() {
                               Start here to improve visibility the fastest.
                             </p>
                           </div>
-                          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${recommendedFixesBadgeClassName}`}
+                          >
                             {issueCount} issues
                           </span>
                         </div>
@@ -667,52 +781,19 @@ export function AuditSection() {
                             No urgent issues were flagged in this audit. Your site cleared every tracked check in this slice.
                           </div>
                         ) : (
-                          reportFindings.map((finding, index) => (
-                            <div
-                              key={finding.id ?? `${finding.selector}-${index}`}
-                              className="rounded-2xl border border-border px-5 py-4"
-                            >
-                              <div className="flex flex-wrap items-center gap-3">
-                                <ChevronRight className="h-4 w-4 text-primary" />
-                                <p className="font-semibold text-foreground">
-                                  {finding.label ?? "Finding"}
-                                </p>
-                                {finding.severity && (
-                                  <span
-                                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] ${severityTone(
-                                      finding.severity
-                                    )}`}
-                                  >
-                                    {finding.severity}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-3 space-y-2 text-sm text-foreground/70">
-                                {finding.instruction && (
-                                  <p>
-                                    <span className="font-semibold text-foreground/80">
-                                      Recommended fix:
-                                    </span>{" "}
-                                    {finding.instruction}
-                                  </p>
-                                )}
-                                {finding.selector && (
-                                  <p>
-                                    <span className="font-semibold text-foreground/80">
-                                      Page area:
-                                    </span>{" "}
-                                    <code className="rounded bg-secondary px-2 py-1 text-xs">
-                                      {finding.selector}
-                                    </code>
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))
+                          <div className="space-y-3">
+                            {reportFindings.map((finding, index) => (
+                              <CheckRow
+                                key={finding.id ?? `${finding.selector}-${index}`}
+                                check={finding}
+                                kind="issue"
+                              />
+                            ))}
+                          </div>
                         )}
-                      </div>
+                      </section>
 
-                      <div className="space-y-4">
+                      <section className="space-y-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <h3 className="text-lg font-semibold text-foreground">
@@ -732,109 +813,131 @@ export function AuditSection() {
                             We did not capture any confirmed passed checks for this run.
                           </div>
                         ) : (
-                          reportPassedChecks.map((check, index) => (
-                            <PassedCheckCard
-                              key={check.id ?? `${check.selector}-${index}`}
-                              check={check}
-                            />
-                          ))
+                          <div className="space-y-3">
+                            {reportPassedChecks.map((check, index) => (
+                              <CheckRow
+                                key={check.id ?? `${check.selector}-${index}`}
+                                check={check}
+                                kind="passed"
+                              />
+                            ))}
+                          </div>
                         )}
-                      </div>
+                      </section>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-border bg-secondary/20 p-8 md:border-t-0 md:border-l">
-                <div className="rounded-3xl bg-white p-6 shadow-sm">
-                  <div className="text-sm font-bold uppercase tracking-[0.2em] text-foreground/40">
-                    Progress
-                  </div>
-                  <div className="mt-6 space-y-5">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
-                        Live updates
-                      </div>
-                      <div className="mt-2 text-lg font-semibold text-foreground">
-                        {formatConnectionLabel(connectionStatus)}
-                      </div>
+              {showProgressSidebar && (
+                <div className="border-t border-border bg-secondary/20 p-8 md:border-t-0 md:border-l">
+                  <div className="rounded-3xl bg-white p-6 shadow-sm">
+                    <div className="text-sm font-bold uppercase tracking-[0.2em] text-foreground/40">
+                      Progress
                     </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
-                        Website
-                      </div>
-                      <div className="mt-2 break-all text-sm text-foreground/70">
-                        {targetUrl || actionState.targetUrl || "Waiting"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
-                        Issues found
-                      </div>
-                      <div className="mt-2 text-4xl font-black text-primary">
-                        {report ? issueCount : liveFindings.length}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
-                        Checks passed
-                      </div>
-                      <div className="mt-2 text-4xl font-black text-emerald-600">
-                        {report ? passedCheckCount : livePassedChecks.length}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
-                        Progress
-                      </div>
-                      <div className="mt-3 h-3 overflow-hidden rounded-full bg-secondary">
+                    <div className="mt-6 space-y-5">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                          Live updates
+                        </div>
                         <div
-                          className="h-full rounded-full bg-primary transition-all duration-500"
-                          style={{
-                            width: `${report ? 100 : currentProgress}%`,
-                          }}
-                        />
+                          className={`mt-2 text-lg font-semibold ${
+                            hasAuditFailed ? "text-rose-700" : "text-foreground"
+                          }`}
+                        >
+                          {formatConnectionLabel(connectionStatus, status)}
+                        </div>
                       </div>
-                      <div className="mt-2 text-sm text-foreground/60">
-                        {report ? "Ready" : `${currentProgress}%`}
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                          Website
+                        </div>
+                        <div className="mt-2 break-all text-sm text-foreground/70">
+                          {targetUrl || actionState.targetUrl || "Waiting"}
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
-                        Current step
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                          Issues found
+                        </div>
+                        <div className="mt-2 text-4xl font-black text-primary">
+                          {liveFindings.length}
+                        </div>
                       </div>
-                      <div className="mt-2 flex items-center gap-2 text-sm text-foreground/70">
-                        {pendingReport ? (
-                          <>
-                            <LoaderCircle className="h-4 w-4 animate-spin text-primary" />
-                            Putting the final touches on your results
-                          </>
-                        ) : report ? (
-                          <>
-                            <BadgeCheck className="h-4 w-4 text-emerald-500" />
-                            Your results are ready
-                          </>
-                        ) : (
-                          <>
-                            <Radar className="h-4 w-4 text-primary" />
-                            Checking your site
-                          </>
-                        )}
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                          Checks passed
+                        </div>
+                        <div className="mt-2 text-4xl font-black text-emerald-600">
+                          {livePassedChecks.length}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                          Progress
+                        </div>
+                        <div className="mt-3 h-3 overflow-hidden rounded-full bg-secondary">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${progressBarClassName}`}
+                            style={{
+                              width: `${progressValue}%`,
+                            }}
+                          />
+                        </div>
+                        <div
+                          className={`mt-2 text-sm ${
+                            hasAuditFailed ? "text-rose-700" : "text-foreground/60"
+                          }`}
+                        >
+                          {progressLabel}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                          Current step
+                        </div>
+                        <div
+                          className={`mt-2 flex items-center gap-2 text-sm ${
+                            hasAuditFailed ? "text-rose-700" : "text-foreground/70"
+                          }`}
+                        >
+                          {hasAuditFailed ? (
+                            <>
+                              <AlertCircle className="h-4 w-4 text-rose-500" />
+                              {currentStepMessage}
+                            </>
+                          ) : pendingReport ? (
+                            <>
+                              <LoaderCircle className="h-4 w-4 animate-spin text-primary" />
+                              {currentStepMessage}
+                            </>
+                          ) : report ? (
+                            <>
+                              <BadgeCheck className="h-4 w-4 text-emerald-500" />
+                              {currentStepMessage}
+                            </>
+                          ) : (
+                            <>
+                              <Radar className="h-4 w-4 text-primary" />
+                              {currentStepMessage}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {(report || status === "FAILED") && (
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="mt-6 w-full rounded-2xl border border-primary/20 bg-white px-5 py-4 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/5"
-                  >
-                    Run another audit
-                  </button>
-                )}
-              </div>
+                  {(report || status === "FAILED") && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="mt-6 w-full rounded-2xl border border-primary/20 bg-white px-5 py-4 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/5"
+                    >
+                      Run another audit
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         )}

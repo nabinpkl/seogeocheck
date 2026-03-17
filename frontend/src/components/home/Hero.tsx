@@ -31,9 +31,20 @@ export function Hero() {
             Get your website seen by <span className="text-primary italic">AI Search Engines</span>.
           </h1>
           
-          <p className="mt-8 max-w-2xl text-lg text-foreground/70 md:text-xl md:leading-relaxed">
-            Ensure your business stays visible as search evolution accelerates. We analyze your site&apos;s health for traditional search and the new world of generative answer engines.
-          </p>
+          <div className="mt-8 flex flex-col items-center">
+            <p className="max-w-2xl text-lg text-foreground/70 md:text-xl md:leading-relaxed">
+              Audit manually or let your AI agent handle the heavy lifting. 
+              Ensure your business stays visible as search evolution accelerates across traditional search and the new world of generative answer engines.
+            </p>
+            <a 
+              href="/oops-under-construction" 
+              className="group mt-6 flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-semibold text-primary transition-all hover:bg-primary/10"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px]">🤖</span>
+              <span>Learn how to let your agent use our service</span>
+              <span className="text-xl leading-none transition-transform group-hover:translate-x-1">→</span>
+            </a>
+          </div>
 
           <AuditSection />
 

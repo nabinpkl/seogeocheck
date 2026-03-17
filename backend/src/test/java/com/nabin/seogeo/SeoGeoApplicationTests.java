@@ -201,6 +201,37 @@ class SeoGeoApplicationTests {
 		assertThat(auditRunRepository.findById(jobId).orElseThrow().getStatus()).isEqualTo(AuditStatus.FAILED);
 	}
 
+	@Test
+	void unreachableAuditReturnsSpecificLighthouseFailureMessage() throws InterruptedException {
+		String jobId = startAudit("https://unreachable.example.com");
+
+		Instant deadline = Instant.now().plus(Duration.ofSeconds(8));
+		Map reportBody = null;
+		HttpStatus reportStatus = HttpStatus.ACCEPTED;
+
+		while (Instant.now().isBefore(deadline)) {
+			var reportResult = restTestClient.get()
+					.uri("/audits/{jobId}/report", jobId)
+					.exchange()
+					.returnResult(Map.class);
+			reportStatus = HttpStatus.valueOf(reportResult.getStatus().value());
+			reportBody = reportResult.getResponseBody();
+			if (reportBody != null && "FAILED".equals(reportBody.get("status"))) {
+				break;
+			}
+			Thread.sleep(200);
+		}
+
+		assertThat(reportStatus).isEqualTo(HttpStatus.OK);
+		assertThat(reportBody).isNotNull();
+		assertThat(reportBody).containsEntry("jobId", jobId);
+		assertThat(reportBody).containsEntry("status", "FAILED");
+		assertThat(String.valueOf(reportBody.get("message")))
+				.isEqualTo("We couldn't reach that URL. Make sure the site is publicly accessible and try again.");
+		assertThat(auditRunRepository.findById(jobId)).isPresent();
+		assertThat(auditRunRepository.findById(jobId).orElseThrow().getStatus()).isEqualTo(AuditStatus.FAILED);
+	}
+
 	private String startAudit(String url) {
 		var startResult = restTestClient.post()
 				.uri("/audits")

@@ -2,6 +2,7 @@ package com.nabin.seogeo.temporal.audit;
 
 import com.nabin.seogeo.audit.domain.LighthouseAuditCheck;
 import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
+import io.temporal.failure.ApplicationFailure;
 import io.temporal.spring.boot.ActivityImpl;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,8 @@ import java.util.Map;
 @ActivityImpl(taskQueues = "${seogeo.lighthouse.task-queue:seogeo-lighthouse-test}")
 public class FakeLighthouseActivities implements LighthouseActivities {
 
+    private static final String LIGHTHOUSE_URL_UNREACHABLE = "LIGHTHOUSE_URL_UNREACHABLE";
+
     @Override
     public LighthouseAuditResult runLighthouseAudit(String jobId, String targetUrl) {
         try {
@@ -25,6 +28,13 @@ public class FakeLighthouseActivities implements LighthouseActivities {
 
         if (targetUrl.contains("fail.example.com")) {
             throw new IllegalStateException("Lighthouse worker refused to audit the target URL.");
+        }
+
+        if (targetUrl.contains("unreachable.example.com")) {
+            throw ApplicationFailure.newNonRetryableFailure(
+                    "The target URL could not be reached.",
+                    LIGHTHOUSE_URL_UNREACHABLE
+            );
         }
 
         return new LighthouseAuditResult(

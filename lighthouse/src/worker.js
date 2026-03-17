@@ -1,6 +1,10 @@
 import lighthouse from "lighthouse";
 import { launch } from "chrome-launcher";
 import { NativeConnection, Worker } from "@temporalio/worker";
+import {
+  getReachabilityFailureFromResult,
+  toLighthouseFailure,
+} from "./errors.js";
 import { normalizeLighthouseResult } from "./normalize.js";
 
 const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? "127.0.0.1:7233";
@@ -22,7 +26,14 @@ async function runAudit(url) {
       onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
     });
 
+    const reachabilityFailure = getReachabilityFailureFromResult(runnerResult);
+    if (reachabilityFailure) {
+      throw reachabilityFailure;
+    }
+
     return normalizeLighthouseResult(runnerResult, url);
+  } catch (error) {
+    throw toLighthouseFailure(error);
   } finally {
     await chrome.kill();
   }

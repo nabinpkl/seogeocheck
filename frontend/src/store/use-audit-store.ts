@@ -132,7 +132,11 @@ export const useAuditStore = create<AuditStore>((set, get) => {
 
       eventSource.onerror = () => {
         const currentStatus = get().status;
-        if (currentStatus === "COMPLETE" || currentStatus === "VERIFIED") {
+        if (
+          currentStatus === "COMPLETE" ||
+          currentStatus === "VERIFIED" ||
+          currentStatus === "FAILED"
+        ) {
           return;
         }
 
