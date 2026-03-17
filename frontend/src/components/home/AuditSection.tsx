@@ -369,7 +369,7 @@ export function AuditSection() {
 
   return (
     <div className="w-full">
-      <form action={formAction} className="mx-auto mt-12 w-full max-w-4xl">
+      <form action={formAction} className="mx-auto mt-20 mb-12 w-full max-w-4xl">
         <div className="group relative flex flex-col rounded-2xl border border-border bg-white p-2 shadow-2xl shadow-black/5 transition-all focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 sm:flex-row sm:items-center">
           <input
             ref={inputRef}
@@ -403,15 +403,6 @@ export function AuditSection() {
               </>
             )}
           </button>
-        </div>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm font-medium text-foreground/50">
-          <span className="flex items-center gap-1.5 rounded-full bg-primary/5 px-3 py-1 text-primary">
-            Instant start
-          </span>
-          <span className="h-1 w-1 rounded-full bg-foreground/10" />
-          <span>Live updates</span>
-          <span className="h-1 w-1 rounded-full bg-foreground/10" />
-          <span>Clear action plan</span>
         </div>
       </form>
 
