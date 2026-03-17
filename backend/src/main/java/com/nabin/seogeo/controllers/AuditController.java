@@ -1,5 +1,11 @@
 package com.nabin.seogeo.controllers;
 
+import com.nabin.seogeo.audit.config.AuditProperties;
+import com.nabin.seogeo.audit.domain.AuditEventRecord;
+import com.nabin.seogeo.audit.domain.AuditStatus;
+import com.nabin.seogeo.audit.persistence.AuditRunEntity;
+import com.nabin.seogeo.audit.service.AuditOrchestrationService;
+import com.nabin.seogeo.audit.service.AuditPersistenceService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
@@ -7,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,15 +26,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.io.IOException;
 import java.net.URI;
 import java.time.OffsetDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @RestController
 @Validated
@@ -35,20 +37,31 @@ import java.util.concurrent.atomic.AtomicReference;
 @CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
 public class AuditController {
 
-    private final ConcurrentMap<String, FakeAuditSession> sessions = new ConcurrentHashMap<>();
+    private final AuditOrchestrationService auditOrchestrationService;
+    private final AuditPersistenceService auditPersistenceService;
+    private final AuditProperties auditProperties;
+
+    public AuditController(
+            AuditOrchestrationService auditOrchestrationService,
+            AuditPersistenceService auditPersistenceService,
+            AuditProperties auditProperties
+    ) {
+        this.auditOrchestrationService = auditOrchestrationService;
+        this.auditPersistenceService = auditPersistenceService;
+        this.auditProperties = auditProperties;
+    }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> createAudit(@Valid @RequestBody StartAuditRequest request) {
         String normalizedUrl = normalizeUrl(request.url());
         String jobId = "audit_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        OffsetDateTime createdAt = OffsetDateTime.now();
 
-        FakeAuditSession session = new FakeAuditSession(jobId, normalizedUrl, OffsetDateTime.now().toString());
-        sessions.put(jobId, session);
-        startFakeAudit(session);
+        auditOrchestrationService.startAudit(jobId, normalizedUrl, createdAt);
 
         return ResponseEntity.accepted().body(Map.of(
                 "jobId", jobId,
-                "status", session.status().get().name(),
+                "status", AuditStatus.QUEUED.name(),
                 "streamUrl", buildAuditUrl(jobId, "stream"),
                 "reportUrl", buildAuditUrl(jobId, "report")
         ));
@@ -56,179 +69,128 @@ public class AuditController {
 
     @GetMapping(path = "/{jobId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamAudit(@PathVariable String jobId) {
-        FakeAuditSession session = sessions.get(jobId);
-        if (session == null) {
-            throw new AuditNotFoundException(jobId);
-        }
+        AuditRunEntity run = auditPersistenceService.findRun(jobId)
+                .orElseThrow(() -> new AuditNotFoundException(jobId));
 
         SseEmitter emitter = new SseEmitter(0L);
-        emitter.onCompletion(() -> session.emitters().remove(emitter));
-        emitter.onTimeout(() -> session.emitters().remove(emitter));
-        emitter.onError((error) -> session.emitters().remove(emitter));
+        AtomicBoolean active = new AtomicBoolean(true);
+        emitter.onCompletion(() -> active.set(false));
+        emitter.onTimeout(() -> active.set(false));
+        emitter.onError(error -> active.set(false));
 
-        session.emitters().add(emitter);
-
-        for (Map<String, Object> event : session.events()) {
-            sendEvent(emitter, event);
+        long lastSeen = replayExistingEvents(jobId, emitter, active);
+        if (!active.get() || run.getStatus().isTerminal()) {
+            emitter.complete();
+            return emitter;
         }
 
+        long finalLastSeen = lastSeen;
+        Thread.ofVirtual().start(() -> tailAuditStream(jobId, finalLastSeen, emitter, active));
         return emitter;
     }
 
     @GetMapping("/{jobId}/report")
     public ResponseEntity<Map<String, Object>> getReport(@PathVariable String jobId) {
-        FakeAuditSession session = sessions.get(jobId);
-        if (session == null) {
-            throw new AuditNotFoundException(jobId);
-        }
+        AuditRunEntity run = auditPersistenceService.findRun(jobId)
+                .orElseThrow(() -> new AuditNotFoundException(jobId));
 
-        if (!session.reportReady()) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
-                    "jobId", jobId,
-                    "status", session.status().get().name(),
-                    "message", "Verified report is still being assembled."
-            ));
-        }
+        return auditPersistenceService.findReport(jobId)
+                .map(report -> ResponseEntity.ok(auditPersistenceService.readReportPayload(jobId)))
+                .orElseGet(() -> {
+                    if (run.getStatus() == AuditStatus.FAILED) {
+                        return ResponseEntity.ok(Map.of(
+                                "jobId", jobId,
+                                "status", AuditStatus.FAILED.name(),
+                                "message", run.getFailureMessage() == null
+                                        ? "The audit could not be completed."
+                                        : run.getFailureMessage()
+                        ));
+                    }
 
-        return ResponseEntity.ok(session.report());
+                    return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
+                            "jobId", jobId,
+                            "status", run.getStatus().name(),
+                            "message", "Your final report is still being prepared."
+                    ));
+                });
     }
 
-    private void startFakeAudit(FakeAuditSession session) {
-        Thread.ofVirtual().start(() -> {
+    private long replayExistingEvents(String jobId, SseEmitter emitter, AtomicBoolean active) {
+        List<AuditEventRecord> events = auditPersistenceService.findEvents(jobId);
+        long lastSeen = 0;
+        for (AuditEventRecord event : events) {
+            sendEvent(emitter, event.payload(), active);
+            lastSeen = event.sequence();
+        }
+        return lastSeen;
+    }
+
+    private void tailAuditStream(String jobId, long lastSeen, SseEmitter emitter, AtomicBoolean active) {
+        long latestSeen = lastSeen;
+        long lastHeartbeatAt = System.nanoTime();
+
+        while (active.get()) {
+            List<AuditEventRecord> newEvents = auditPersistenceService.findEventsAfter(jobId, latestSeen);
+            if (!newEvents.isEmpty()) {
+                for (AuditEventRecord event : newEvents) {
+                    sendEvent(emitter, event.payload(), active);
+                    latestSeen = event.sequence();
+                    if (isTerminalEvent(event.payload())) {
+                        active.set(false);
+                        emitter.complete();
+                        return;
+                    }
+                }
+                lastHeartbeatAt = System.nanoTime();
+            } else {
+                if (heartbeatExpired(lastHeartbeatAt)) {
+                    try {
+                        emitter.send(SseEmitter.event().comment("heartbeat"));
+                        lastHeartbeatAt = System.nanoTime();
+                    } catch (IOException ioException) {
+                        active.set(false);
+                        emitter.completeWithError(ioException);
+                        return;
+                    }
+                }
+
+                AuditRunEntity run = auditPersistenceService.findRun(jobId)
+                        .orElseThrow(() -> new AuditNotFoundException(jobId));
+                if (run.getStatus().isTerminal()) {
+                    active.set(false);
+                    emitter.complete();
+                    return;
+                }
+            }
+
             try {
-                publish(session, "status", Map.of(
-                        "status", AuditStatus.QUEUED.name(),
-                        "message", "Audit accepted. Allocating the first pass."
-                ));
-
-                Thread.sleep(550);
-                session.status().set(AuditStatus.STREAMING);
-                publish(session, "status", Map.of(
-                        "status", AuditStatus.STREAMING.name(),
-                        "progress", 8,
-                        "message", "Streaming live triage from the sovereign oracle."
-                ));
-
-                Thread.sleep(700);
-                publish(session, "finding", Map.of(
-                        "status", AuditStatus.STREAMING.name(),
-                        "severity", "high",
-                        "message", "The page title is missing and weakens first-pass relevance.",
-                        "selector", "head > title",
-                        "instruction", "Add a unique title tag that includes the business and primary intent.",
-                        "progress", 26
-                ));
-
-                Thread.sleep(750);
-                publish(session, "finding", Map.of(
-                        "status", AuditStatus.STREAMING.name(),
-                        "severity", "medium",
-                        "message", "Entity signals are thin on the homepage hero section.",
-                        "selector", "main h1",
-                        "instruction", "Clarify the business entity and service scope in the H1 and supporting copy.",
-                        "progress", 51
-                ));
-
-                Thread.sleep(750);
-                publish(session, "finding", Map.of(
-                        "status", AuditStatus.STREAMING.name(),
-                        "severity", "medium",
-                        "message", "The page lacks a visible trust proof near the primary call-to-action.",
-                        "selector", "main section:nth-of-type(1)",
-                        "instruction", "Add concise trust indicators near the audit trigger to improve AI confidence.",
-                        "progress", 77
-                ));
-
-                Thread.sleep(600);
-                session.status().set(AuditStatus.COMPLETE);
-                publish(session, "complete", Map.of(
-                        "status", AuditStatus.COMPLETE.name(),
-                        "progress", 100,
-                        "message", "Live triage complete. Sealing the signed evidence."
-                ));
-
-                Thread.sleep(850);
-                session.report(buildReport(session));
-                session.reportReady(true);
+                Thread.sleep(auditProperties.getSsePollInterval());
             } catch (InterruptedException interruptedException) {
                 Thread.currentThread().interrupt();
-                session.status().set(AuditStatus.FAILED);
-                publish(session, "error", Map.of(
-                        "status", AuditStatus.FAILED.name(),
-                        "message", "The fake audit worker was interrupted."
-                ));
+                active.set(false);
+                emitter.complete();
+                return;
             }
-        });
-    }
-
-    private Map<String, Object> buildReport(FakeAuditSession session) {
-        List<Map<String, Object>> reportFindings = List.of(
-                Map.of(
-                        "id", "title-tag",
-                        "severity", "high",
-                        "label", "Missing title tag",
-                        "selector", "head > title",
-                        "instruction", "Add a unique title tag that clearly states the entity and commercial intent."
-                ),
-                Map.of(
-                        "id", "entity-clarity",
-                        "severity", "medium",
-                        "label", "Weak entity framing",
-                        "selector", "main h1",
-                        "instruction", "Tighten the headline so search engines and answer engines can map the entity quickly."
-                ),
-                Map.of(
-                        "id", "trust-signal",
-                        "severity", "medium",
-                        "label", "Missing trust proof near CTA",
-                        "selector", "main section:nth-of-type(1)",
-                        "instruction", "Surface a short trust statement or proof cluster near the primary action."
-                )
-        );
-
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("score", 82);
-        summary.put("status", AuditStatus.VERIFIED.name());
-        summary.put("targetUrl", session.targetUrl());
-        summary.put("topIssue", "Missing title tag");
-
-        Map<String, Object> signature = new LinkedHashMap<>();
-        signature.put("present", true);
-        signature.put("algorithm", "HMAC-SHA256");
-        signature.put("value", "fake_dev_signature_" + session.jobId());
-
-        Map<String, Object> report = new LinkedHashMap<>();
-        report.put("jobId", session.jobId());
-        report.put("status", AuditStatus.VERIFIED.name());
-        report.put("generatedAt", OffsetDateTime.now().toString());
-        report.put("targetUrl", session.targetUrl());
-        report.put("summary", summary);
-        report.put("findings", reportFindings);
-        report.put("signature", signature);
-        report.put("reportType", "FAKE_SIGNED_AUDIT");
-        return report;
-    }
-
-    private void publish(FakeAuditSession session, String type, Map<String, Object> payload) {
-        Map<String, Object> event = new LinkedHashMap<>();
-        event.put("jobId", session.jobId());
-        event.put("eventId", String.valueOf(session.sequence().incrementAndGet()));
-        event.put("timestamp", OffsetDateTime.now().toString());
-        event.put("type", type);
-        event.putAll(payload);
-
-        session.events().add(event);
-        for (SseEmitter emitter : session.emitters()) {
-            sendEvent(emitter, event);
         }
     }
 
-    private void sendEvent(SseEmitter emitter, Map<String, Object> event) {
+    private boolean heartbeatExpired(long lastHeartbeatAt) {
+        long elapsedNanos = System.nanoTime() - lastHeartbeatAt;
+        return elapsedNanos >= auditProperties.getSseHeartbeatInterval().toNanos();
+    }
+
+    private boolean isTerminalEvent(Map<String, Object> payload) {
+        Object type = payload.get("type");
+        return "complete".equals(type) || "error".equals(type);
+    }
+
+    private void sendEvent(SseEmitter emitter, Map<String, Object> event, AtomicBoolean active) {
         try {
             emitter.send(SseEmitter.event()
                     .id(String.valueOf(event.get("eventId")))
                     .data(event));
         } catch (IOException ioException) {
+            active.set(false);
             emitter.completeWithError(ioException);
         }
     }
@@ -252,84 +214,13 @@ public class AuditController {
     public record StartAuditRequest(@NotBlank String url) {
     }
 
-    private static final class FakeAuditSession {
-        private final String jobId;
-        private final String targetUrl;
-        private final String createdAt;
-        private final AtomicReference<AuditStatus> status = new AtomicReference<>(AuditStatus.QUEUED);
-        private final AtomicInteger sequence = new AtomicInteger(0);
-        private final List<Map<String, Object>> events = new CopyOnWriteArrayList<>();
-        private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
-        private volatile boolean reportReady;
-        private volatile Map<String, Object> report = Map.of();
-
-        private FakeAuditSession(String jobId, String targetUrl, String createdAt) {
-            this.jobId = jobId;
-            this.targetUrl = targetUrl;
-            this.createdAt = createdAt;
-        }
-
-        private String jobId() {
-            return jobId;
-        }
-
-        private String targetUrl() {
-            return targetUrl;
-        }
-
-        @SuppressWarnings("unused")
-        private String createdAt() {
-            return createdAt;
-        }
-
-        private AtomicReference<AuditStatus> status() {
-            return status;
-        }
-
-        private AtomicInteger sequence() {
-            return sequence;
-        }
-
-        private List<Map<String, Object>> events() {
-            return events;
-        }
-
-        private List<SseEmitter> emitters() {
-            return emitters;
-        }
-
-        private boolean reportReady() {
-            return reportReady;
-        }
-
-        private void reportReady(boolean reportReady) {
-            this.reportReady = reportReady;
-        }
-
-        private Map<String, Object> report() {
-            return report;
-        }
-
-        private void report(Map<String, Object> report) {
-            this.report = report;
-        }
-    }
-
-    private enum AuditStatus {
-        QUEUED,
-        STREAMING,
-        COMPLETE,
-        FAILED,
-        VERIFIED
-    }
-
     private static final class AuditNotFoundException extends RuntimeException {
         private AuditNotFoundException(String jobId) {
             super("Audit not found: " + jobId);
         }
     }
 
-    @org.springframework.web.bind.annotation.ExceptionHandler(AuditNotFoundException.class)
+    @ExceptionHandler(AuditNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(AuditNotFoundException notFoundException) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "error", "AUDIT_NOT_FOUND",
@@ -337,11 +228,11 @@ public class AuditController {
         ));
     }
 
-    @org.springframework.web.bind.annotation.ExceptionHandler(IllegalArgumentException.class)
+    @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleBadUrl(IllegalArgumentException illegalArgumentException) {
         return ResponseEntity.badRequest().body(Map.of(
                 "error", "INVALID_AUDIT_URL",
-                "message", illegalArgumentException.getMessage()
+                "message", "Enter a valid website URL to start the audit."
         ));
     }
 }

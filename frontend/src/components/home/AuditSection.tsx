@@ -227,7 +227,7 @@ export function AuditSection() {
   return (
     <div className="w-full">
       <form action={formAction} className="mx-auto mt-12 w-full max-w-4xl">
-        <div className="group relative flex items-center rounded-2xl border border-border bg-white p-2 shadow-2xl shadow-black/5 transition-all focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5">
+        <div className="group relative flex flex-col rounded-2xl border border-border bg-white p-2 shadow-2xl shadow-black/5 transition-all focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 sm:flex-row sm:items-center">
           <input
             type="text"
             name="url"
@@ -235,12 +235,12 @@ export function AuditSection() {
             onChange={(event) => setUrl(event.target.value)}
             disabled={isPending}
             placeholder="Enter your website URL (e.g., myshop.com)"
-            className="h-14 w-full bg-transparent px-6 text-lg outline-none placeholder:text-foreground/30"
+            className="h-14 min-w-0 w-full bg-transparent px-4 text-base outline-none placeholder:text-sm placeholder:text-foreground/30 sm:px-6 sm:text-lg sm:placeholder:text-base"
           />
           <button
             type="submit"
             disabled={isPending}
-            className="flex h-14 min-w-[220px] items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-8 text-lg font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] disabled:opacity-80"
+            className="mt-2 flex h-14 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-6 text-base font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] disabled:opacity-80 sm:mt-0 sm:min-w-[220px] sm:w-auto sm:px-8 sm:text-lg"
           >
             {isPending ? (
               <>

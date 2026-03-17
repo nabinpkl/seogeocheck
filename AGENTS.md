@@ -9,11 +9,20 @@ This document contains machine-readable rules and technical specifications for A
 The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents** without differentiation in the underlying execution layer.
 
 1. **Identity Blindness:** The backend does not distinguish between a browser session and an API call from another agent. Both are "System Users" triggering an autonomous workflow.
-2. **Streaming → Result Pattern:** Every request must support:
+2. **Iteration-First Delivery:** This project is developed in **vertical slices**. Each iteration should optimize for delivering the next complete slice of value, not for preserving legacy contracts, transitional compatibility layers, or migration scaffolding unless a task explicitly requires them.
+3. **Streaming → Result Pattern:** Every request must support:
    - **Progressive Disclosure:** Real-time status/data streams (via SSE).
    - **Durable Finality:** A persistent, immutable JSON/JSON-LD report upon completion.
-3. **Agentic Autonomy:** The system behaves as an autonomous agent. Given a URL, it determines the necessary sub-tasks (technical audit, entity extraction, semantic analysis) and executes them via Temporal Workflows.
-4. **Mutation → Momentum → Truth:** Audit initiation, streaming progress, and final report retrieval are separate concerns and must stay separate in implementation.
+4. **Agentic Autonomy:** The system behaves as an autonomous agent. Given a URL, it determines the necessary sub-tasks (technical audit, entity extraction, semantic analysis) and executes them via Temporal Workflows.
+5. **Mutation → Momentum → Truth:** Audit initiation, streaming progress, and final report retrieval are separate concerns and must stay separate in implementation.
+
+### Delivery Model: Vertical Slices Over Compatibility
+
+- Build the smallest end-to-end slice that makes the system more real.
+- Prefer replacing incomplete or fake implementations outright instead of layering compatibility shims around them.
+- Backend, frontend, and sidecar contracts may evolve together within the same iteration when that produces a cleaner vertical slice.
+- Do **not** introduce versioned APIs, fallback paths, or compatibility bridges unless the task explicitly calls for them.
+- When planning or implementing, assume **no backward compatibility requirement** by default during this stage of the project.
 
 ---
 
@@ -29,6 +38,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - **Path:** `lighthouse/` (or sidecar directories)
 - **Tech:** Node.js + Lighthouse SDK.
 - **Logic:** Core Web Vitals, programmatic audits.
+- **Normalization Contract:** Sidecars must translate raw tool output into SEOGEO-native findings with imperative `instruction` text before results are returned to the orchestrator.
 
 ---
 
@@ -38,6 +48,8 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - **Redis Agent:** Sliding Window rate-limiting; SSE Buffer.
 - **Postgres Agent:** System of Record (Audit Snapshots, User Credits).
 - **SSE Agent:** Unidirectional streaming (Java -> Next.js 16).
+- **Momentum Pattern (Current Slice):** Until Redis is required for fan-out or hot buffering, momentum is implemented as an append-only Postgres event log with ordered replay and Loom-backed SSE tailing.
+- **Handshake Rule:** The terminal `complete` event must only be emitted after the final report is fully persisted so the frontend can safely switch from live stream state to canonical query state.
 
 ### Frontend-to-Backend Audit Contract
 
@@ -89,6 +101,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 3.  **Documentation:** Always update `AGENTS.md` when introducing new core patterns.
 4.  **Libraries:** If version knowledge is stale, perform a web search for the latest documentation.
 5.  **Audit Initiation:** Do not start audits from client-side direct calls when a Server Action boundary is required to protect backend credentials.
+6.  **Backward Compatibility:** Do not preserve old APIs, schemas, or behavior by default during iterative development. Favor the cleanest current vertical slice unless compatibility is explicitly requested.
 
 ---
 

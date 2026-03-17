@@ -127,7 +127,7 @@ export const useAuditStore = create<AuditStore>((set, get) => {
         } catch {
           set({
             connectionStatus: "closed",
-            error: "The live audit pulse could not be decoded.",
+            error: "We couldn't read one of the live audit updates.",
           });
           disconnectActiveStream();
         }
@@ -141,7 +141,7 @@ export const useAuditStore = create<AuditStore>((set, get) => {
 
         set({
           connectionStatus: "closed",
-          error: "The live audit pulse disconnected before completion.",
+          error: "We lost the live connection before your audit finished.",
         });
         disconnectActiveStream();
       };

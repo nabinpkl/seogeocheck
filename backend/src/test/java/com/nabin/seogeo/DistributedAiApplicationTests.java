@@ -1,17 +1,27 @@
 package com.nabin.seogeo;
 
+import com.nabin.seogeo.audit.domain.AuditStatus;
+import com.nabin.seogeo.audit.domain.LighthouseAuditFinding;
+import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
+import com.nabin.seogeo.audit.persistence.AuditEventRepository;
+import com.nabin.seogeo.audit.persistence.AuditRunRepository;
+import com.nabin.seogeo.audit.service.LighthouseSidecarClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +43,12 @@ class DistributedAiApplicationTests {
 
 	@Autowired
 	private ApplicationContext applicationContext;
+
+	@Autowired
+	private AuditRunRepository auditRunRepository;
+
+	@Autowired
+	private AuditEventRepository auditEventRepository;
 
 	@Test
 	void contextLoads() {
@@ -64,6 +80,9 @@ class DistributedAiApplicationTests {
 		assertThat(result.getResponseBody()).containsEntry("status", "QUEUED");
 		assertThat(result.getResponseBody().get("streamUrl")).asString().contains("/audits/");
 		assertThat(result.getResponseBody().get("reportUrl")).asString().contains("/audits/");
+
+		String jobId = String.valueOf(result.getResponseBody().get("jobId"));
+		assertThat(auditRunRepository.findById(jobId)).isPresent();
 	}
 
 	@Test
@@ -120,5 +139,156 @@ class DistributedAiApplicationTests {
 		assertThat(reportBody).containsEntry("jobId", jobId);
 		assertThat(reportBody).containsEntry("status", "VERIFIED");
 		assertThat(reportBody).containsKey("signature");
+		assertThat(reportBody).containsEntry("reportType", "LIGHTHOUSE_SIGNED_AUDIT");
+		assertThat(reportBody).containsKey("findings");
+		assertThat(reportBody).containsKey("summary");
+	}
+
+	@Test
+	void streamReplaysEventsInOrderAndCompletesAfterReportIsPersisted() throws InterruptedException {
+		String jobId = startAudit("example.com");
+		awaitVerifiedReport(jobId);
+
+		var streamResult = restTestClient.get()
+				.uri("/audits/{jobId}/stream", jobId)
+				.accept(MediaType.TEXT_EVENT_STREAM)
+				.exchange()
+				.expectStatus().isOk()
+				.returnResult(String.class);
+
+		String body = streamResult.getResponseBody();
+		assertThat(body).isNotNull();
+		assertThat(body).contains("\"type\":\"status\"");
+		assertThat(body).contains("\"type\":\"finding\"");
+		assertThat(body).contains("\"type\":\"complete\"");
+
+		var reportResult = restTestClient.get()
+				.uri("/audits/{jobId}/report", jobId)
+				.exchange()
+				.expectStatus().isOk()
+				.returnResult(Map.class);
+
+		assertThat(reportResult.getResponseBody()).isNotNull();
+		assertThat(reportResult.getResponseBody()).containsEntry("status", "VERIFIED");
+		assertThat(auditEventRepository.findByJobIdOrderBySequenceAsc(jobId))
+				.extracting(event -> event.getEventType())
+				.endsWith("complete");
+	}
+
+	@Test
+	void failedAuditReturnsTerminalFailurePayload() throws InterruptedException {
+		String jobId = startAudit("https://fail.example.com");
+
+		Instant deadline = Instant.now().plus(Duration.ofSeconds(8));
+		Map reportBody = null;
+		HttpStatus reportStatus = HttpStatus.ACCEPTED;
+
+		while (Instant.now().isBefore(deadline)) {
+			var reportResult = restTestClient.get()
+					.uri("/audits/{jobId}/report", jobId)
+					.exchange()
+					.returnResult(Map.class);
+			reportStatus = HttpStatus.valueOf(reportResult.getStatus().value());
+			reportBody = reportResult.getResponseBody();
+			if (reportBody != null && "FAILED".equals(reportBody.get("status"))) {
+				break;
+			}
+			Thread.sleep(200);
+		}
+
+		assertThat(reportStatus).isEqualTo(HttpStatus.OK);
+		assertThat(reportBody).isNotNull();
+		assertThat(reportBody).containsEntry("jobId", jobId);
+		assertThat(reportBody).containsEntry("status", "FAILED");
+		assertThat(String.valueOf(reportBody.get("message")))
+				.isEqualTo("We couldn't finish reviewing this site. Please try again in a moment.");
+		assertThat(auditRunRepository.findById(jobId)).isPresent();
+		assertThat(auditRunRepository.findById(jobId).orElseThrow().getStatus()).isEqualTo(AuditStatus.FAILED);
+	}
+
+	private String startAudit(String url) {
+		var startResult = restTestClient.post()
+				.uri("/audits")
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(Map.of("url", url))
+				.exchange()
+				.expectStatus().isEqualTo(HttpStatus.ACCEPTED)
+				.returnResult(Map.class);
+		return String.valueOf(startResult.getResponseBody().get("jobId"));
+	}
+
+	private void awaitVerifiedReport(String jobId) throws InterruptedException {
+		Instant deadline = Instant.now().plus(Duration.ofSeconds(8));
+		while (Instant.now().isBefore(deadline)) {
+			var reportResult = restTestClient.get()
+					.uri("/audits/{jobId}/report", jobId)
+					.exchange()
+					.returnResult(Map.class);
+			if (reportResult.getStatus().value() == HttpStatus.OK.value()
+					&& reportResult.getResponseBody() != null
+					&& "VERIFIED".equals(reportResult.getResponseBody().get("status"))) {
+				return;
+			}
+			Thread.sleep(200);
+		}
+
+		throw new AssertionError("Audit report was not verified in time.");
+	}
+
+	@TestConfiguration
+	static class FakeLighthouseConfiguration {
+
+		@Bean
+		@Primary
+		LighthouseSidecarClient fakeLighthouseSidecarClient() {
+			return (jobId, targetUrl) -> {
+				try {
+					Thread.sleep(350);
+				} catch (InterruptedException interruptedException) {
+					Thread.currentThread().interrupt();
+					throw new IllegalStateException("The fake lighthouse client was interrupted.", interruptedException);
+				}
+
+				if (targetUrl.contains("fail.example.com")) {
+					throw new IllegalStateException("Lighthouse sidecar refused to audit the target URL.");
+				}
+
+				return new LighthouseAuditResult(
+						targetUrl,
+						targetUrl.endsWith("/") ? targetUrl : targetUrl + "/",
+						86,
+						Map.of(
+								"performance", 74,
+								"accessibility", 96,
+								"bestPractices", 88,
+								"seo", 86
+						),
+						List.of(
+								new LighthouseAuditFinding(
+										"document-title",
+										"Add a unique page title",
+										"high",
+										"Add a unique <title> that names the page and its primary intent so search engines can classify it quickly.",
+										"head > title",
+										null,
+										Map.of("score", 0)
+								),
+								new LighthouseAuditFinding(
+										"largest-contentful-paint",
+										"Improve largest contentful paint",
+										"high",
+										"Optimize the LCP element by prioritizing the hero asset, reducing server delay, and trimming render-blocking work.",
+										null,
+										"LCP",
+										Map.of("displayValue", "4.0 s")
+								)
+						),
+						Map.of(
+								"fetchTime", "2026-03-16T00:00:00Z",
+								"lighthouseVersion", "test"
+						)
+				);
+			};
+		}
 	}
 }

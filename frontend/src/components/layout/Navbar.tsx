@@ -3,9 +3,11 @@
 import * as React from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X } from "lucide-react";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -15,10 +17,21 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <header className="sticky top-0 z-50 w-full">
       <AnimatePresence>
-        {isScrolled && (
+        {(isScrolled || isMobileMenuOpen) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -70,7 +83,62 @@ export function Navbar() {
             </button>
           </div>
         </div>
+        <button
+          type="button"
+          aria-expanded={isMobileMenuOpen}
+          aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          onClick={() => setIsMobileMenuOpen((open) => !open)}
+          className="flex h-11 w-11 items-center justify-center text-foreground/80 transition hover:text-primary md:hidden"
+        >
+          {isMobileMenuOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
+        </button>
       </nav>
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="relative z-20 border-b border-border bg-white/95 px-6 pb-5 backdrop-blur-xl md:hidden"
+          >
+            <div className="mx-auto flex max-w-7xl flex-col gap-3">
+              <a
+                href="#features"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="rounded-2xl px-4 py-3 text-sm font-semibold text-foreground/80 transition hover:bg-secondary hover:text-primary"
+              >
+                Features
+              </a>
+              <a
+                href="#how-it-works"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="rounded-2xl px-4 py-3 text-sm font-semibold text-foreground/80 transition hover:bg-secondary hover:text-primary"
+              >
+                How it works
+              </a>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-foreground/70 transition hover:border-primary/50 hover:text-primary"
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Try For Free
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
