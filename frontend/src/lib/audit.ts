@@ -15,20 +15,26 @@ export type AuditStreamEvent = {
   timestamp?: string;
   type?: string;
   status?: AuditStatus;
+  checkStatus?: string;
   message?: string;
   progress?: number;
   severity?: string;
   selector?: string;
   instruction?: string;
+  detail?: string;
+  metric?: string;
   [key: string]: unknown;
 };
 
-export type AuditReportFinding = {
+export type AuditReportCheck = {
   id?: string;
   label?: string;
+  status?: string;
   severity?: string;
   selector?: string;
   instruction?: string;
+  detail?: string;
+  metric?: string;
   [key: string]: unknown;
 };
 
@@ -43,9 +49,12 @@ export type AuditReport = {
     topIssue?: string;
     status?: string;
     targetUrl?: string;
+    issueCount?: number;
+    passedCheckCount?: number;
     [key: string]: unknown;
   };
-  findings?: AuditReportFinding[];
+  checks?: AuditReportCheck[];
+  categories?: Record<string, number>;
   signature?: {
     present?: boolean;
     algorithm?: string;

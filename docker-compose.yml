@@ -106,16 +106,18 @@ services:
     build:
       context: ./lighthouse
       dockerfile: Dockerfile
-    container_name: seogeo-lighthouse
+    container_name: seogeo-lighthouse-worker
+    depends_on:
+      temporal:
+        condition: service_healthy
+      temporal-create-namespace:
+        condition: service_completed_successfully
     networks:
       - temporal-network
-    ports:
-      - "3001:3001"
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then((r)=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - LIGHTHOUSE_TASK_QUEUE=${SEO_GEO_LIGHTHOUSE_TASK_QUEUE:-seogeo-lighthouse}
 
   backend:
     build:
@@ -129,8 +131,6 @@ services:
         condition: service_healthy
       temporal-create-namespace:
         condition: service_completed_successfully
-      lighthouse:
-        condition: service_healthy
     ports:
       - "8080:8080"
     networks:
@@ -141,8 +141,8 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgresql:5432/seogeo
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
-      - LIGHTHOUSE_BASE_URL=http://lighthouse:3001
       - AUDIT_REPORT_SIGNING_SECRET=${AUDIT_REPORT_SIGNING_SECRET}
+      - SEO_GEO_LIGHTHOUSE_TASK_QUEUE=${SEO_GEO_LIGHTHOUSE_TASK_QUEUE:-seogeo-lighthouse}
 
 networks:
   temporal-network:

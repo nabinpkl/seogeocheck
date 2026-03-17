@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { UNDER_CONSTRUCTION_PATH } from "@/lib/routes";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = React.useState(false);
@@ -69,18 +71,18 @@ export function Navbar() {
         <div className="hidden items-center gap-8 md:flex">
           <div className="flex items-center gap-8">
             <a href="#features" className="text-sm font-medium text-foreground/80 transition hover:text-primary">Features</a>
-            <a href="#how-it-works" className="text-sm font-medium text-foreground/80 transition hover:text-primary">How it works</a>
+            <Link href={UNDER_CONSTRUCTION_PATH} className="text-sm font-medium text-foreground/80 transition hover:text-primary">How it works</Link>
           </div>
           
           <div className="h-5 w-px bg-border/25" /> {/* Vertical Separator */}
 
           <div className="flex items-center gap-3">
-            <button className="rounded-full border border-border px-5 py-2 text-sm font-semibold text-foreground/70 transition hover:border-primary/50 hover:text-primary">
+            <Link href={UNDER_CONSTRUCTION_PATH} className="rounded-full border border-border px-5 py-2 text-sm font-semibold text-foreground/70 transition hover:border-primary/50 hover:text-primary">
               Sign In
-            </button>
-            <button className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]">
+            </Link>
+            <Link href={UNDER_CONSTRUCTION_PATH} className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]">
               Try For Free
-            </button>
+            </Link>
           </div>
         </div>
         <button
@@ -114,27 +116,27 @@ export function Navbar() {
               >
                 Features
               </a>
-              <a
-                href="#how-it-works"
+              <Link
+                href={UNDER_CONSTRUCTION_PATH}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="rounded-2xl px-4 py-3 text-sm font-semibold text-foreground/80 transition hover:bg-secondary hover:text-primary"
               >
                 How it works
-              </a>
-              <button
-                type="button"
+              </Link>
+              <Link
+                href={UNDER_CONSTRUCTION_PATH}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-foreground/70 transition hover:border-primary/50 hover:text-primary"
               >
                 Sign In
-              </button>
-              <button
-                type="button"
+              </Link>
+              <Link
+                href={UNDER_CONSTRUCTION_PATH}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
               >
                 Try For Free
-              </button>
+              </Link>
             </div>
           </motion.div>
         )}

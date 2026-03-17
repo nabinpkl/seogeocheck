@@ -1,27 +1,20 @@
 package com.nabin.seogeo;
 
 import com.nabin.seogeo.audit.domain.AuditStatus;
-import com.nabin.seogeo.audit.domain.LighthouseAuditFinding;
-import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
 import com.nabin.seogeo.audit.persistence.AuditEventRepository;
 import com.nabin.seogeo.audit.persistence.AuditRunRepository;
-import com.nabin.seogeo.audit.service.LighthouseSidecarClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -140,7 +133,7 @@ class DistributedAiApplicationTests {
 		assertThat(reportBody).containsEntry("status", "VERIFIED");
 		assertThat(reportBody).containsKey("signature");
 		assertThat(reportBody).containsEntry("reportType", "LIGHTHOUSE_SIGNED_AUDIT");
-		assertThat(reportBody).containsKey("findings");
+		assertThat(reportBody).containsKey("checks");
 		assertThat(reportBody).containsKey("summary");
 	}
 
@@ -159,7 +152,9 @@ class DistributedAiApplicationTests {
 		String body = streamResult.getResponseBody();
 		assertThat(body).isNotNull();
 		assertThat(body).contains("\"type\":\"status\"");
-		assertThat(body).contains("\"type\":\"finding\"");
+		assertThat(body).contains("\"type\":\"check\"");
+		assertThat(body).contains("\"checkStatus\":\"issue\"");
+		assertThat(body).contains("\"checkStatus\":\"passed\"");
 		assertThat(body).contains("\"type\":\"complete\"");
 
 		var reportResult = restTestClient.get()
@@ -233,62 +228,5 @@ class DistributedAiApplicationTests {
 		}
 
 		throw new AssertionError("Audit report was not verified in time.");
-	}
-
-	@TestConfiguration
-	static class FakeLighthouseConfiguration {
-
-		@Bean
-		@Primary
-		LighthouseSidecarClient fakeLighthouseSidecarClient() {
-			return (jobId, targetUrl) -> {
-				try {
-					Thread.sleep(350);
-				} catch (InterruptedException interruptedException) {
-					Thread.currentThread().interrupt();
-					throw new IllegalStateException("The fake lighthouse client was interrupted.", interruptedException);
-				}
-
-				if (targetUrl.contains("fail.example.com")) {
-					throw new IllegalStateException("Lighthouse sidecar refused to audit the target URL.");
-				}
-
-				return new LighthouseAuditResult(
-						targetUrl,
-						targetUrl.endsWith("/") ? targetUrl : targetUrl + "/",
-						86,
-						Map.of(
-								"performance", 74,
-								"accessibility", 96,
-								"bestPractices", 88,
-								"seo", 86
-						),
-						List.of(
-								new LighthouseAuditFinding(
-										"document-title",
-										"Add a unique page title",
-										"high",
-										"Add a unique <title> that names the page and its primary intent so search engines can classify it quickly.",
-										"head > title",
-										null,
-										Map.of("score", 0)
-								),
-								new LighthouseAuditFinding(
-										"largest-contentful-paint",
-										"Improve largest contentful paint",
-										"high",
-										"Optimize the LCP element by prioritizing the hero asset, reducing server delay, and trimming render-blocking work.",
-										null,
-										"LCP",
-										Map.of("displayValue", "4.0 s")
-								)
-						),
-						Map.of(
-								"fetchTime", "2026-03-16T00:00:00Z",
-								"lighthouseVersion", "test"
-						)
-				);
-			};
-		}
 	}
 }

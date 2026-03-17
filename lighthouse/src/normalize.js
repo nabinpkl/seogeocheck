@@ -1,66 +1,3 @@
-const LIGHTHOUSE_AUDIT_DEFS = [
-  {
-    id: "document-title",
-    severity: "high",
-    label: "Add a unique page title",
-    instruction:
-      "Add a unique <title> that names the page and its primary intent so search engines can classify it quickly.",
-    selector: "head > title",
-  },
-  {
-    id: "meta-description",
-    severity: "medium",
-    label: "Add a descriptive meta description",
-    instruction:
-      "Write a concise meta description that states the page value and invites the right click-through.",
-    selector: "head > meta[name=\"description\"]",
-  },
-  {
-    id: "structured-data",
-    severity: "medium",
-    label: "Strengthen structured data coverage",
-    instruction:
-      "Add or expand valid structured data so the page entity and offer details are easier to interpret.",
-  },
-  {
-    id: "crawlable-anchors",
-    severity: "medium",
-    label: "Make key links crawlable",
-    instruction:
-      "Replace non-crawlable navigation actions with real anchor links so bots can follow important paths.",
-  },
-  {
-    id: "largest-contentful-paint",
-    severity: "high",
-    label: "Improve largest contentful paint",
-    instruction:
-      "Optimize the LCP element by prioritizing the hero asset, reducing server delay, and trimming render-blocking work.",
-    metric: "LCP",
-  },
-  {
-    id: "render-blocking-resources",
-    severity: "medium",
-    label: "Reduce render-blocking resources",
-    instruction:
-      "Defer or inline blocking CSS and scripts so the first paint can start sooner.",
-  },
-  {
-    id: "server-response-time",
-    severity: "medium",
-    label: "Lower server response time",
-    instruction:
-      "Reduce backend response time for the main document so the page can begin rendering faster.",
-    metric: "TTFB",
-  },
-  {
-    id: "uses-responsive-images",
-    severity: "medium",
-    label: "Serve responsive images",
-    instruction:
-      "Provide correctly sized responsive images so large assets are not shipped to smaller viewports.",
-  },
-];
-
 function toPercent(score) {
   if (typeof score !== "number") {
     return null;
@@ -89,37 +26,114 @@ function pickScore(categories, key) {
   return toPercent(categories?.[key]?.score) ?? 0;
 }
 
+function normalizeText(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const collapsed = value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return collapsed === "" ? null : collapsed;
+}
+
+function toSeverity(audit) {
+  if (!hasIssue(audit)) {
+    return null;
+  }
+
+  if (audit?.scoreDisplayMode === "error") {
+    return "high";
+  }
+
+  if (typeof audit?.score !== "number") {
+    return "medium";
+  }
+
+  if (audit.score < 0.5) {
+    return "high";
+  }
+
+  if (audit.score < 0.9) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function toInstruction(title, description) {
+  const normalizedTitle = normalizeText(title) ?? "this check";
+  const normalizedDescription = normalizeText(description);
+
+  if (!normalizedDescription) {
+    return `Improve ${normalizedTitle.toLowerCase()}.`;
+  }
+
+  return `Improve ${normalizedTitle.toLowerCase()}. ${normalizedDescription}`;
+}
+
+function toDetail(audit) {
+  const description = normalizeText(audit?.description);
+  const displayValue =
+    typeof audit?.displayValue === "string" && audit.displayValue.trim() !== ""
+      ? audit.displayValue.trim()
+      : null;
+
+  if (displayValue && description) {
+    return `${displayValue}. ${description}`;
+  }
+
+  return displayValue ?? description;
+}
+
 export function normalizeLighthouseResult(result, requestedUrl) {
   const lhr = result?.lhr ?? {};
   const categories = lhr.categories ?? {};
   const audits = lhr.audits ?? {};
-  const findings = [];
+  const checks = Object.entries(audits)
+    .filter(([, audit]) => audit && audit.scoreDisplayMode !== "notApplicable")
+    .map(([id, audit]) => {
+      const issue = hasIssue(audit);
+      const title = normalizeText(audit.title) ?? id;
+      const description = normalizeText(audit.description);
 
-  for (const definition of LIGHTHOUSE_AUDIT_DEFS) {
-    const audit = audits[definition.id];
-    if (!hasIssue(audit)) {
-      continue;
+      return {
+        id,
+        label: title,
+        status: issue ? "issue" : "passed",
+        severity: issue ? toSeverity(audit) : null,
+        instruction: issue ? toInstruction(title, description) : null,
+        detail: issue ? null : toDetail(audit),
+        selector: null,
+        metric: null,
+        metadata: {
+          title,
+          description,
+          displayValue: audit.displayValue ?? null,
+          score: typeof audit.score === "number" ? toPercent(audit.score) : null,
+          scoreDisplayMode: audit.scoreDisplayMode ?? null,
+          numericValue:
+            typeof audit.numericValue === "number" ? audit.numericValue : null,
+        },
+      };
+    });
+
+  checks.sort((left, right) => {
+    const severityRank = { high: 0, medium: 1, low: 2 };
+    if (left.status !== right.status) {
+      return left.status === "issue" ? -1 : 1;
     }
 
-    findings.push({
-      id: definition.id,
-      label: definition.label,
-      severity: definition.severity,
-      instruction: definition.instruction,
-      selector: definition.selector ?? null,
-      metric: definition.metric ?? null,
-      metadata: {
-        title: audit.title ?? null,
-        description: audit.description ?? null,
-        displayValue: audit.displayValue ?? null,
-        score: typeof audit.score === "number" ? toPercent(audit.score) : null,
-      },
-    });
-  }
-
-  findings.sort((left, right) => {
-    const severityRank = { high: 0, medium: 1, low: 2 };
-    return severityRank[left.severity] - severityRank[right.severity];
+    return (
+      (severityRank[left.severity] ?? 2) - (severityRank[right.severity] ?? 2) ||
+      left.label.localeCompare(right.label)
+    );
   });
 
   return {
@@ -132,7 +146,7 @@ export function normalizeLighthouseResult(result, requestedUrl) {
       bestPractices: pickScore(categories, "best-practices"),
       seo: pickScore(categories, "seo"),
     },
-    findings,
+    checks,
     rawSummary: {
       fetchTime: lhr.fetchTime ?? null,
       userAgent: lhr.userAgent ?? null,

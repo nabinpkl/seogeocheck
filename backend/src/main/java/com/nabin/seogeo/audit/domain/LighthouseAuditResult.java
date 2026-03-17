@@ -8,7 +8,7 @@ public record LighthouseAuditResult(
         String finalUrl,
         int score,
         Map<String, Integer> categoryScores,
-        List<LighthouseAuditFinding> findings,
+        List<LighthouseAuditCheck> checks,
         Map<String, Object> rawSummary
 ) {
 }

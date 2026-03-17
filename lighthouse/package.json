@@ -1,13 +1,14 @@
 {
-  "name": "seogeo-lighthouse-sidecar",
+  "name": "seogeo-lighthouse-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node src/worker.js",
     "test": "node --test"
   },
   "dependencies": {
+    "@temporalio/worker": "^1.11.7",
     "chrome-launcher": "^1.2.1",
     "lighthouse": "^13.0.3"
   }

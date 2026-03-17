@@ -16,8 +16,6 @@ public interface AuditActivities {
 
     AuditEventRecord appendEvent(String jobId, String eventType, AuditStatus status, Map<String, Object> attributes);
 
-    LighthouseAuditResult runLighthouseAudit(String jobId, String targetUrl);
-
     AuditReportRecord buildSignedReport(String jobId, String targetUrl, LighthouseAuditResult result);
 
     void persistReport(AuditReportRecord reportRecord);

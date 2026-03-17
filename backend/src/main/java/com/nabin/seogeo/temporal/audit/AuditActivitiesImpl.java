@@ -6,7 +6,6 @@ import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
 import com.nabin.seogeo.audit.service.AuditReportSigner;
-import com.nabin.seogeo.audit.service.LighthouseSidecarClient;
 import io.temporal.spring.boot.ActivityImpl;
 import org.springframework.stereotype.Component;
 
@@ -18,16 +17,13 @@ import java.util.Map;
 public class AuditActivitiesImpl implements AuditActivities {
 
     private final AuditPersistenceService auditPersistenceService;
-    private final LighthouseSidecarClient lighthouseSidecarClient;
     private final AuditReportSigner auditReportSigner;
 
     public AuditActivitiesImpl(
             AuditPersistenceService auditPersistenceService,
-            LighthouseSidecarClient lighthouseSidecarClient,
             AuditReportSigner auditReportSigner
     ) {
         this.auditPersistenceService = auditPersistenceService;
-        this.lighthouseSidecarClient = lighthouseSidecarClient;
         this.auditReportSigner = auditReportSigner;
     }
 
@@ -39,11 +35,6 @@ public class AuditActivitiesImpl implements AuditActivities {
     @Override
     public AuditEventRecord appendEvent(String jobId, String eventType, AuditStatus status, Map<String, Object> attributes) {
         return auditPersistenceService.appendEvent(jobId, eventType, status, attributes);
-    }
-
-    @Override
-    public LighthouseAuditResult runLighthouseAudit(String jobId, String targetUrl) {
-        return lighthouseSidecarClient.runAudit(jobId, targetUrl);
     }
 
     @Override

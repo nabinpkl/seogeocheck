@@ -7,7 +7,7 @@ import { Zap, ArrowRight, ShieldCheck, Globe, CheckCircle2 } from "lucide-react"
 
 export function Features() {
   return (
-    <section id="features" className="bg-white py-24">
+    <section id="features" className="relative z-10 scroll-mt-24 bg-white py-24">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center">
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
