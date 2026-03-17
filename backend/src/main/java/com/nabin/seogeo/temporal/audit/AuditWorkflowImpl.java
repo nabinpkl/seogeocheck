@@ -1,7 +1,7 @@
 package com.nabin.seogeo.temporal.audit;
 
+import com.nabin.seogeo.audit.domain.LighthouseAuditCheck;
 import com.nabin.seogeo.audit.domain.AuditStatus;
-import com.nabin.seogeo.audit.domain.LighthouseAuditFinding;
 import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
@@ -17,7 +17,7 @@ import java.util.Map;
 @WorkflowImpl(taskQueues = "${seogeo.audit.task-queue}")
 public class AuditWorkflowImpl implements AuditWorkflow {
 
-    private final AuditActivities activities = Workflow.newActivityStub(
+    private final AuditActivities auditActivities = Workflow.newActivityStub(
             AuditActivities.class,
             ActivityOptions.newBuilder()
                     .setStartToCloseTimeout(Duration.ofSeconds(60))
@@ -30,21 +30,23 @@ public class AuditWorkflowImpl implements AuditWorkflow {
     @Override
     public void runAudit(AuditWorkflowRequest request) {
         try {
-            activities.createRun(request.jobId(), request.targetUrl(), request.requestedAt());
-            activities.appendEvent(request.jobId(), "status", AuditStatus.QUEUED, Map.of(
+            LighthouseActivities lighthouseActivities = createLighthouseActivities(request);
+
+            auditActivities.createRun(request.jobId(), request.targetUrl(), request.requestedAt());
+            auditActivities.appendEvent(request.jobId(), "status", AuditStatus.QUEUED, Map.of(
                     "message", "Audit accepted. Getting your site review ready."
             ));
-            activities.appendEvent(request.jobId(), "status", AuditStatus.STREAMING, Map.of(
+            auditActivities.appendEvent(request.jobId(), "status", AuditStatus.STREAMING, Map.of(
                     "message", "Reviewing your site's technical signals.",
                     "progress", 10
             ));
 
-            LighthouseAuditResult result = activities.runLighthouseAudit(request.jobId(), request.targetUrl());
-            emitFindingEvents(request.jobId(), result.findings());
+            LighthouseAuditResult result = lighthouseActivities.runLighthouseAudit(request.jobId(), request.targetUrl());
+            emitAuditSignalEvents(request.jobId(), result);
 
-            activities.persistReport(activities.buildSignedReport(request.jobId(), request.targetUrl(), result));
-            activities.markVerified(request.jobId());
-            activities.appendEvent(request.jobId(), "complete", AuditStatus.COMPLETE, Map.of(
+            auditActivities.persistReport(auditActivities.buildSignedReport(request.jobId(), request.targetUrl(), result));
+            auditActivities.markVerified(request.jobId());
+            auditActivities.appendEvent(request.jobId(), "complete", AuditStatus.COMPLETE, Map.of(
                     "message", "Your site review is complete. Results are ready.",
                     "progress", 100
             ));
@@ -53,31 +55,54 @@ public class AuditWorkflowImpl implements AuditWorkflow {
         }
     }
 
-    private void emitFindingEvents(String jobId, List<LighthouseAuditFinding> findings) {
-        if (findings.isEmpty()) {
-            activities.appendEvent(jobId, "status", AuditStatus.STREAMING, Map.of(
+    private LighthouseActivities createLighthouseActivities(AuditWorkflowRequest request) {
+        return Workflow.newActivityStub(
+                LighthouseActivities.class,
+                ActivityOptions.newBuilder()
+                        .setTaskQueue(request.lighthouseTaskQueue())
+                        .setStartToCloseTimeout(Duration.ofSeconds(request.lighthouseActivityTimeoutSeconds()))
+                        .setRetryOptions(RetryOptions.newBuilder()
+                                .setMaximumAttempts(3)
+                                .build())
+                        .build()
+        );
+    }
+
+    private void emitAuditSignalEvents(String jobId, LighthouseAuditResult result) {
+        List<LighthouseAuditCheck> checks = result.checks();
+
+        if (checks.isEmpty()) {
+            auditActivities.appendEvent(jobId, "status", AuditStatus.STREAMING, Map.of(
                     "message", "No major issues found so far.",
                     "progress", 70
             ));
             return;
         }
 
-        int total = findings.size();
+        int total = checks.size();
         for (int index = 0; index < total; index++) {
-            LighthouseAuditFinding finding = findings.get(index);
+            LighthouseAuditCheck check = checks.get(index);
             int progress = Math.min(90, 25 + ((index + 1) * 55 / total));
             Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("message", finding.label());
-            payload.put("severity", finding.severity());
-            payload.put("instruction", finding.instruction());
+            payload.put("message", check.label());
+            payload.put("checkStatus", check.status());
             payload.put("progress", progress);
-            if (finding.selector() != null && !finding.selector().isBlank()) {
-                payload.put("selector", finding.selector());
+            if (check.severity() != null && !check.severity().isBlank()) {
+                payload.put("severity", check.severity());
             }
-            if (finding.metric() != null && !finding.metric().isBlank()) {
-                payload.put("metric", finding.metric());
+            if (check.instruction() != null && !check.instruction().isBlank()) {
+                payload.put("instruction", check.instruction());
             }
-            activities.appendEvent(jobId, "finding", AuditStatus.STREAMING, payload);
+            if (check.detail() != null && !check.detail().isBlank()) {
+                payload.put("detail", check.detail());
+            }
+            if (check.selector() != null && !check.selector().isBlank()) {
+                payload.put("selector", check.selector());
+            }
+            if (check.metric() != null && !check.metric().isBlank()) {
+                payload.put("metric", check.metric());
+            }
+            auditActivities.appendEvent(jobId, "check", AuditStatus.STREAMING, payload);
         }
     }
 
@@ -85,8 +110,8 @@ public class AuditWorkflowImpl implements AuditWorkflow {
         String internalMessage = rootMessage(exception);
         String userMessage = "We couldn't finish reviewing this site. Please try again in a moment.";
         try {
-            activities.markFailed(jobId, userMessage);
-            activities.appendEvent(jobId, "error", AuditStatus.FAILED, Map.of(
+            auditActivities.markFailed(jobId, userMessage);
+            auditActivities.appendEvent(jobId, "error", AuditStatus.FAILED, Map.of(
                     "message", userMessage
             ));
         } catch (Exception ignored) {

@@ -21,7 +21,6 @@ type AuditStore = {
   status: AuditUiStatus;
   connectionStatus: ConnectionStatus;
   events: AuditStreamEvent[];
-  findings: AuditStreamEvent[];
   seenEventIds: Record<string, true>;
   error: string | null;
   lastEventAt: string | null;
@@ -39,7 +38,6 @@ const initialState = {
   status: "IDLE" as AuditUiStatus,
   connectionStatus: "idle" as ConnectionStatus,
   events: [] as AuditStreamEvent[],
-  findings: [] as AuditStreamEvent[],
   seenEventIds: {} as Record<string, true>,
   error: null as string | null,
   lastEventAt: null as string | null,
@@ -68,7 +66,6 @@ export const useAuditStore = create<AuditStore>((set, get) => {
       status:
         typeof event.status === "string" ? (event.status as AuditUiStatus) : state.status,
       events: [...state.events, event],
-      findings: event.type === "finding" ? [...state.findings, event] : state.findings,
       seenEventIds: nextEventId
         ? { ...state.seenEventIds, [nextEventId]: true }
         : state.seenEventIds,
@@ -154,7 +151,6 @@ export const useAuditStore = create<AuditStore>((set, get) => {
         streamUrl: null,
         connectionStatus: "closed",
         events: [],
-        findings: [],
         seenEventIds: {},
       }));
     },

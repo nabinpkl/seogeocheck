@@ -1,7 +1,7 @@
 package com.nabin.seogeo.audit;
 
 import com.nabin.seogeo.audit.config.AuditProperties;
-import com.nabin.seogeo.audit.domain.LighthouseAuditFinding;
+import com.nabin.seogeo.audit.domain.LighthouseAuditCheck;
 import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
 import com.nabin.seogeo.audit.service.AuditReportSigner;
 import org.junit.jupiter.api.Test;
@@ -25,14 +25,26 @@ class AuditReportSignerTests {
                 "https://example.com/",
                 88,
                 Map.of("seo", 88, "performance", 70),
-                List.of(new LighthouseAuditFinding(
+                List.of(new LighthouseAuditCheck(
                         "document-title",
                         "Add a unique page title",
+                        "issue",
                         "high",
                         "Add a unique <title> that names the page and its primary intent so search engines can classify it quickly.",
+                        null,
                         "head > title",
                         null,
                         Map.of("score", 0)
+                ), new LighthouseAuditCheck(
+                        "meta-description",
+                        "Meta description is present",
+                        "passed",
+                        null,
+                        null,
+                        "Search engines can already read a summary for this page.",
+                        "head > meta[name=\"description\"]",
+                        null,
+                        Map.of("score", 100)
                 )),
                 Map.of("lighthouseVersion", "test")
         );

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
-import com.nabin.seogeo.audit.domain.LighthouseAuditFinding;
+import com.nabin.seogeo.audit.domain.LighthouseAuditCheck;
 import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +17,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,18 +50,28 @@ public class AuditReportSigner {
             LighthouseAuditResult result,
             OffsetDateTime generatedAt
     ) {
-
-        List<Map<String, Object>> findings = result.findings().stream()
-                .map(this::toFindingPayload)
+        List<Map<String, Object>> checks = result.checks().stream()
+                .map(this::toCheckPayload)
                 .toList();
+        long issueCount = result.checks().stream()
+                .filter(check -> "issue".equals(check.status()))
+                .count();
+        long passedCheckCount = result.checks().stream()
+                .filter(check -> "passed".equals(check.status()))
+                .count();
+        String topIssue = result.checks().stream()
+                .filter(check -> "issue".equals(check.status()))
+                .min(Comparator.comparingInt(this::severityRank))
+                .map(LighthouseAuditCheck::label)
+                .orElse("No major issues detected");
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("score", result.score());
         summary.put("status", AuditStatus.VERIFIED.name());
         summary.put("targetUrl", targetUrl);
-        summary.put("topIssue", findings.isEmpty()
-                ? "No major issues detected"
-                : String.valueOf(findings.getFirst().get("label")));
+        summary.put("issueCount", issueCount);
+        summary.put("passedCheckCount", passedCheckCount);
+        summary.put("topIssue", topIssue);
 
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("jobId", jobId);
@@ -69,7 +80,7 @@ public class AuditReportSigner {
         report.put("targetUrl", targetUrl);
         report.put("reportType", "LIGHTHOUSE_SIGNED_AUDIT");
         report.put("summary", summary);
-        report.put("findings", findings);
+        report.put("checks", checks);
         report.put("categories", result.categoryScores());
         report.put("rawSummary", result.rawSummary());
 
@@ -91,22 +102,38 @@ public class AuditReportSigner {
         );
     }
 
-    private Map<String, Object> toFindingPayload(LighthouseAuditFinding finding) {
+    private Map<String, Object> toCheckPayload(LighthouseAuditCheck check) {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("id", finding.id());
-        payload.put("label", finding.label());
-        payload.put("severity", finding.severity());
-        payload.put("instruction", finding.instruction());
-        if (finding.selector() != null && !finding.selector().isBlank()) {
-            payload.put("selector", finding.selector());
+        payload.put("id", check.id());
+        payload.put("label", check.label());
+        payload.put("status", check.status());
+        if (check.severity() != null && !check.severity().isBlank()) {
+            payload.put("severity", check.severity());
         }
-        if (finding.metric() != null && !finding.metric().isBlank()) {
-            payload.put("metric", finding.metric());
+        if (check.instruction() != null && !check.instruction().isBlank()) {
+            payload.put("instruction", check.instruction());
         }
-        if (finding.metadata() != null && !finding.metadata().isEmpty()) {
-            payload.put("metadata", finding.metadata());
+        if (check.detail() != null && !check.detail().isBlank()) {
+            payload.put("detail", check.detail());
+        }
+        if (check.selector() != null && !check.selector().isBlank()) {
+            payload.put("selector", check.selector());
+        }
+        if (check.metric() != null && !check.metric().isBlank()) {
+            payload.put("metric", check.metric());
+        }
+        if (check.metadata() != null && !check.metadata().isEmpty()) {
+            payload.put("metadata", check.metadata());
         }
         return payload;
+    }
+
+    private int severityRank(LighthouseAuditCheck check) {
+        return switch (check.severity()) {
+            case "high" -> 0;
+            case "medium" -> 1;
+            default -> 2;
+        };
     }
 
     private String sign(String canonicalJson) {

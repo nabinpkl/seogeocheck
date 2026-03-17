@@ -11,23 +11,23 @@ import java.time.Duration;
 public class LighthouseProperties {
 
     @NotBlank
-    private String baseUrl = "http://localhost:3001";
+    private String taskQueue = "seogeo-lighthouse";
 
-    private Duration requestTimeout = Duration.ofSeconds(65);
+    private Duration activityTimeout = Duration.ofSeconds(65);
 
-    public String getBaseUrl() {
-        return baseUrl;
+    public String getTaskQueue() {
+        return taskQueue;
     }
 
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
+    public void setTaskQueue(String taskQueue) {
+        this.taskQueue = taskQueue;
     }
 
-    public Duration getRequestTimeout() {
-        return requestTimeout;
+    public Duration getActivityTimeout() {
+        return activityTimeout;
     }
 
-    public void setRequestTimeout(Duration requestTimeout) {
-        this.requestTimeout = requestTimeout;
+    public void setActivityTimeout(Duration activityTimeout) {
+        this.activityTimeout = activityTimeout;
     }
 }

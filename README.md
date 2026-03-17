@@ -12,8 +12,8 @@ Our architecture is "Identity Blind." Whether it's a human using the dashboard o
 
 Our architecture is built for autonomous execution and extreme reliability:
 
-1.  **The Hardened Brain (Orchestrator):** A Java 25 backend powered by **Temporal** that manages the agentic state. Every audit is indestructible and resumes automatically if interrupted.
-2.  **Specialized sidecars:** Isolated environments running Node.js and Lighthouse SDK for programmatic technical audits.
+1.  **The Hardened Brain (Orchestrator):** A Java 25 backend powered by **Temporal** that manages the agentic state, starts workflows, persists progress, and signs final reports.
+2.  **Specialized workers:** Isolated Node.js Temporal workers running Lighthouse for browser-based technical audits on their own task queue.
 
 ## 🔄 Audit Execution Model
 
@@ -40,7 +40,7 @@ SEOGEO follows a three-phase mutation-to-report flow. In the web app, this begin
 - **Workflow:** Temporal 1.33+
 - **Frontend:** Next.js 16 (React 19), Tailwind 4
 - **State:** TanStack Query (Server) & Zustand (Client)
-- **Sidecars:** Node.js & Lighthouse
+- **Browser Worker:** Node.js, Lighthouse, Chromium
 
 ### State Ownership
 
@@ -62,7 +62,7 @@ SEOGEO follows a three-phase mutation-to-report flow. In the web app, this begin
 cp .env.example .env
 docker compose up -d
 ```
-This starts PostgreSQL, Temporal, and the Backend API.
+This starts PostgreSQL, Temporal, the Backend API, and the Lighthouse Temporal worker.
 
 ### 2) Launch the Frontend
 ```sh
@@ -85,6 +85,14 @@ From the `backend/` folder:
 ```
 The backend listens on port `8080`.
 
+### Running the Lighthouse Worker Standalone
+From the `lighthouse/` folder:
+```sh
+npm install
+npm start
+```
+The worker connects to Temporal and polls the Lighthouse task queue.
+
 ### Useful Commands
 | Context | Action | Command |
 |---------|--------|---------|
@@ -98,9 +106,10 @@ The backend listens on port `8080`.
 
 ## 📂 Project Structure
 
-- `backend/`: Spring Boot service + Temporal workers.
+- `backend/`: Spring Boot API + Java Temporal workflow/activity workers.
 - `frontend/`: Next.js web application.
-- `docker-compose.yml`: Core services (Postgres, Temporal, Redis).
+- `lighthouse/`: Node.js Temporal worker for Lighthouse execution.
+- `docker-compose.yml`: Core services and worker topology for Postgres, Temporal, backend, and Lighthouse execution.
 - `AGENTS.md`: Machine-readable technical specifications for AI agents.
 
 ---

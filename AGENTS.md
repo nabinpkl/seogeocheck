@@ -20,7 +20,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 
 - Build the smallest end-to-end slice that makes the system more real.
 - Prefer replacing incomplete or fake implementations outright instead of layering compatibility shims around them.
-- Backend, frontend, and sidecar contracts may evolve together within the same iteration when that produces a cleaner vertical slice.
+- Backend, frontend, and worker contracts may evolve together within the same iteration when that produces a cleaner vertical slice.
 - Do **not** introduce versioned APIs, fallback paths, or compatibility bridges unless the task explicitly calls for them.
 - When planning or implementing, assume **no backward compatibility requirement** by default during this stage of the project.
 
@@ -34,11 +34,18 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - **Logic:** Business rules, JSON-LD Entity Depth parsing.
 - **Resiliency:** Durable workflows (Temporal).
 
-### Tier 2: Specialized Sidecars
-- **Path:** `lighthouse/` (or sidecar directories)
-- **Tech:** Node.js + Lighthouse SDK.
-- **Logic:** Core Web Vitals, programmatic audits.
-- **Normalization Contract:** Sidecars must translate raw tool output into SEOGEO-native findings with imperative `instruction` text before results are returned to the orchestrator.
+### Tier 2: Specialized Workers
+- **Path:** `lighthouse/` (or worker directories)
+- **Tech:** Node.js + Temporal TypeScript SDK + Lighthouse SDK.
+- **Logic:** Core Web Vitals, programmatic audits, browser-executed technical checks.
+- **Normalization Contract:** Browser workers must translate raw tool output into SEOGEO-native findings with imperative `instruction` text before results are returned to the orchestrator.
+
+### Target Worker Topology
+- **API Tier:** Owns external HTTP contracts, audit initiation, SSE stream delivery, and final report retrieval.
+- **Java Worker Tier:** Owns Temporal workflow orchestration, persistence coordination, report signing, and Java-native extraction such as `jsoup`.
+- **Node Worker Tier:** Owns Lighthouse and future browser-executed activities on dedicated Temporal task queues.
+- **Current Slice:** The backend currently combines the API tier and Java worker tier, while Lighthouse runs as a dedicated Node Temporal worker on its own task queue.
+- **Architecture Direction:** The active direction is `API + Java worker + Node worker`, with worker roles independently scalable and browser work executed through Temporal instead of HTTP wrappers.
 
 ---
 
@@ -109,6 +116,6 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 
 - `/backend`: Java 25 source (The Orchestrator).
 - `/frontend`: Next.js 16 source (The Human Interface).
-- `/lighthouse`: Node.js Sidecar (Technical Auditor).
+- `/lighthouse`: Node.js Temporal worker (Technical Auditor).
 - `/docker-compose.yml`: Infrastructure configuration.
 - `/AGENTS.md`: THIS FILE (Platform & Coding Source of Truth).

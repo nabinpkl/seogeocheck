@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { UNDER_CONSTRUCTION_PATH } from "@/lib/routes";
 
 export function CTABanner() {
   return (
@@ -23,9 +25,12 @@ export function CTABanner() {
             >
               Run a Free Audit
             </button>
-            <button className="h-16 rounded-2xl border border-white/30 bg-white/10 px-10 text-xl font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20">
+            <Link
+              href={UNDER_CONSTRUCTION_PATH}
+              className="inline-flex h-16 items-center rounded-2xl border border-white/30 bg-white/10 px-10 text-xl font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+            >
               Contact Support
-            </button>
+            </Link>
           </div>
         </div>
       </div>

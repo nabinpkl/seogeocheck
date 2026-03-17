@@ -5,6 +5,8 @@ import java.time.OffsetDateTime;
 public record AuditWorkflowRequest(
         String jobId,
         String targetUrl,
-        OffsetDateTime requestedAt
+        OffsetDateTime requestedAt,
+        String lighthouseTaskQueue,
+        long lighthouseActivityTimeoutSeconds
 ) {
 }
