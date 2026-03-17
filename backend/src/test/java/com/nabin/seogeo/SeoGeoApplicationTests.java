@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureRestTestClient
 @ActiveProfiles("test")
-class DistributedAiApplicationTests {
+class SeoGeoApplicationTests {
 
 	@Autowired
 	private RestTestClient restTestClient;
