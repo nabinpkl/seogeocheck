@@ -27,6 +27,7 @@ import {
   type AuditStreamEvent,
 } from "@/lib/audit";
 import { useAuditStore } from "@/store/use-audit-store";
+import { useShallow } from "zustand/react/shallow";
 
 async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
   const response = await fetch(reportUrl, {
@@ -211,17 +212,33 @@ export function AuditSection() {
   const resultPanelRef = React.useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
 
-  const jobId = useAuditStore((state) => state.jobId);
-  const targetUrl = useAuditStore((state) => state.targetUrl);
-  const reportUrl = useAuditStore((state) => state.reportUrl);
-  const status = useAuditStore((state) => state.status);
-  const connectionStatus = useAuditStore((state) => state.connectionStatus);
-  const events = useAuditStore((state) => state.events);
-  const liveError = useAuditStore((state) => state.error);
-  const primeAudit = useAuditStore((state) => state.primeAudit);
-  const connectToStream = useAuditStore((state) => state.connectToStream);
-  const markVerified = useAuditStore((state) => state.markVerified);
-  const reset = useAuditStore((state) => state.reset);
+  const {
+    jobId,
+    targetUrl,
+    reportUrl,
+    status,
+    connectionStatus,
+    events,
+    liveError,
+  } = useAuditStore(
+    useShallow((state) => ({
+      jobId: state.jobId,
+      targetUrl: state.targetUrl,
+      reportUrl: state.reportUrl,
+      status: state.status,
+      connectionStatus: state.connectionStatus,
+      events: state.events,
+      liveError: state.error,
+    }))
+  );
+  const { primeAudit, connectToStream, markVerified, reset } = useAuditStore(
+    useShallow((state) => ({
+      primeAudit: state.primeAudit,
+      connectToStream: state.connectToStream,
+      markVerified: state.markVerified,
+      reset: state.reset,
+    }))
+  );
 
   React.useEffect(() => {
     if (
