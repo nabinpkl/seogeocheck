@@ -1,18 +1,24 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { AuditSection } from "./AuditSection";
 
 export function Hero() {
   return (
-    <section className="relative -mt-16 overflow-hidden pt-32 pb-16 lg:pt-40 lg:pb-24">
-      {/* Background Image with Overlay */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: 'url("/hero-bg.png")' }}
-      />
-      <div className="absolute inset-0 z-10 bg-white/90 backdrop-blur-[2px]" />
+    <section className="relative -mt-16 pt-32 pb-16 lg:pt-40 lg:pb-24">
+      {/* Keep the hero art on a fixed canvas so it does not recrop when audit results expand. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[58rem] overflow-hidden md:h-[64rem] lg:h-[70rem]">
+        <Image 
+          src="/hero-bg.png"
+          alt="Hero Background"
+          fill
+          priority
+          className="object-cover object-center"
+        />
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[58rem] bg-white/90 backdrop-blur-[2px] md:h-[64rem] lg:h-[70rem]" />
 
       <div className="relative z-20 mx-auto max-w-7xl px-6">
         <motion.div 
@@ -26,7 +32,7 @@ export function Hero() {
           </h1>
           
           <p className="mt-8 max-w-2xl text-lg text-foreground/70 md:text-xl md:leading-relaxed">
-            Ensure your business stays visible as search evolution accelerates. We analyze your site's health for traditional search and the new world of generative answer engines.
+            Ensure your business stays visible as search evolution accelerates. We analyze your site&apos;s health for traditional search and the new world of generative answer engines.
           </p>
 
           <AuditSection />

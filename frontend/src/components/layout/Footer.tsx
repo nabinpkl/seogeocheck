@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -10,7 +11,13 @@ export function Footer() {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-1">
-              <img src="/logo.png" alt="SEOGEO Logo" className="h-12 w-12 object-contain" />
+              <Image 
+                src="/logo.png" 
+                alt="SEOGEO Logo" 
+                width={48} 
+                height={48} 
+                className="object-contain" 
+              />
               <span className="font-display text-2xl font-bold tracking-tight uppercase">SEOGEO</span>
             </div>
             <p className="mt-6 max-w-sm text-lg leading-relaxed text-foreground/60">

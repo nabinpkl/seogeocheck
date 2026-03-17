@@ -1,18 +1,38 @@
-# 🌐 SEOGEO
+# 🌐 SEOGEO: The Autonomous SEO/GEO Agent
 
-SEOGEO is a next-generation auditing platform designed for the AI age. It checks how well your website is optimized not just for traditional Search Engines (SEO), but also for Generative Engines (GEO) and Answer Engines (AEO).
+SEOGEO is a next-generation, **agent-first** auditing platform. It behaves as an autonomous SEO/GEO agent that consumes the web to analyze visibility across Search Engines (SEO), Generative Engines (GEO), and Answer Engines (AEO).
 
-## ✨ Why SEOGEO?
-
-Modern search is changing. LLMs like Gemini, GPT, and Perplexity "consume" the web differently. SEOGEO provides a **Durable Tiered Execution** model to analyze your site's visibility across all these dimensions.
+## 🤖 Built for Humans & Agents
+Our architecture is "Identity Blind." Whether it's a human using the dashboard or another AI agent calling our API, the underlying system provides the same high-fidelity experience:
+- **Streaming Intelligence:** Real-time execution updates and partial findings via SSE.
+- **Durable Audits:** Final, structured reports that are cryptographically verifiable and durable.
+- **Agentic Workflow:** The system supports multi-step reasoning, moving from technical discovery to semantic analysis automatically.
 
 ## 🏗️ How it Works
 
-Our architecture is built for speed and reliability:
+Our architecture is built for autonomous execution and extreme reliability:
 
-1.  **Instant Feedback (The Edge):** We use Rust and WASM to give you immediate meta-data heuristics in under 500ms. No waiting for a spinner.
-2.  **The Hardened Brain (Core):** A powerful Java 25 backend powered by **Temporal** ensures that every audit is indestructible. If a network blip happens, the system recovers exactly where it left off.
-3.  **Technical Deep-Dive (Sidecars):** We run isolated Node.js environments with the Google Lighthouse SDK to get the technical compliance data Google cares about, without slowing down the rest of the app.
+1.  **The Hardened Brain (Orchestrator):** A Java 25 backend powered by **Temporal** that manages the agentic state. Every audit is indestructible and resumes automatically if interrupted.
+2.  **Specialized sidecars:** Isolated environments running Node.js and Lighthouse SDK for programmatic technical audits.
+
+## 🔄 Audit Execution Model
+
+SEOGEO follows a three-phase mutation-to-report flow. In the web app, this begins with a Server Action. External agents may call the backend directly, but they should converge on the same audit-start contract and durable `jobId`.
+
+### Phase A: The Mutation (Server Action)
+- The frontend starts an audit through a **Next.js Server Action**, not a direct browser-to-backend fetch.
+- This keeps Java signing or HMAC credentials on the server boundary while the frontend asks the backend to start the audit workflow for a target URL.
+- The Server Action returns a `jobId` that becomes the durable handle for the audit session.
+
+### Phase B: The Momentum (Zustand + SSE)
+- As soon as the UI receives the `jobId`, it opens an **SSE stream** for live audit progress.
+- Streaming findings, triage items, and in-flight status updates are treated as **ephemeral client state**.
+- **Zustand owns this live stream state** so React 19 components can render immediate progress without polluting the durable server cache.
+
+### Phase C: The Truth (TanStack Query)
+- When the backend completes the heavier audit tiers, it persists the final signed report to the system of record.
+- The frontend then invalidates or revalidates the relevant query and **TanStack Query refetches the canonical final report**.
+- Once the verified report is available, ephemeral Zustand stream state is cleared and the UI transitions from **Streaming** to **Verified Report**.
 
 ## 🛠️ Tech Stack
 
@@ -21,6 +41,12 @@ Our architecture is built for speed and reliability:
 - **Frontend:** Next.js 16 (React 19), Tailwind 4
 - **State:** TanStack Query (Server) & Zustand (Client)
 - **Sidecars:** Node.js & Lighthouse
+
+### State Ownership
+
+- **Server Actions** initiate audits and keep privileged backend credentials off the client.
+- **Zustand** owns in-progress audit UX state such as SSE events, transient findings, and live triage.
+- **TanStack Query** owns synchronized server data, especially the final persisted audit report and follow-up refetches.
 
 ---
 

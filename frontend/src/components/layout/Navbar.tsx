@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
@@ -26,10 +27,15 @@ export function Navbar() {
             className="absolute inset-0 z-0 border-b border-border shadow-md"
           >
             {/* Navbar Background Image overlay */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-              style={{ backgroundImage: 'url("/hero-bg.png")' }}
-            />
+            <div className="absolute inset-0">
+              <Image 
+                src="/hero-bg.png"
+                alt=""
+                fill
+                priority
+                className="object-cover object-center"
+              />
+            </div>
             <div className="absolute inset-0 bg-white/95 backdrop-blur-xl" />
           </motion.div>
         )}
@@ -37,7 +43,14 @@ export function Navbar() {
 
       <nav className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-2">
         <div className="flex items-center gap-1">
-          <img src="/logo.png" alt="SEOGEO Logo" className="h-10 w-10 object-contain" />
+          <Image 
+            src="/logo.png" 
+            alt="SEOGEO Logo" 
+            width={40} 
+            height={40} 
+            priority
+            className="object-contain" 
+          />
           <span className="font-display text-xl font-bold tracking-tight text-foreground uppercase">SEOGEO</span>
         </div>
         <div className="hidden items-center gap-8 md:flex">

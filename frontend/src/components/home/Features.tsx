@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Zap, ArrowRight, ShieldCheck, Globe, CheckCircle2 } from "lucide-react";
 
@@ -80,9 +81,11 @@ export function Features() {
 
           <div className="relative group overflow-hidden rounded-[2.5rem] border border-border bg-white p-3 shadow-2xl shadow-primary/5 transition-all hover:shadow-primary/10">
             <div className="absolute inset-0 z-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-            <img 
+            <Image 
               src="/illustration.png" 
               alt="SEOGEO Platform Illustration" 
+              width={600}
+              height={400}
               className="relative z-10 w-full rounded-[1.8rem] object-cover shadow-sm"
             />
           </div>
