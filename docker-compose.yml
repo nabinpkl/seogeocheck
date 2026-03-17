@@ -62,7 +62,7 @@ services:
     ports:
       - '7233:7233'
     volumes:
-      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./temporalconfig:/etc/temporal/config/dynamicconfig
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "7233"]
       interval: 5s
@@ -106,7 +106,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: seogeo-ai-backend
+    container_name: seogeo-backend
     depends_on:
       postgresql:
         condition: service_healthy
@@ -119,6 +119,7 @@ services:
     networks:
       - temporal-network
     environment:
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_TEMPORAL_CONNECTION_TARGET=temporal:7233
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgresql:5432/seogeo
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
