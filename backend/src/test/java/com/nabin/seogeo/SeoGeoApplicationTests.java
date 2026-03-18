@@ -20,7 +20,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Spring Boot integration test — verifies the full application context
+ * Spring Boot integration test verifies the full application context
  * loads successfully and core beans are wired.
  *
  * Uses the "test" profile which swaps PostgreSQL for H2 in-memory
@@ -132,7 +132,7 @@ class SeoGeoApplicationTests {
 		assertThat(reportBody).containsEntry("jobId", jobId);
 		assertThat(reportBody).containsEntry("status", "VERIFIED");
 		assertThat(reportBody).containsKey("signature");
-		assertThat(reportBody).containsEntry("reportType", "LIGHTHOUSE_SIGNED_AUDIT");
+		assertThat(reportBody).containsEntry("reportType", "SEO_SIGNALS_SIGNED_AUDIT");
 		assertThat(reportBody).containsKey("checks");
 		assertThat(reportBody).containsKey("summary");
 	}
@@ -202,7 +202,7 @@ class SeoGeoApplicationTests {
 	}
 
 	@Test
-	void unreachableAuditReturnsSpecificLighthouseFailureMessage() throws InterruptedException {
+	void unreachableAuditReturnsSpecificSeoSignalFailureMessage() throws InterruptedException {
 		String jobId = startAudit("https://unreachable.example.com");
 
 		Instant deadline = Instant.now().plus(Duration.ofSeconds(8));

@@ -18,7 +18,7 @@ export function Hero() {
           className="object-cover object-center"
         />
       </div>
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[58rem] bg-white/90 backdrop-blur-[2px] md:h-[64rem] lg:h-[70rem]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[58rem] bg-gradient-to-b from-white/60 via-white/85 to-white/95 backdrop-blur-[6px] md:h-[64rem] lg:h-[70rem]" />
 
       <div className="relative z-20 mx-auto max-w-7xl px-6">
         <motion.div 
@@ -28,13 +28,14 @@ export function Hero() {
           className="flex flex-col items-center text-center"
         >
           <h1 className="max-w-4xl font-display text-5xl font-extrabold tracking-tight md:text-7xl">
-            Get your website seen by <span className="text-primary italic">AI Search Engines</span>.
+            Stop being a link. <br />
+            <span className="text-primary italic">Start being the answer.</span>
           </h1>
           
           <div className="mt-8 flex flex-col items-center">
             <p className="max-w-2xl text-lg text-foreground/70 md:text-xl md:leading-relaxed">
-              Audit manually or let your AI agent handle the heavy lifting. 
-              Ensure your business stays visible as search evolution accelerates across traditional search and the new world of generative answer engines.
+              Generative search doesn&apos;t just link to your brand it speaks for it. 
+              Audit your site to ensure Google, ChatGPT, Perplexity, and Gemini recommend you as the definitive authority in your niche.
             </p>
             <a 
               href="/oops-under-construction" 

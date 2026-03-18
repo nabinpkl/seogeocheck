@@ -16,9 +16,9 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "SEOGEO | Visibility Audits for AI Search",
+  title: "SEOGEO | Is your website recommended by AI?",
   description:
-    "Check how LLM crawlers and AI assistants interpret your site, entities, and GEO readiness.",
+    "Audit your website for generative search. Ensure you're visible and recommended by ChatGPT, Perplexity, and AI search engines.",
 };
 
 export default function RootLayout({

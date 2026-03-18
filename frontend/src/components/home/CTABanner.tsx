@@ -13,17 +13,17 @@ export function CTABanner() {
       <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
         <div className="flex flex-col items-center">
           <h2 className="max-w-3xl font-display text-4xl font-extrabold tracking-tight md:text-6xl">
-            Ready to future-proof your presence?
+            Ready to be recommended by AI?
           </h2>
           <p className="mt-8 max-w-2xl text-xl text-white/80 leading-relaxed">
-            Join thousands of brands ensuring they stay discoverable in the age of AI. No complex setup, just clear insights.
+            Join the brands ensuring they stay discoverable in the age of generative search. No complex setup, just clear insights.
           </p>
           <div className="mt-12 flex flex-wrap justify-center gap-6">
             <button 
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="h-16 rounded-2xl bg-white px-10 text-xl font-bold text-primary shadow-xl transition-transform hover:scale-[1.03] active:scale-[0.98]"
             >
-              Run a Free Audit
+              Check My AI Visibility
             </button>
             <Link
               href={UNDER_CONSTRUCTION_PATH}

@@ -1,8 +1,8 @@
 package com.nabin.seogeo.temporal.audit;
 
-import com.nabin.seogeo.audit.domain.LighthouseAuditCheck;
 import com.nabin.seogeo.audit.domain.AuditStatus;
-import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
+import com.nabin.seogeo.audit.domain.SeoAuditCheck;
+import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
 import io.temporal.failure.ActivityFailure;
@@ -18,7 +18,7 @@ import java.util.Map;
 @WorkflowImpl(taskQueues = "${seogeo.audit.task-queue}")
 public class AuditWorkflowImpl implements AuditWorkflow {
 
-    private static final String LIGHTHOUSE_URL_UNREACHABLE = "LIGHTHOUSE_URL_UNREACHABLE";
+    private static final String TARGET_URL_UNREACHABLE = "TARGET_URL_UNREACHABLE";
 
     private final AuditActivities auditActivities = Workflow.newActivityStub(
             AuditActivities.class,
@@ -33,18 +33,18 @@ public class AuditWorkflowImpl implements AuditWorkflow {
     @Override
     public void runAudit(AuditWorkflowRequest request) {
         try {
-            LighthouseActivities lighthouseActivities = createLighthouseActivities(request);
+            SeoSignalActivities seoSignalActivities = createSeoSignalActivities(request);
 
             auditActivities.createRun(request.jobId(), request.targetUrl(), request.requestedAt());
             auditActivities.appendEvent(request.jobId(), "status", AuditStatus.QUEUED, Map.of(
                     "message", "Audit accepted. Getting your site review ready."
             ));
             auditActivities.appendEvent(request.jobId(), "status", AuditStatus.STREAMING, Map.of(
-                    "message", "Reviewing your site's technical signals.",
+                    "message", "Reviewing your site's SEO signals.",
                     "progress", 10
             ));
 
-            LighthouseAuditResult result = lighthouseActivities.runLighthouseAudit(request.jobId(), request.targetUrl());
+            SeoAuditResult result = seoSignalActivities.runSeoAudit(request.jobId(), request.targetUrl());
             emitAuditSignalEvents(request.jobId(), result);
 
             auditActivities.persistReport(auditActivities.buildSignedReport(request.jobId(), request.targetUrl(), result));
@@ -58,12 +58,12 @@ public class AuditWorkflowImpl implements AuditWorkflow {
         }
     }
 
-    private LighthouseActivities createLighthouseActivities(AuditWorkflowRequest request) {
+    private SeoSignalActivities createSeoSignalActivities(AuditWorkflowRequest request) {
         return Workflow.newActivityStub(
-                LighthouseActivities.class,
+                SeoSignalActivities.class,
                 ActivityOptions.newBuilder()
-                        .setTaskQueue(request.lighthouseTaskQueue())
-                        .setStartToCloseTimeout(Duration.ofSeconds(request.lighthouseActivityTimeoutSeconds()))
+                        .setTaskQueue(request.seoSignalsTaskQueue())
+                        .setStartToCloseTimeout(Duration.ofSeconds(request.seoSignalsActivityTimeoutSeconds()))
                         .setRetryOptions(RetryOptions.newBuilder()
                                 .setMaximumAttempts(3)
                                 .build())
@@ -71,8 +71,8 @@ public class AuditWorkflowImpl implements AuditWorkflow {
         );
     }
 
-    private void emitAuditSignalEvents(String jobId, LighthouseAuditResult result) {
-        List<LighthouseAuditCheck> checks = result.checks();
+    private void emitAuditSignalEvents(String jobId, SeoAuditResult result) {
+        List<SeoAuditCheck> checks = result.checks();
 
         if (checks.isEmpty()) {
             auditActivities.appendEvent(jobId, "status", AuditStatus.STREAMING, Map.of(
@@ -84,7 +84,7 @@ public class AuditWorkflowImpl implements AuditWorkflow {
 
         int total = checks.size();
         for (int index = 0; index < total; index++) {
-            LighthouseAuditCheck check = checks.get(index);
+            SeoAuditCheck check = checks.get(index);
             int progress = Math.min(90, 25 + ((index + 1) * 55 / total));
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("message", check.label());
@@ -137,7 +137,7 @@ public class AuditWorkflowImpl implements AuditWorkflow {
         }
 
         if (failure instanceof ApplicationFailure applicationFailure
-                && LIGHTHOUSE_URL_UNREACHABLE.equals(applicationFailure.getType())) {
+                && TARGET_URL_UNREACHABLE.equals(applicationFailure.getType())) {
             return true;
         }
 

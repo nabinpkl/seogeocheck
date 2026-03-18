@@ -8,8 +8,8 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
-import com.nabin.seogeo.audit.domain.LighthouseAuditCheck;
-import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
+import com.nabin.seogeo.audit.domain.SeoAuditCheck;
+import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
@@ -40,14 +40,14 @@ public class AuditReportSigner {
                 .build();
     }
 
-    public AuditReportRecord buildReport(String jobId, String targetUrl, LighthouseAuditResult result) {
+    public AuditReportRecord buildReport(String jobId, String targetUrl, SeoAuditResult result) {
         return buildReport(jobId, targetUrl, result, OffsetDateTime.now());
     }
 
     public AuditReportRecord buildReport(
             String jobId,
             String targetUrl,
-            LighthouseAuditResult result,
+            SeoAuditResult result,
             OffsetDateTime generatedAt
     ) {
         List<Map<String, Object>> checks = result.checks().stream()
@@ -62,7 +62,7 @@ public class AuditReportSigner {
         String topIssue = result.checks().stream()
                 .filter(check -> "issue".equals(check.status()))
                 .min(Comparator.comparingInt(this::severityRank))
-                .map(LighthouseAuditCheck::label)
+                .map(SeoAuditCheck::label)
                 .orElse("No major issues detected");
 
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -78,7 +78,7 @@ public class AuditReportSigner {
         report.put("status", AuditStatus.VERIFIED.name());
         report.put("generatedAt", generatedAt.toString());
         report.put("targetUrl", targetUrl);
-        report.put("reportType", "LIGHTHOUSE_SIGNED_AUDIT");
+        report.put("reportType", "SEO_SIGNALS_SIGNED_AUDIT");
         report.put("summary", summary);
         report.put("checks", checks);
         report.put("categories", result.categoryScores());
@@ -102,7 +102,7 @@ public class AuditReportSigner {
         );
     }
 
-    private Map<String, Object> toCheckPayload(LighthouseAuditCheck check) {
+    private Map<String, Object> toCheckPayload(SeoAuditCheck check) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("id", check.id());
         payload.put("label", check.label());
@@ -128,7 +128,7 @@ public class AuditReportSigner {
         return payload;
     }
 
-    private int severityRank(LighthouseAuditCheck check) {
+    private int severityRank(SeoAuditCheck check) {
         return switch (check.severity()) {
             case "high" -> 0;
             case "medium" -> 1;

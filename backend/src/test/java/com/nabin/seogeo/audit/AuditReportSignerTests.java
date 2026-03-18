@@ -1,8 +1,8 @@
 package com.nabin.seogeo.audit;
 
 import com.nabin.seogeo.audit.config.AuditProperties;
-import com.nabin.seogeo.audit.domain.LighthouseAuditCheck;
-import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
+import com.nabin.seogeo.audit.domain.SeoAuditCheck;
+import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import com.nabin.seogeo.audit.service.AuditReportSigner;
 import org.junit.jupiter.api.Test;
 
@@ -20,12 +20,12 @@ class AuditReportSignerTests {
         auditProperties.setReportSigningSecret("test-signing-secret");
         AuditReportSigner signer = new AuditReportSigner(auditProperties, new com.fasterxml.jackson.databind.ObjectMapper());
 
-        LighthouseAuditResult result = new LighthouseAuditResult(
+        SeoAuditResult result = new SeoAuditResult(
                 "https://example.com",
                 "https://example.com/",
                 88,
-                Map.of("seo", 88, "performance", 70),
-                List.of(new LighthouseAuditCheck(
+                Map.of("crawlability", 92, "metadata", 84, "contentQuality", 88),
+                List.of(new SeoAuditCheck(
                         "document-title",
                         "Add a unique page title",
                         "issue",
@@ -35,7 +35,7 @@ class AuditReportSignerTests {
                         "head > title",
                         null,
                         Map.of("score", 0)
-                ), new LighthouseAuditCheck(
+                ), new SeoAuditCheck(
                         "meta-description",
                         "Meta description is present",
                         "passed",
@@ -46,18 +46,19 @@ class AuditReportSignerTests {
                         null,
                         Map.of("score", 100)
                 )),
-                Map.of("lighthouseVersion", "test")
+                Map.of("worker", "seo-audit-worker")
         );
 
         OffsetDateTime generatedAt = OffsetDateTime.parse("2026-03-16T00:00:00Z");
 
-        String firstSignature = signer.buildReport("audit_fixed", "https://example.com", result, generatedAt).signatureValue();
-        String secondSignature = signer.buildReport("audit_fixed", "https://example.com", result, generatedAt).signatureValue();
+        var firstReport = signer.buildReport("audit_fixed", "https://example.com", result, generatedAt);
+        var secondReport = signer.buildReport("audit_fixed", "https://example.com", result, generatedAt);
 
-        assertThat(firstSignature).hasSize(64);
-        assertThat(secondSignature).hasSize(64);
-        assertThat(firstSignature).isNotBlank();
-        assertThat(secondSignature).isNotBlank();
-        assertThat(firstSignature).isEqualTo(secondSignature);
+        assertThat(firstReport.signatureValue()).hasSize(64);
+        assertThat(secondReport.signatureValue()).hasSize(64);
+        assertThat(firstReport.signatureValue()).isNotBlank();
+        assertThat(secondReport.signatureValue()).isNotBlank();
+        assertThat(firstReport.signatureValue()).isEqualTo(secondReport.signatureValue());
+        assertThat(firstReport.reportJson()).contains("SEO_SIGNALS_SIGNED_AUDIT");
     }
 }

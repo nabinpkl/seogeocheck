@@ -102,11 +102,11 @@ services:
     ports:
       - "8081:8080"
 
-  lighthouse:
+  seo-audit-worker:
     build:
-      context: ./lighthouse
+      context: ./seo-audit-worker
       dockerfile: Dockerfile
-    container_name: seogeo-lighthouse-worker
+    container_name: seogeo-seo-audit-worker
     depends_on:
       temporal:
         condition: service_healthy
@@ -117,7 +117,7 @@ services:
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_NAMESPACE=default
-      - LIGHTHOUSE_TASK_QUEUE=${SEO_GEO_LIGHTHOUSE_TASK_QUEUE:-seogeo-lighthouse}
+      - SEO_AUDIT_TASK_QUEUE=${SEO_GEO_SEO_SIGNALS_TASK_QUEUE:-seogeo-seo-signals}
 
   backend:
     build:
@@ -142,7 +142,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - AUDIT_REPORT_SIGNING_SECRET=${AUDIT_REPORT_SIGNING_SECRET}
-      - SEO_GEO_LIGHTHOUSE_TASK_QUEUE=${SEO_GEO_LIGHTHOUSE_TASK_QUEUE:-seogeo-lighthouse}
+      - SEO_GEO_SEO_SIGNALS_TASK_QUEUE=${SEO_GEO_SEO_SIGNALS_TASK_QUEUE:-seogeo-seo-signals}
 
 networks:
   temporal-network:

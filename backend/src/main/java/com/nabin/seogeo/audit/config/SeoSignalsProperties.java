@@ -7,11 +7,11 @@ import org.springframework.validation.annotation.Validated;
 import java.time.Duration;
 
 @Validated
-@ConfigurationProperties(prefix = "seogeo.lighthouse")
-public class LighthouseProperties {
+@ConfigurationProperties(prefix = "seogeo.seo-signals")
+public class SeoSignalsProperties {
 
     @NotBlank
-    private String taskQueue = "seogeo-lighthouse";
+    private String taskQueue = "seogeo-seo-signals";
 
     private Duration activityTimeout = Duration.ofSeconds(65);
 

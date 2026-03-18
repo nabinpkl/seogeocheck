@@ -6,7 +6,7 @@ public record AuditWorkflowRequest(
         String jobId,
         String targetUrl,
         OffsetDateTime requestedAt,
-        String lighthouseTaskQueue,
-        long lighthouseActivityTimeoutSeconds
+        String seoSignalsTaskQueue,
+        long seoSignalsActivityTimeoutSeconds
 ) {
 }

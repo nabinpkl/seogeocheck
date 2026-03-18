@@ -1,7 +1,7 @@
 package com.nabin.seogeo.audit.service;
 
 import com.nabin.seogeo.audit.config.AuditProperties;
-import com.nabin.seogeo.audit.config.LighthouseProperties;
+import com.nabin.seogeo.audit.config.SeoSignalsProperties;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import org.springframework.stereotype.Service;
@@ -17,18 +17,18 @@ public class AuditOrchestrationService {
     private final AuditPersistenceService auditPersistenceService;
     private final WorkflowClient workflowClient;
     private final AuditProperties auditProperties;
-    private final LighthouseProperties lighthouseProperties;
+    private final SeoSignalsProperties seoSignalsProperties;
 
     public AuditOrchestrationService(
             AuditPersistenceService auditPersistenceService,
             WorkflowClient workflowClient,
             AuditProperties auditProperties,
-            LighthouseProperties lighthouseProperties
+            SeoSignalsProperties seoSignalsProperties
     ) {
         this.auditPersistenceService = auditPersistenceService;
         this.workflowClient = workflowClient;
         this.auditProperties = auditProperties;
-        this.lighthouseProperties = lighthouseProperties;
+        this.seoSignalsProperties = seoSignalsProperties;
     }
 
     public void startAudit(String jobId, String targetUrl, OffsetDateTime createdAt) {
@@ -49,8 +49,8 @@ public class AuditOrchestrationService {
                             jobId,
                             targetUrl,
                             createdAt,
-                            lighthouseProperties.getTaskQueue(),
-                            lighthouseProperties.getActivityTimeout().toSeconds()
+                            seoSignalsProperties.getTaskQueue(),
+                            seoSignalsProperties.getActivityTimeout().toSeconds()
                     )
             );
         } catch (RuntimeException exception) {

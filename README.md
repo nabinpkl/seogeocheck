@@ -13,7 +13,7 @@ Our architecture is "Identity Blind." Whether it's a human using the dashboard o
 Our architecture is built for autonomous execution and extreme reliability:
 
 1.  **The Hardened Brain (Orchestrator):** A Java 25 backend powered by **Temporal** that manages the agentic state, starts workflows, persists progress, and signs final reports.
-2.  **Specialized workers:** Isolated Node.js Temporal workers running Lighthouse for browser-based technical audits on their own task queue.
+2.  **Specialized workers:** Isolated Node.js Temporal workers running custom SEO-signal crawls on their own task queue.
 
 ## 🔄 Audit Execution Model
 
@@ -40,7 +40,7 @@ SEOGEO follows a three-phase mutation-to-report flow. In the web app, this begin
 - **Workflow:** Temporal 1.33+
 - **Frontend:** Next.js 16 (React 19), Tailwind 4
 - **State:** TanStack Query (Server) & Zustand (Client)
-- **Browser Worker:** Node.js, Lighthouse, Chromium
+- **SEO Worker:** Node.js, Crawlee
 
 ### State Ownership
 
@@ -62,7 +62,7 @@ SEOGEO follows a three-phase mutation-to-report flow. In the web app, this begin
 cp .env.example .env
 docker compose up -d
 ```
-This starts PostgreSQL, Temporal, the Backend API, and the Lighthouse Temporal worker.
+This starts PostgreSQL, Temporal, the Backend API, and the SEO audit Temporal worker.
 
 ### 2) Launch the Frontend
 ```sh
@@ -85,13 +85,13 @@ From the `backend/` folder:
 ```
 The backend listens on port `8080`.
 
-### Running the Lighthouse Worker Standalone
-From the `lighthouse/` folder:
+### Running the SEO Audit Worker Standalone
+From the `seo-audit-worker/` folder:
 ```sh
-npm install
-npm start
+pnpm install
+pnpm start
 ```
-The worker connects to Temporal and polls the Lighthouse task queue.
+The worker connects to Temporal and polls the SEO signals task queue.
 
 ### Useful Commands
 | Context | Action | Command |
@@ -108,8 +108,8 @@ The worker connects to Temporal and polls the Lighthouse task queue.
 
 - `backend/`: Spring Boot API + Java Temporal workflow/activity workers.
 - `frontend/`: Next.js web application.
-- `lighthouse/`: Node.js Temporal worker for Lighthouse execution.
-- `docker-compose.yml`: Core services and worker topology for Postgres, Temporal, backend, and Lighthouse execution.
+- `seo-audit-worker/`: Node.js Temporal worker for custom SEO signal execution.
+- `docker-compose.yml`: Core services and worker topology for Postgres, Temporal, backend, and SEO audit execution.
 - `AGENTS.md`: Machine-readable technical specifications for AI agents.
 
 ---

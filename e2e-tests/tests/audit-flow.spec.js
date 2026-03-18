@@ -29,7 +29,7 @@ test("runs a real audit from live stream to verified report", async ({ page }) =
   const reportResponse = await reportResponsePromise;
   const report = await reportResponse.json();
 
-  expect(report.reportType).toBe("LIGHTHOUSE_SIGNED_AUDIT");
+  expect(report.reportType).toBe("SEO_SIGNALS_SIGNED_AUDIT");
   expect(report.status).toBe("VERIFIED");
   expect(report.targetUrl).toBe(normalizedUrl);
   expect(report.signature?.present).toBe(true);

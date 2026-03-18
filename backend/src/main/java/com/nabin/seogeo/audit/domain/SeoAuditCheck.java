@@ -2,7 +2,7 @@ package com.nabin.seogeo.audit.domain;
 
 import java.util.Map;
 
-public record LighthouseAuditCheck(
+public record SeoAuditCheck(
         String id,
         String label,
         String status,

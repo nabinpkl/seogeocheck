@@ -3,7 +3,7 @@ package com.nabin.seogeo.temporal.audit;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
-import com.nabin.seogeo.audit.domain.LighthouseAuditResult;
+import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
 import com.nabin.seogeo.audit.service.AuditReportSigner;
 import io.temporal.spring.boot.ActivityImpl;
@@ -38,7 +38,7 @@ public class AuditActivitiesImpl implements AuditActivities {
     }
 
     @Override
-    public AuditReportRecord buildSignedReport(String jobId, String targetUrl, LighthouseAuditResult result) {
+    public AuditReportRecord buildSignedReport(String jobId, String targetUrl, SeoAuditResult result) {
         return auditReportSigner.buildReport(jobId, targetUrl, result);
     }
 

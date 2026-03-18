@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleCheckBig,
+  Globe,
   LoaderCircle,
   Radar,
   RotateCcw,
@@ -322,6 +323,10 @@ export function AuditSection() {
   );
 
   React.useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  React.useEffect(() => {
     if (
       !actionState.ok ||
       !actionState.jobId ||
@@ -466,42 +471,53 @@ export function AuditSection() {
 
   return (
     <div className="w-full self-stretch">
-      <form action={formAction} className="mx-auto mt-20 mb-12 w-full max-w-4xl">
-        <div className="group relative flex flex-col rounded-2xl border border-border bg-white p-2 shadow-2xl shadow-black/5 transition-all focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 sm:flex-row sm:items-center">
-          <input
-            ref={inputRef}
-            type="text"
-            name="url"
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            disabled={isPending || isAuditActive}
-            placeholder="Enter your website URL (e.g., myshop.com)"
-            className="h-14 min-w-0 w-full bg-transparent px-4 text-base outline-none placeholder:text-sm placeholder:text-foreground/30 sm:px-6 sm:text-lg sm:placeholder:text-base"
-          />
+      <form action={formAction} className="mx-auto mt-20 mb-12 w-full max-w-4xl px-4 sm:px-0">
+        <div className="group relative">
+          {/* Intense White Glow Layers */}
+          <div className="absolute -inset-3 rounded-[2.5rem] bg-white blur-3xl opacity-40 animate-pulse" />
+          <div className="absolute -inset-1 rounded-[2.5rem] bg-white blur-xl opacity-60" />
+          
+          <div className="relative flex flex-col rounded-3xl border border-white bg-white p-2.5 shadow-[0_32px_64px_-24px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center transition-all focus-within:ring-8 focus-within:ring-white/10">
+          <div className="flex flex-1 items-center px-4 sm:px-6">
+            <Globe className="h-5 w-5 text-foreground/20 transition-colors group-focus-within:text-primary" />
+            <input
+              ref={inputRef}
+              autoFocus
+              type="text"
+              name="url"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              disabled={isPending || isAuditActive}
+              placeholder="Enter your URL to see if AI trusts your brand"
+              className="h-14 min-w-0 flex-1 bg-transparent px-3 text-base outline-none placeholder:text-foreground/35 sm:text-lg sm:placeholder:text-base"
+            />
+          </div>
           <button
             type="submit"
             disabled={isPending || isAuditActive}
-            className="mt-2 flex h-14 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-6 text-base font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:min-w-[220px] sm:w-auto sm:px-8 sm:text-lg"
+            className="group/btn relative mt-2 flex h-14 w-full items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-2xl bg-primary px-8 text-base font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:min-w-[220px] sm:w-auto sm:text-lg"
           >
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transition-transform group-hover/btn:translate-y-0" />
             {isPending ? (
               <>
                 <RotateCcw className="h-5 w-5 animate-spin" />
-                Starting your audit...
+                Interrogating AI...
               </>
             ) : isAuditActive ? (
               <>
                 <RotateCcw className="h-5 w-5 animate-spin" />
-                Audit in progress
+                Measuring Authority
               </>
             ) : (
               <>
-                Start Audit
-                <ArrowRight className="h-5 w-5" />
+                Audit AI Authority
+                <ArrowRight className="h-5 w-5 transition-transform group-hover/btn:translate-x-1" />
               </>
             )}
           </button>
         </div>
-      </form>
+      </div>
+    </form>
 
       <AnimatePresence initial={false}>
         {(jobId || isPending || userFacingError) && (

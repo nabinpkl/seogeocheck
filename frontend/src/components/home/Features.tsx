@@ -11,10 +11,10 @@ export function Features() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center">
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Advanced insights without the complexity
+            Everything you need to be recommended by AI
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-foreground/60">
-            We go beyond the basics to give you a clear roadmap for improving your digital presence.
+            We bridge the gap between technical signals and the generative AI ecosystem.
           </p>
         </div>
 
@@ -58,10 +58,10 @@ export function Features() {
               <Globe className="h-6 w-6" />
             </div>
             <h2 className="font-display text-4xl font-bold tracking-tight text-foreground">
-              Your data, visualized for <span className="text-primary">clarity</span>.
+              Your recommendation status, <span className="text-primary">visualized</span>.
             </h2>
             <p className="text-lg leading-relaxed text-foreground/70">
-              We transform complex technical signals into a simple, beautiful dashboard. See exactly how your site performs across traditional search engines and emerging AI answer platforms—all in one place.
+              We transform complex technical signals into a simple, beautiful dashboard. See exactly how your site performs across traditional search engines and emerging AI answer platformsall in one place.
             </p>
             <ul className="space-y-4">
               {[
