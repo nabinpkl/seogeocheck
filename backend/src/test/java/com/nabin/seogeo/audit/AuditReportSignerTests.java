@@ -24,7 +24,13 @@ class AuditReportSignerTests {
                 "https://example.com",
                 "https://example.com/",
                 88,
-                Map.of("crawlability", 92, "metadata", 84, "contentQuality", 88),
+                Map.of(
+                        "reachability", 100,
+                        "crawlability", 92,
+                        "indexability", 84,
+                        "contentVisibility", 88,
+                        "metadata", 91
+                ),
                 List.of(new SeoAuditCheck(
                         "document-title",
                         "Add a unique page title",

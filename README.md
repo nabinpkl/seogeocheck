@@ -42,6 +42,15 @@ SEOGEO follows a three-phase mutation-to-report flow. In the web app, this begin
 - **State:** TanStack Query (Server) & Zustand (Client)
 - **SEO Worker:** Node.js, Crawlee
 
+### SEO Rule Authoring
+
+The SEO audit worker follows an evidence-first rule pipeline:
+
+- collect raw page evidence in `seo-audit-worker/src/audit/`
+- derive reusable facts in `seo-audit-worker/src/rules/deriveFacts.js`
+- evaluate rules from explicit registries in `seo-audit-worker/src/rules/`
+- score the report using ordered audit packs
+
 ### State Ownership
 
 - **Server Actions** initiate audits and keep privileged backend credentials off the client.

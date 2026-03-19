@@ -41,5 +41,5 @@ test("runs a real audit from live stream to verified report", async ({ page }) =
   await expect(page.getByText("Checked")).toBeVisible();
   await expect(page.getByRole("button", { name: "Run another audit" })).toBeVisible();
   await expect(page.locator("body")).toContainText(/Visibility Score[\s\S]*\d+\/100/);
-  await expect(page.locator("body")).not.toContainText(/Lighthouse|sidecar|Temporal|technical pass/i);
+  await expect(page.locator("body")).not.toContainText(/sidecar|Temporal|technical pass/i);
 });

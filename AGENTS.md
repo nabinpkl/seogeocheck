@@ -39,6 +39,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - **Tech:** Node.js + Temporal TypeScript SDK + Crawlee.
 - **Logic:** Custom SEO signal extraction, crawlability checks, metadata checks, and future browser-executed technical checks.
 - **Normalization Contract:** Node workers must translate raw tool output into SEOGEO-native findings with imperative `instruction` text before results are returned to the orchestrator.
+- **Rule Authoring Pattern:** SEO worker checks must be organized as `collect evidence -> derive facts -> evaluate rules -> score packs`. Shared evidence should be collected once and reused across rules; cross-cutting rules keep one primary pack and may annotate secondary relevance without duplicating findings.
 
 ### Target Worker Topology
 - **API Tier:** Owns external HTTP contracts, audit initiation, SSE stream delivery, and final report retrieval.

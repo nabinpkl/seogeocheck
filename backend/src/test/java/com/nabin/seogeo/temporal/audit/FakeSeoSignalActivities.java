@@ -42,9 +42,11 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                 targetUrl.endsWith("/") ? targetUrl : targetUrl + "/",
                 86,
                 Map.of(
+                        "reachability", 100,
                         "crawlability", 84,
-                        "metadata", 91,
-                        "contentQuality", 83
+                        "indexability", 82,
+                        "contentVisibility", 83,
+                        "metadata", 91
                 ),
                 List.of(
                         new SeoAuditCheck(

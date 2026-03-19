@@ -1,39 +1,15 @@
-import { CheerioCrawler } from "crawlee";
+import { CheerioCrawler, Configuration } from "crawlee";
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { NativeConnection, Worker } from "@temporalio/worker";
+import { collectPageSignals } from "./audit/collectPageSignals.js";
 import { toSeoAuditFailure } from "./errors.js";
 import { normalizeSeoAuditResult } from "./normalize.js";
 
 const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? "127.0.0.1:7233";
 const TEMPORAL_NAMESPACE = process.env.TEMPORAL_NAMESPACE ?? "default";
 const SEO_AUDIT_TASK_QUEUE = process.env.SEO_AUDIT_TASK_QUEUE ?? "seogeo-seo-signals";
-
-function normalizeText(value) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const collapsed = value.replace(/\s+/g, " ").trim();
-  return collapsed === "" ? null : collapsed;
-}
-
-function readNamedMeta($, name) {
-  const value = $(`meta[name="${name}"]`).attr("content");
-  return normalizeText(value);
-}
-
-function readPropertyMeta($, property) {
-  const value = $(`meta[property="${property}"]`).attr("content");
-  return normalizeText(value);
-}
-
-function countWords(text) {
-  const normalized = normalizeText(text);
-  if (!normalized) {
-    return 0;
-  }
-
-  return normalized.split(/\s+/).length;
-}
 
 async function runSeoAudit(jobId, targetUrl) {
   if (typeof targetUrl !== "string" || targetUrl.trim() === "") {
@@ -43,31 +19,27 @@ async function runSeoAudit(jobId, targetUrl) {
   console.log(`[seo-audit-worker] starting audit ${jobId} for ${targetUrl}`);
 
   let auditResult = null;
+  const storageDir = join(tmpdir(), `seogeo-audit-${jobId}`);
 
   try {
-    const crawler = new CheerioCrawler({
-      maxConcurrency: 1,
-      maxRequestsPerCrawl: 1,
-      requestHandler: async ({ request, response, $ }) => {
-        const finalUrl = request.loadedUrl ?? request.url;
-
-        auditResult = normalizeSeoAuditResult({
-          requestedUrl: targetUrl,
-          finalUrl,
-          statusCode: response?.statusCode ?? null,
-          contentType: response?.headers?.["content-type"] ?? null,
-          title: $("title").first().text(),
-          metaDescription: readNamedMeta($, "description"),
-          canonicalUrl: $('link[rel="canonical"]').attr("href") ?? null,
-          h1Count: $("h1").length,
-          lang: $("html").attr("lang") ?? null,
-          robotsContent: readNamedMeta($, "robots"),
-          openGraphTitle: readPropertyMeta($, "og:title"),
-          openGraphDescription: readPropertyMeta($, "og:description"),
-          wordCount: countWords($("body").text()),
-        });
+    const config = new Configuration({ storageDir });
+    const crawler = new CheerioCrawler(
+      {
+        maxConcurrency: 1,
+        maxRequestsPerCrawl: 1,
+        requestHandler: async ({ request, response, $ }) => {
+          auditResult = normalizeSeoAuditResult(
+            collectPageSignals({
+              requestedUrl: targetUrl,
+              request,
+              response,
+              $,
+            })
+          );
+        },
       },
-    });
+      config
+    );
 
     await crawler.run([targetUrl]);
 
@@ -78,6 +50,12 @@ async function runSeoAudit(jobId, targetUrl) {
     return auditResult;
   } catch (error) {
     throw toSeoAuditFailure(error);
+  } finally {
+    try {
+      await rm(storageDir, { recursive: true, force: true });
+    } catch (rmError) {
+      console.warn(`[seo-audit-worker] failed to cleanup storage for ${jobId}:`, rmError);
+    }
   }
 }
 

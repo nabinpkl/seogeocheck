@@ -14,183 +14,55 @@ That is why the architecture leans harder into Temporal, worker separation, and 
 
 ## The Current Slice
 
-Today, SEOGEO already uses Temporal, but only part of the stack is truly Temporal-native.
+Today, SEOGEO is a truly Temporal-native system with a clear separation between orchestration and execution.
 
 The current flow looks like this:
 
-1. The API accepts an audit request and returns a durable `jobId`.
-2. The Java backend starts a Temporal workflow for that audit.
-3. The workflow appends progress events and drives the audit lifecycle.
-4. A Java Temporal activity calls the Lighthouse sidecar over HTTP.
-5. The Node sidecar launches Chrome, runs Lighthouse, normalizes the result, and returns JSON.
-6. The Java worker persists the signed report.
-7. The frontend consumes live events over SSE and later fetches the final report as canonical server state.
+1. **Frontend Server Action:** A trusted boundary that initiates the audit and returns a durable `jobId`.
+2. **Next.js frontend:** Opens an SSE stream for the `jobId` and manages progress in Zustand.
+3. **Java API Tier:** Receives the mutation, starts a Temporal workflow, and reads the event log to feed the SSE stream.
+4. **Java Worker Tier (Orchestrator):** Runs the `AuditWorkflow`, managing state transitions, persistence, and report signing.
+5. **Node Worker Tier (SEO Auditor):** A dedicated Temporal worker polling the `seogeo-seo-signals` task queue. It uses Crawlee (CheerioCrawler) to fetch the site, extract signals, and normalize them into SEOGEO-native findings.
+6. **Persistence:** Results are stored in Postgres as as immutable signed reports.
 
-This is already useful because the request lifecycle is no longer tied to a single HTTP request. Temporal owns the execution history, retries, and recovery semantics. If the backend process dies mid-audit, the workflow state is still durable.
+The request lifecycle is decoupled from HTTP. Temporal owns execution history, retries, and recovery.
 
-But it is not yet the final shape.
+## Why This Shape Matters
 
-The missing piece is that Lighthouse is still being invoked through an HTTP sidecar, not by a dedicated Temporal worker.
+SEOGEO is built to demonstrate how distributed systems should handle mixed runtimes and long-running work.
 
-## Why The Current Shape Is Not Enough
+### 1. Mixed-Runtime Excellence
+We don't try to make Java do browser work, and we don't try to make Node do heavy business orchestration.
+- **Java** owns the "hardened brain": workflows, persistence, and cryptographic signing.
+- **Node** owns the "dirty work": crawling, HTML parsing, and signal extraction.
 
-The current design is good for the first vertical slice, but it still couples concerns in a way that would become painful as the system grows.
+### 2. Dedicated Task Queues
+The Java workflow dispatches a `runSeoAudit` activity onto a Node-specific task queue. A Node worker picks it up, performs the crawl, and returns the result. This means:
+- **Independent Scaling:** We can scale Node workers (which are memory-heavy due to crawling) separately from Java workers.
+- **Durable Handshakes:** If a Node worker crashes mid-crawl, Temporal handles the retry and timeouts at the activity boundary.
 
-### Coupling Issue 1: API and Worker Live Together
+### 3. Progressive Disclosure (SSE + Zustand)
+The UI doesn't wait for a "Done" response. As the Node worker finds signals, the Java workflow appends events to the database. The API tier tails these events and streams them via SSE. The frontend uses Zustand to show a live "moment-by-moment" view of the audit before switching to TanStack Query for the final canonical report.
 
-Right now, the backend process is doing two jobs at once:
+## The Evolution of the Slice
 
-- serving the external API
-- polling Temporal as a worker
+Initially, the system used an HTTP sidecar for Crawlee. We replaced that with a **Temporal-native Node worker** to achieve better durability and coarser backpressure control.
 
-That is fine for a small project, but it means scaling the worker tier also scales the API tier whether you need both or not.
+The next vertical slices will introduce:
+- **Java-native extraction:** Using `jsoup` inside Java activities for deep entity and JSON-LD analysis.
+- **Specialized Node workers:** For browser-based rendered DOM inspection (Playwright/Puppeteer).
+- **Redis-backed momentum:** For global SSE fan-out as the user base grows.
 
-### Coupling Issue 2: Lighthouse Is A Tool, Not A Worker
-
-The Lighthouse sidecar is currently an HTTP service that happens to run Chrome locally. That means the Java activity treats it like a remote tool call, not like a first-class Temporal execution tier.
-
-This has consequences:
-
-- backpressure is coarse
-- retries happen around the HTTP call, not at a dedicated Node activity boundary
-- worker capacity is harder to reason about
-- scaling Node execution independently is less explicit
-
-### Coupling Issue 3: Future Analysis Tiers Need Clear Ownership
-
-SEOGEO is not meant to stop at Lighthouse.
-
-Later slices will likely introduce:
-
-- HTML parsing with `jsoup`
-- metadata extraction
-- JSON-LD and entity analysis
-- semantic or LLM-assisted synthesis
-- more specialized Node sidecars for browser-based execution
-
-If those capabilities all accumulate inside one backend process or behind ad hoc HTTP calls, the architecture becomes harder to explain and harder to scale.
-
-## The Target Shape
-
-The target topology for SEOGEO is:
-
-- API
-- Java worker
-- Node worker
-
-Each tier has a different responsibility.
-
-### 1. API Tier
-
-The API tier should be the boundary for external callers.
-
-It is responsible for:
-
-- accepting audit requests
-- validating input
-- returning durable `jobId` handles
-- exposing SSE progress streams
-- exposing final report retrieval endpoints
-
-The API tier should not own heavy execution.
-
-It should initiate workflows, read durable state, and stream momentum to the frontend, but it should not be the place where Chrome is launched or deep extraction work is performed.
-
-### 2. Java Worker Tier
-
-The Java worker is the orchestrator tier.
-
-It is responsible for:
-
-- Temporal workflow execution
-- durable progress sequencing
-- audit state transitions
-- report signing
-- persistence coordination
-- Java-native extraction work such as `jsoup`
-- future domain-specific rules and entity parsing
-
-This is the hardened brain of the system.
-
-When `jsoup` is added, it belongs here.
-
-`jsoup` is a Java-native parsing tool and fits naturally into a Java activity such as:
-
-- `fetchHtml`
-- `extractOnPageSignals`
-- `extractStructuredData`
-
-Those activities should run in the Java worker tier, not inside the Lighthouse sidecar.
-
-### 3. Node Worker Tier
-
-The Node worker is the execution tier for browser-centric and Node-native workloads.
-
-It is responsible for:
-
-- launching Chrome
-- running Lighthouse
-- normalizing raw Lighthouse data into SEOGEO-native findings
-- future browser-based automation or rendered DOM inspection
-
-In the target design, the Node tier should not be a plain HTTP service pretending to be a worker. It should be an actual Temporal worker polling a dedicated task queue such as `seogeo-lighthouse`.
-
-That gives the system a clean separation:
-
-- Java orchestrates
-- Node executes browser work
-
-## Why This Is More "Truly Temporal"
-
-Temporal becomes most valuable when execution tiers are modeled as workers, not merely as HTTP services wrapped by activities.
-
-In the target model:
-
-- the Java workflow dispatches a Lighthouse activity onto a Node-specific task queue
-- one Node worker replica picks it up
-- that worker launches Chrome locally
-- it returns a normalized result back through Temporal
-- the workflow continues with persistence and report finalization
-
-That means each concern participates in Temporal as a first-class worker boundary.
-
-This is more durable, more explainable, and closer to how real mixed-runtime systems scale.
-
-## How Scaling Works In The Target Model
-
-This is the part that makes the architecture worth talking about in a blog post.
+## Scaling Strategy
 
 ### API Scaling
-
-You can scale API instances for request throughput and SSE fan-out without also scaling execution workers.
-
-That means a traffic spike on audit creation or report reads does not force you to scale Chrome capacity unnecessarily.
+Scale API instances for request throughput and SSE fan-out. A traffic spike on audit creation doesn't impact crawl capacity.
 
 ### Java Worker Scaling
-
-You can scale Java workers based on orchestration pressure:
-
-- more concurrent workflows
-- more persistence activity
-- more `jsoup` extraction
-- more report synthesis
-
-This is useful because Java worker pressure and Node browser pressure are not the same problem.
+Scale based on orchestration pressure: more concurrent workflows, more persistence activity, and more report synthesis.
 
 ### Node Worker Scaling
-
-You can scale Node workers based on Lighthouse demand.
-
-If Chrome execution is the bottleneck, add more Node worker replicas.
-
-Only those replicas need:
-
-- Node runtime
-- Lighthouse dependency
-- Chrome binary
-- browser-specific tuning
-
-The API tier and Java worker tier do not need to carry that weight.
+Scale based on crawl demand. Since Node workers are the most resource-intensive (due to the crawler and browser overhead), they can be isolated in dedicated clusters with specific resource limits.
 
 ## Important Reality Check: Overengineering Is The Point
 
@@ -222,9 +94,9 @@ A good architecture writeup is more believable when it admits what can go wrong.
 
 ### Chrome Saturation
 
-Lighthouse is expensive.
+Crawlee is expensive.
 
-If Node worker concurrency is too high, the machine will thrash under multiple Chrome instances. Temporal makes this easier to manage because Lighthouse work can be isolated onto its own queue and tuned independently.
+If Node worker concurrency is too high, the machine will thrash under multiple Chrome instances. Temporal makes this easier to manage because Crawlee work can be isolated onto its own queue and tuned independently.
 
 ### API/Worker Coupling
 
@@ -239,7 +111,7 @@ The final `complete` event must only be emitted after the canonical report is pe
 Java and Node are excellent at different things. The risk is not the split itself. The risk is blurry ownership. That is why the system should draw a hard line:
 
 - Java owns orchestration, persistence, signing, and `jsoup`
-- Node owns Lighthouse and browser execution
+- Node owns Crawlee and browser execution
 
 ## Where `jsoup` Fits
 
@@ -258,7 +130,7 @@ Use `jsoup` for:
 
 Keep browser-driven work in Node for:
 
-- Lighthouse
+- Crawlee
 - rendered DOM behavior
 - browser automation
 - Chrome-based measurements
@@ -282,9 +154,9 @@ Keep the same Java codebase if needed, but allow deployment roles to diverge:
 
 That makes the split visible even before introducing a dedicated Node Temporal worker.
 
-### Slice 3: Replace The Lighthouse HTTP Boundary With A Node Temporal Worker
+### Slice 3: Replace The Crawlee HTTP Boundary With A Node Temporal Worker
 
-Move Lighthouse execution behind a Temporal activity implemented by a Node worker on a dedicated task queue.
+Move Crawlee execution behind a Temporal activity implemented by a Node worker on a dedicated task queue.
 
 At that point, the Node tier becomes a real worker, not just a helper service.
 
@@ -293,7 +165,7 @@ At that point, the Node tier becomes a real worker, not just a helper service.
 Add Java-native extraction activities so the workflow can compose:
 
 - on-page extraction
-- Lighthouse technical audit
+- Crawlee technical audit
 - final report synthesis
 
 This creates a more realistic multi-stage audit pipeline.
@@ -306,7 +178,7 @@ That is not accidental. It is the product strategy for this project.
 
 The architecture is meant to teach, to signal systems thinking, and to create room for honest technical storytelling in public.
 
-The end state is not "a backend that calls Lighthouse."
+The end state is not "a backend that calls Crawlee."
 
 The end state is a durable, mixed-runtime, multi-worker audit platform where:
 

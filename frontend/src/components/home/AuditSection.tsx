@@ -70,6 +70,24 @@ function categoryTone(score: number) {
   return "bg-rose-50 text-rose-700 ring-rose-200";
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  reachability: "Reachability",
+  crawlability: "Crawlability",
+  indexability: "Indexability",
+  contentVisibility: "Content Visibility",
+  metadata: "Metadata",
+  discovery: "Discovery",
+};
+
+const CATEGORY_ORDER = [
+  "reachability",
+  "crawlability",
+  "indexability",
+  "contentVisibility",
+  "metadata",
+  "discovery",
+] as const;
+
 function formatTimestamp(timestamp?: string) {
   if (!timestamp) {
     return "Live now";
@@ -161,8 +179,9 @@ function formatConnectionLabel(connectionStatus: string, auditStatus: string) {
 }
 
 function formatCategoryLabel(key: string) {
-  if (key === "bestPractices") {
-    return "Best Practices";
+  const knownLabel = CATEGORY_LABELS[key];
+  if (knownLabel) {
+    return knownLabel;
   }
 
   return key.charAt(0).toUpperCase() + key.slice(1);
@@ -413,11 +432,23 @@ export function AuditSection() {
   const isAuditActive = Boolean(jobId) && !isAuditSettled;
   const showProgressSidebar = !report;
   const categoryScores = report?.categories
-    ? Object.entries(report.categories).map(([key, value]) => ({
-        key,
-        label: formatCategoryLabel(key),
-        score: typeof value === "number" ? value : 0,
-      }))
+    ? [
+        ...CATEGORY_ORDER.filter((key) =>
+          Object.prototype.hasOwnProperty.call(report.categories, key)
+        ).map((key) => ({
+          key,
+          label: formatCategoryLabel(key),
+          score:
+            typeof report.categories?.[key] === "number" ? report.categories[key] : 0,
+        })),
+        ...Object.entries(report.categories)
+          .filter(([key]) => !CATEGORY_ORDER.includes(key as (typeof CATEGORY_ORDER)[number]))
+          .map(([key, value]) => ({
+            key,
+            label: formatCategoryLabel(key),
+            score: typeof value === "number" ? value : 0,
+          })),
+      ]
     : [];
   const userFacingError =
     actionState.error ||
