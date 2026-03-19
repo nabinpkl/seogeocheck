@@ -15,7 +15,6 @@ import {
   Radar,
   RotateCcw,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import {
   startAuditAction,
@@ -54,7 +53,40 @@ function severityTone(severity?: string) {
     case "medium":
       return "bg-amber-100 text-amber-700";
     default:
-      return "bg-slate-100 text-slate-700";
+      return "bg-blue-100 text-blue-700";
+  }
+}
+
+function severityCardTone(severity?: string) {
+  switch (severity) {
+    case "high":
+      return "border-rose-500/40 bg-rose-500/[0.08] hover:bg-rose-500/[0.12]";
+    case "medium":
+      return "border-amber-500/40 bg-amber-500/[0.08] hover:bg-amber-500/[0.12]";
+    default:
+      return "border-white/10 bg-white/5 hover:bg-white/[0.08]";
+  }
+}
+
+function severityTextTone(severity?: string) {
+  switch (severity) {
+    case "high":
+      return "text-rose-200/70";
+    case "medium":
+      return "text-amber-200/70";
+    default:
+      return "text-blue-200/70";
+  }
+}
+
+function severityIconTone(severity?: string) {
+  switch (severity) {
+    case "high":
+      return "border-rose-500/20 bg-rose-500/10 text-rose-500/80 shadow-[0_0_10px_rgba(244,63,94,0.3)]";
+    case "medium":
+      return "border-amber-500/20 bg-amber-500/10 text-amber-500/80 shadow-[0_0_10px_rgba(245,158,11,0.3)]";
+    default:
+      return "border-primary/20 bg-primary/5 text-primary";
   }
 }
 
@@ -202,35 +234,38 @@ function recommendedFixesBadgeTone(issueCount: number, findings: AuditReportChec
 function CheckRow({
   check,
   kind,
+  isHero = false,
 }: {
   check: AuditReportCheck;
   kind: "issue" | "passed";
+  isHero?: boolean;
 }) {
   const isIssue = kind === "issue";
 
   return (
     <details
-      className={`rounded-2xl border ${
-        isIssue
-          ? "border-border bg-white"
-          : "border-emerald-200 bg-emerald-50/60"
-      }`}
+      open={isHero}
+      className={`group/row overflow-hidden rounded-2xl border transition-all ${isIssue ? severityCardTone(check.severity) : "border-emerald-500/10 bg-emerald-500/[0.03] hover:bg-emerald-500/[0.05]"}`}
     >
       <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 text-left">
-        {isIssue ? (
-          <ChevronRight className="h-4 w-4 shrink-0 text-primary" />
-        ) : (
-          <CircleCheckBig className="h-4 w-4 shrink-0 text-emerald-600" />
-        )}
+        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all group-open/row:rotate-90 ${isIssue ? severityIconTone(check.severity) : "border-emerald-500/20 bg-emerald-500/5 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+          }`}>
+          <ChevronRight className="h-4 w-4" />
+        </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold text-foreground">
-            {check.label ?? (isIssue ? "Finding" : "Passed check")}
+          <div className="truncate text-sm font-bold text-white tracking-tight">
+            {check.label ?? (isIssue ? "Technical Finding" : "Optimized Signal")}
           </div>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {isIssue && check.severity && (
+          {isHero && (
+            <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
+              Critical Action Required
+            </span>
+          )}
+          {isIssue && check.severity && !isHero && (
             <span
-              className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] ${severityTone(
+              className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] ${severityTone(
                 check.severity
               )}`}
             >
@@ -238,18 +273,18 @@ function CheckRow({
             </span>
           )}
           {!isIssue && (
-            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 border border-emerald-500/20">
               Passed
             </span>
           )}
         </div>
       </summary>
 
-      <div className="border-t border-border/70 px-5 py-4 text-sm text-foreground/70">
+      <div className={`border-t border-white/5 px-5 py-4 text-left text-sm ${isIssue ? "text-white/80" : "text-emerald-200/80"}`}>
         <div className="space-y-2">
           {isIssue && check.instruction && (
             <p>
-              <span className="font-semibold text-foreground/80">
+              <span className="font-bold text-white">
                 Recommended fix:
               </span>{" "}
               {check.instruction}
@@ -257,7 +292,7 @@ function CheckRow({
           )}
           {!isIssue && check.detail && (
             <p>
-              <span className="font-semibold text-foreground/80">
+              <span className="font-bold text-white">
                 What is working:
               </span>{" "}
               {check.detail}
@@ -265,23 +300,23 @@ function CheckRow({
           )}
           {check.selector && (
             <p>
-              <span className="font-semibold text-foreground/80">
+              <span className="font-bold text-white">
                 Page area:
               </span>{" "}
-              <code className="rounded bg-secondary px-2 py-1 text-xs">
+              <code className="rounded bg-white/10 px-2 py-1 text-xs text-white/90 font-mono">
                 {check.selector}
               </code>
             </p>
           )}
           {check.metric && (
             <p>
-              <span className="font-semibold text-foreground/80">Metric:</span>{" "}
+              <span className="font-semibold text-blue-200">Metric:</span>{" "}
               {check.metric}
             </p>
           )}
           {!isIssue && !check.detail && check.instruction && (
             <p>
-              <span className="font-semibold text-foreground/80">
+              <span className="font-semibold text-blue-200">
                 Why this passed:
               </span>{" "}
               {check.instruction}
@@ -289,7 +324,7 @@ function CheckRow({
           )}
           {isIssue && !check.instruction && check.detail && (
             <p>
-              <span className="font-semibold text-foreground/80">
+              <span className="font-semibold text-blue-200">
                 Recommendation:
               </span>{" "}
               {check.detail}
@@ -433,28 +468,28 @@ export function AuditSection() {
   const showProgressSidebar = !report;
   const categoryScores = report?.categories
     ? [
-        ...CATEGORY_ORDER.filter((key) =>
-          Object.prototype.hasOwnProperty.call(report.categories, key)
-        ).map((key) => ({
+      ...CATEGORY_ORDER.filter((key) =>
+        Object.prototype.hasOwnProperty.call(report.categories, key)
+      ).map((key) => ({
+        key,
+        label: formatCategoryLabel(key),
+        score:
+          typeof report.categories?.[key] === "number" ? report.categories[key] : 0,
+      })),
+      ...Object.entries(report.categories)
+        .filter(([key]) => !CATEGORY_ORDER.includes(key as (typeof CATEGORY_ORDER)[number]))
+        .map(([key, value]) => ({
           key,
           label: formatCategoryLabel(key),
-          score:
-            typeof report.categories?.[key] === "number" ? report.categories[key] : 0,
+          score: typeof value === "number" ? value : 0,
         })),
-        ...Object.entries(report.categories)
-          .filter(([key]) => !CATEGORY_ORDER.includes(key as (typeof CATEGORY_ORDER)[number]))
-          .map(([key, value]) => ({
-            key,
-            label: formatCategoryLabel(key),
-            score: typeof value === "number" ? value : 0,
-          })),
-      ]
+    ]
     : [];
   const userFacingError =
     actionState.error ||
     liveError ||
     (reportQuery.error instanceof Error &&
-    !(reportQuery.error instanceof ReportPendingError)
+      !(reportQuery.error instanceof ReportPendingError)
       ? reportQuery.error.message
       : null);
   const progressValue = hasAuditFailed ? 100 : report ? 100 : currentProgress;
@@ -502,53 +537,49 @@ export function AuditSection() {
 
   return (
     <div className="w-full self-stretch">
-      <form action={formAction} className="mx-auto mt-20 mb-12 w-full max-w-4xl px-4 sm:px-0">
+      <form action={formAction} className="mx-auto mt-16 mb-12 w-full max-w-2xl px-4 sm:px-0">
         <div className="group relative">
-          {/* Intense White Glow Layers */}
-          <div className="absolute -inset-3 rounded-[2.5rem] bg-white blur-3xl opacity-40 animate-pulse" />
-          <div className="absolute -inset-1 rounded-[2.5rem] bg-white blur-xl opacity-60" />
-          
-          <div className="relative flex flex-col rounded-3xl border border-white bg-white p-2.5 shadow-[0_32px_64px_-24px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center transition-all focus-within:ring-8 focus-within:ring-white/10">
-          <div className="flex flex-1 items-center px-4 sm:px-6">
-            <Globe className="h-5 w-5 text-foreground/20 transition-colors group-focus-within:text-primary" />
-            <input
-              ref={inputRef}
-              autoFocus
-              type="text"
-              name="url"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
+          <div className="relative flex flex-col rounded-2xl border border-white bg-white p-1.5 shadow-xl sm:flex-row sm:items-center transition-all focus-within:ring-4 focus-within:ring-white/10">
+            <div className="flex flex-1 items-center px-4 sm:px-6">
+              <Globe className="h-5 w-5 text-foreground/20 transition-colors group-focus-within:text-primary" />
+              <input
+                ref={inputRef}
+                autoFocus
+                type="text"
+                name="url"
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                disabled={isPending || isAuditActive}
+                placeholder="Enter your website URL (e.g. example.com)"
+                className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-foreground/35 sm:text-base sm:placeholder:text-sm"
+              />
+            </div>
+            <button
+              type="submit"
               disabled={isPending || isAuditActive}
-              placeholder="Enter your URL to see if AI trusts your brand"
-              className="h-14 min-w-0 flex-1 bg-transparent px-3 text-base outline-none placeholder:text-foreground/35 sm:text-lg sm:placeholder:text-base"
-            />
+              className="group/btn relative mt-2 flex h-11 w-full items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-[10px] bg-primary px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-300 disabled:text-blue-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:min-w-[180px] sm:w-auto sm:text-base"
+            >
+              <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transition-transform group-hover/btn:translate-y-0" />
+              {isPending ? (
+                <>
+                  <RotateCcw className="h-5 w-5 animate-spin" />
+                  Interrogating AI...
+                </>
+              ) : isAuditActive ? (
+                <>
+                  <RotateCcw className="h-5 w-5 animate-spin" />
+                  Analyzing Visibility
+                </>
+              ) : (
+                <>
+                  Analyze Visibility
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover/btn:translate-x-1" />
+                </>
+              )}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={isPending || isAuditActive}
-            className="group/btn relative mt-2 flex h-14 w-full items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-2xl bg-primary px-8 text-base font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:min-w-[220px] sm:w-auto sm:text-lg"
-          >
-            <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transition-transform group-hover/btn:translate-y-0" />
-            {isPending ? (
-              <>
-                <RotateCcw className="h-5 w-5 animate-spin" />
-                Interrogating AI...
-              </>
-            ) : isAuditActive ? (
-              <>
-                <RotateCcw className="h-5 w-5 animate-spin" />
-                Measuring Authority
-              </>
-            ) : (
-              <>
-                Audit AI Authority
-                <ArrowRight className="h-5 w-5 transition-transform group-hover/btn:translate-x-1" />
-              </>
-            )}
-          </button>
         </div>
-      </div>
-    </form>
+      </form>
 
       <AnimatePresence initial={false}>
         {(jobId || isPending || userFacingError) && (
@@ -557,45 +588,36 @@ export function AuditSection() {
             initial={{ opacity: 0, scale: 0.97, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
-            className="mx-auto mt-16 w-full max-w-6xl overflow-hidden rounded-3xl border border-border bg-white shadow-2xl"
+            className="mx-auto mt-16 w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-blue-950/60 shadow-2xl backdrop-blur-xl"
           >
             <div
-              className={`grid gap-0 ${
-                showProgressSidebar ? "md:grid-cols-[1.35fr_0.85fr]" : ""
-              }`}
+              className={`grid gap-0 ${showProgressSidebar ? "md:grid-cols-[1.35fr_0.85fr]" : ""
+                }`}
             >
               <div className="p-8 md:p-12">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-foreground/60">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-400">
                     <span
-                      className={`h-2.5 w-2.5 rounded-full ${
-                        status === "FAILED"
+                      className={`h-2.5 w-2.5 rounded-full ${status === "FAILED"
                           ? "bg-rose-500"
                           : status === "VERIFIED"
                             ? "bg-emerald-500"
                             : "animate-pulse bg-primary"
-                      }`}
+                        }`}
                     />
                     {formatStatusLabel(status, isPending)}
                   </span>
-                  <span className="text-sm text-foreground/45">
+                  <span className="text-sm text-blue-500">
                     {targetUrl || actionState.targetUrl || "Preparing your audit"}
                   </span>
                 </div>
 
-                <div className="mt-6 flex items-center gap-3 text-foreground/70">
+                <div className="mt-6 flex items-center gap-3 text-white">
                   {hasAuditFailed ? (
                     <>
                       <AlertCircle className="h-5 w-5 text-rose-500" />
                       <p className="text-lg font-semibold text-rose-700">
                         We hit a problem reviewing your site
-                      </p>
-                    </>
-                  ) : report ? (
-                    <>
-                      <BadgeCheck className="h-5 w-5 text-emerald-500" />
-                      <p className="text-lg font-semibold">
-                        Your results are ready
                       </p>
                     </>
                   ) : pendingReport ? (
@@ -605,7 +627,7 @@ export function AuditSection() {
                         Finalizing your results
                       </p>
                     </>
-                  ) : (
+                  ) : !report && (
                     <>
                       <Radar className="h-5 w-5 text-primary" />
                       <p className="text-lg font-semibold">
@@ -624,36 +646,34 @@ export function AuditSection() {
                 {!report && (
                   <div className="mt-8 space-y-4">
                     {events.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-border px-5 py-6 text-sm text-foreground/50">
+                      <div className="rounded-2xl border border-dashed border-white/10 px-5 py-6 text-sm text-blue-500">
                         Getting your first results ready...
                       </div>
                     ) : (
                       events.map((event) => (
                         <div
                           key={String(event.eventId)}
-                          className={`rounded-2xl border px-5 py-4 ${
-                            event.type === "error"
-                              ? "border-rose-200 bg-rose-50"
+                          className={`rounded-2xl border px-5 py-4 ${event.type === "error"
+                              ? "border-rose-900/40 bg-rose-950/20"
                               : isPassedCheck(event.checkStatus)
-                              ? "border-emerald-200 bg-emerald-50/70"
-                              : "border-border/70 bg-secondary/20"
-                          }`}
+                                ? "border-emerald-900/40 bg-emerald-950/20"
+                                : "border-white/5 bg-white/5"
+                            }`}
                         >
                           <div className="flex flex-wrap items-center gap-3">
                             <CheckCircle2
-                              className={`h-5 w-5 ${
-                                event.type === "error"
+                              className={`h-5 w-5 ${event.type === "error"
                                   ? "text-rose-500"
                                   : isIssueCheck(event.checkStatus)
-                                  ? "text-primary"
-                                  : isPassedCheck(event.checkStatus)
-                                    ? "text-emerald-500"
-                                    : event.type === "complete"
-                                    ? "text-emerald-500"
-                                    : "text-foreground/40"
-                              }`}
+                                    ? "text-primary"
+                                    : isPassedCheck(event.checkStatus)
+                                      ? "text-emerald-500"
+                                      : event.type === "complete"
+                                        ? "text-emerald-500"
+                                        : "text-blue-500"
+                                }`}
                             />
-                            <span className="text-sm font-semibold text-foreground/80">
+                            <span className="text-sm font-semibold text-blue-200">
                               {renderEventLead(event)}
                             </span>
                             {typeof event.severity === "string" && (
@@ -670,7 +690,7 @@ export function AuditSection() {
                                 Passed
                               </span>
                             )}
-                            <span className="ml-auto text-xs text-foreground/40">
+                            <span className="ml-auto text-xs text-blue-500">
                               {formatTimestamp(
                                 typeof event.timestamp === "string"
                                   ? event.timestamp
@@ -680,24 +700,24 @@ export function AuditSection() {
                           </div>
 
                           {(event.selector || renderEventDetail(event)) && (
-                            <details className="mt-3 rounded-xl bg-white/80 px-4 py-3 text-sm text-foreground/70">
-                              <summary className="cursor-pointer list-none font-semibold text-foreground/75">
+                            <details className="mt-3 rounded-xl bg-white/5 px-4 py-3 text-left text-sm text-blue-400/80">
+                              <summary className="cursor-pointer list-none font-semibold text-blue-300">
                                 {isPassedCheck(event.checkStatus) ? "Why this passed" : "Suggested fix"}
                               </summary>
                               <div className="mt-3 space-y-2">
                                 {typeof event.selector === "string" && (
                                   <p>
-                                    <span className="font-semibold text-foreground/80">
+                                    <span className="font-semibold text-blue-300">
                                       Page area:
                                     </span>{" "}
-                                    <code className="rounded bg-secondary px-2 py-1 text-xs">
+                                    <code className="rounded bg-white/10 px-2 py-1 text-xs">
                                       {event.selector}
                                     </code>
                                   </p>
                                 )}
                                 {renderEventDetail(event) && (
                                   <p>
-                                    <span className="font-semibold text-foreground/80">
+                                    <span className="font-semibold text-blue-300">
                                       {isPassedCheck(event.checkStatus) ? "What went well:" : "Recommendation:"}
                                     </span>{" "}
                                     {renderEventDetail(event)}
@@ -714,90 +734,110 @@ export function AuditSection() {
 
                 {report && (
                   <div className="mt-8 space-y-5">
-                    <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-6 py-5">
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                            Top priority
-                          </p>
-                          <p className="mt-2 text-lg font-semibold text-foreground">
-                            {report.summary?.topIssue ?? "Your audit results are ready"}
-                          </p>
+                    {/* Command Hub: Unified Audit Stats */}
+                    <div className="group/hub relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-blue-950/40 p-10 shadow-[0_45px_100px_rgba(0,0,0,0.5)] md:p-12 lg:p-14">
+                      {/* Decorative Background Elements */}
+                      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute inset-0 bg-black/10" />
+                      </div>
+
+                      <div className="relative flex flex-col items-center gap-12 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24">
+                        {/* Primary Stat: Visibility Rating: Circular HUD */}
+                        <div className="flex flex-col items-center">
+                          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-200/60 mb-6">
+                            Visibility Score
+                          </div>
+                          
+                          <div className="relative h-44 w-44 flex items-center justify-center font-mono group/score">
+                            {/* SVG Gauge Background */}
+                            <svg className="absolute inset-0 h-full w-full rotate-[-90deg]" viewBox="0 0 160 160">
+                              <circle cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-white/[0.05]" />
+                              <circle 
+                                cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12" 
+                                strokeDasharray={2 * Math.PI * 70}
+                                strokeDashoffset={2 * Math.PI * 70 * (1 - reportScore / 100)}
+                                className={`${reportScore > 70 ? "text-emerald-500" : reportScore > 40 ? "text-primary" : "text-rose-500"} transition-all duration-1000 ease-out`}
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            
+                            {/* Score Display */}
+                            <div className="flex flex-col items-center leading-none group-hover/score:scale-110 transition-transform duration-300">
+                              <span className="text-6xl font-black text-white tracking-tighter">{reportScore}</span>
+                              <span className="text-[10px] font-black text-blue-400/40 uppercase tracking-[0.2em] mt-1">/100</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-8 flex items-center gap-2.5 rounded-2xl bg-white/[0.03] border border-white/5 py-2.5 px-5 backdrop-blur-md">
+                            <div className={`h-1.5 w-1.5 rounded-full ${reportScore > 70 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : reportScore > 40 ? "bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"}`} />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
+                              {reportScore > 70 ? "High Authority" : reportScore > 40 ? "Moderate Reach" : "Optimizing Visibility"}
+                            </span>
+                          </div>
                         </div>
-                        {hasVerifiedSignature && (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm">
-                            <BadgeCheck className="h-4 w-4" />
-                            Ready
-                          </span>
-                        )}
+
+                        {/* Subtle Vertical Divider */}
+                        <div className="hidden lg:block h-32 w-px bg-white/10" />
+
+                        {/* Secondary Stats Group */}
+                        <div className="flex items-center gap-12 sm:gap-20 lg:gap-16 xl:gap-24">
+                          {/* Gaps Hub */}
+                          <button 
+                            onClick={() => document.getElementById('requires-attention')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="group/stat flex flex-col items-center lg:items-start transition-transform hover:scale-105 cursor-pointer text-left"
+                          >
+                            <div className="text-6xl font-black text-rose-500 font-mono leading-none tracking-tighter lg:text-7xl drop-shadow-[0_0_20px_rgba(244,63,94,0.2)]">
+                              {issueCount}
+                            </div>
+                            <div className="mt-2 text-[9px] font-bold text-rose-100/40 uppercase tracking-[0.2em]">
+                              Things need your attention   
+                            </div>
+                            <div className="mt-4 h-0.5 w-8 bg-rose-500/20 transition-all group-hover/stat:w-full group-hover/stat:bg-rose-500/40" />
+                          </button>
+
+                          {/* Signals Hub */}
+                          <button 
+                            onClick={() => document.getElementById('passed-checks')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="group/stat flex flex-col items-center lg:items-start transition-transform hover:scale-105 cursor-pointer text-left"
+                          >
+                            <div className="text-6xl font-black text-emerald-500 font-mono leading-none tracking-tighter lg:text-7xl drop-shadow-[0_0_20_rgba(16,185,129,0.2)]">
+                              {passedCheckCount}
+                            </div>
+                            <div className="mt-2 text-[9px] font-bold text-emerald-100/40 uppercase tracking-[0.2em]">
+                              Checks passed
+                            </div>
+                            <div className="mt-4 h-0.5 w-8 bg-emerald-500/20 transition-all group-hover/stat:w-full group-hover/stat:bg-emerald-500/40" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-2xl border border-border bg-secondary/20 px-5 py-4">
-                        <div className="text-sm font-semibold uppercase tracking-[0.2em] text-foreground/40">
-                          Visibility Score
-                        </div>
-                        <div className="mt-3 text-5xl font-black text-primary">
-                          {reportScore}
-                          <span className="text-xl text-foreground/20">/100</span>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-border bg-secondary/20 px-5 py-4">
-                        <div className="text-sm font-semibold uppercase tracking-[0.2em] text-foreground/40">
-                          Issues found
-                        </div>
-                        <div className="mt-3 text-5xl font-black text-primary">
-                          {issueCount}
-                        </div>
-                        <p className="mt-2 text-xs text-foreground/45">
-                          Action items we recommend prioritizing first.
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-                        <div className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                          Passed checks
-                        </div>
-                        <div className="mt-3 text-5xl font-black text-emerald-600">
-                          {passedCheckCount}
-                        </div>
-                        <p className="mt-2 text-xs text-emerald-700/70">
-                          Signals that are already working in your favor.
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-border bg-secondary/20 px-5 py-4">
-                        <div className="text-sm font-semibold uppercase tracking-[0.2em] text-foreground/40">
-                          Review status
-                        </div>
-                        <div className="mt-3 text-sm font-medium text-foreground/75">
-                          {hasVerifiedSignature ? "Checked" : "In progress"}
-                        </div>
-                        <p className="mt-2 text-xs text-foreground/45">
-                          {hasVerifiedSignature
-                            ? "Your results are ready to explore."
-                            : "We're still preparing your results."}
-                        </p>
-                      </div>
-                    </div>
-
+                    {/* Technical Breakdown Section */}
                     {categoryScores.length > 0 && (
-                      <div className="rounded-3xl border border-border bg-white px-6 py-5">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-foreground/45">
-                            Score breakdown
-                          </h3>
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-6 py-4">
+                          <div className="h-px flex-1 bg-white/10" />
+                          <div className="rounded-full border border-white/10 bg-white/5 px-6 py-2 backdrop-blur-sm">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-200">
+                              Technical Scores
+                            </h3>
+                          </div>
+                          <div className="h-px flex-1 bg-white/10" />
                         </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                           {categoryScores.map((category) => (
-                            <div
-                              key={category.key}
-                              className={`rounded-2xl px-4 py-4 ring-1 ${categoryTone(category.score)}`}
-                            >
-                              <div className="text-sm font-semibold">{category.label}</div>
-                              <div className="mt-2 text-3xl font-black">
-                                {category.score}
-                                <span className="text-sm font-semibold opacity-60">/100</span>
+                            <div key={category.key} className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-5 transition-all hover:bg-white/[0.04]">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-blue-100">{category.label}</span>
+                                <span className={`text-sm font-black font-mono ${category.score > 70 ? "text-emerald-400" : category.score > 40 ? "text-primary" : "text-rose-400"
+                                  }`}>{category.score}</span>
+                              </div>
+                              <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-white/5">
+                                <div
+                                  className={`h-full opacity-60 transition-all duration-1000 ${category.score > 70 ? "bg-emerald-500" : category.score > 40 ? "bg-primary" : "bg-rose-500"
+                                    }`}
+                                  style={{ width: `${category.score}%` }}
+                                />
                               </div>
                             </div>
                           ))}
@@ -805,53 +845,65 @@ export function AuditSection() {
                       </div>
                     )}
 
-                    <div className="space-y-6">
-                      <section className="space-y-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <h3 className="text-lg font-semibold text-foreground">
-                              Recommended fixes
+                    <div className="space-y-12">
+                      <section id="requires-attention" className="space-y-6 scroll-mt-10">
+                        <div className="flex items-end justify-between px-2">
+                          <div className="flex flex-col gap-1">
+                            <h3 className="text-2xl font-black text-white tracking-tight">
+                              Requires Your Attention
                             </h3>
-                            <p className="text-sm text-foreground/55">
-                              Start here to improve visibility the fastest.
-                            </p>
                           </div>
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${recommendedFixesBadgeClassName}`}
-                          >
-                            {issueCount} issues
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400/80">
+                            {issueCount} Issues Detected
                           </span>
                         </div>
 
-                        {reportFindings.length === 0 ? (
-                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-5 text-sm text-emerald-800">
-                            No urgent issues were flagged in this audit. Your site cleared every tracked check in this slice.
-                          </div>
+                        {/* Feature the Top Priority (Critical Action) but using the shared CheckRow style */}
+                        {(() => {
+                          const topCheck = reportChecks.find(c => c.label === report.summary?.topIssue);
+                          if (!topCheck) return null;
+
+                          return (
+                            <div className="mb-4">
+                              <CheckRow
+                                check={topCheck}
+                                kind="issue"
+                                isHero={true}
+                              />
+                            </div>
+                          );
+                        })()}
+
+                        {reportFindings.filter(finding => finding.label !== report.summary?.topIssue).length === 0 ? (
+                          !reportChecks.find(c => c.label === report.summary?.topIssue) && (
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-5 text-sm text-emerald-800">
+                              No urgent issues were flagged in this audit. Your site cleared every tracked check in this slice.
+                            </div>
+                          )
                         ) : (
                           <div className="space-y-3">
-                            {reportFindings.map((finding, index) => (
-                              <CheckRow
-                                key={finding.id ?? `${finding.selector}-${index}`}
-                                check={finding}
-                                kind="issue"
-                              />
-                            ))}
+                            {reportFindings
+                              .filter(finding => finding.label !== report.summary?.topIssue)
+                              .map((finding, index) => (
+                                <CheckRow
+                                  key={finding.id ?? `${finding.selector}-${index}`}
+                                  check={finding}
+                                  kind="issue"
+                                />
+                              ))}
                           </div>
                         )}
                       </section>
 
-                      <section className="space-y-4">
-                        <div className="flex items-center justify-between gap-3">
+                      <section id="passed-checks" className="space-y-6 scroll-mt-10">
+                        <div className="flex items-end justify-between">
                           <div>
-                            <h3 className="text-lg font-semibold text-foreground">
-                              Checks you already pass
+                            <h3 className="text-2xl font-bold text-white tracking-tight">
+                              Passed Checks
                             </h3>
-                            <p className="text-sm text-foreground/55">
-                              Keep these stable while you work through the fixes.
-                            </p>
                           </div>
-                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">
-                            {passedCheckCount} passed
+                          <span className="text-sm font-bold text-blue-400/80">
+                            {passedCheckCount} Validated
                           </span>
                         </div>
 
@@ -878,33 +930,32 @@ export function AuditSection() {
 
               {showProgressSidebar && (
                 <div className="border-t border-border bg-secondary/20 p-8 md:border-t-0 md:border-l">
-                  <div className="rounded-3xl bg-white p-6 shadow-sm">
-                    <div className="text-sm font-bold uppercase tracking-[0.2em] text-foreground/40">
+                  <div className="rounded-3xl bg-blue-900/40 p-6 shadow-sm">
+                    <div className="text-sm font-bold uppercase tracking-[0.2em] text-blue-500">
                       Progress
                     </div>
                     <div className="mt-6 space-y-5">
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
                           Live updates
                         </div>
                         <div
-                          className={`mt-2 text-lg font-semibold ${
-                            hasAuditFailed ? "text-rose-700" : "text-foreground"
-                          }`}
+                          className={`mt-2 text-lg font-semibold ${hasAuditFailed ? "text-rose-400" : "text-white"
+                            }`}
                         >
                           {formatConnectionLabel(connectionStatus, status)}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
                           Website
                         </div>
-                        <div className="mt-2 break-all text-sm text-foreground/70">
+                        <div className="mt-2 break-all text-sm text-blue-300">
                           {targetUrl || actionState.targetUrl || "Waiting"}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
                           Issues found
                         </div>
                         <div className="mt-2 text-4xl font-black text-primary">
@@ -912,18 +963,18 @@ export function AuditSection() {
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
                           Checks passed
                         </div>
-                        <div className="mt-2 text-4xl font-black text-emerald-600">
+                        <div className="mt-2 text-4xl font-black text-emerald-400">
                           {livePassedChecks.length}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
                           Progress
                         </div>
-                        <div className="mt-3 h-3 overflow-hidden rounded-full bg-secondary">
+                        <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${progressBarClassName}`}
                             style={{
@@ -932,21 +983,19 @@ export function AuditSection() {
                           />
                         </div>
                         <div
-                          className={`mt-2 text-sm ${
-                            hasAuditFailed ? "text-rose-700" : "text-foreground/60"
-                          }`}
+                          className={`mt-2 text-sm ${hasAuditFailed ? "text-rose-400" : "text-blue-400"
+                            }`}
                         >
                           {progressLabel}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/35">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
                           Current step
                         </div>
                         <div
-                          className={`mt-2 flex items-center gap-2 text-sm ${
-                            hasAuditFailed ? "text-rose-700" : "text-foreground/70"
-                          }`}
+                          className={`mt-2 flex items-center gap-2 text-sm ${hasAuditFailed ? "text-rose-400" : "text-blue-300"
+                            }`}
                         >
                           {hasAuditFailed ? (
                             <>
@@ -978,7 +1027,7 @@ export function AuditSection() {
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="mt-6 w-full rounded-2xl border border-primary/20 bg-white px-5 py-4 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/5"
+                      className="mt-6 w-full rounded-2xl border border-primary/20 bg-white/5 px-5 py-4 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/10"
                     >
                       Run another audit
                     </button>

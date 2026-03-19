@@ -39,7 +39,9 @@ export function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: "easeInOut" }}
-            className="absolute inset-0 z-0 border-b border-border shadow-md"
+            className={`absolute inset-0 z-0 border-b shadow-md transition-colors ${
+              isScrolled ? "border-slate-200" : "border-white/10"
+            }`}
           >
             {/* Navbar Background Image overlay */}
             <div className="absolute inset-0">
@@ -51,7 +53,9 @@ export function Navbar() {
                 className="object-cover object-center"
               />
             </div>
-            <div className="absolute inset-0 bg-white/95 backdrop-blur-xl" />
+            <div className={`absolute inset-0 backdrop-blur-xl transition-colors ${
+              isScrolled ? "bg-white/95" : "bg-blue-950/90"
+            }`} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -66,21 +70,31 @@ export function Navbar() {
             priority
             className="object-contain" 
           />
-          <span className="font-display text-xl font-bold tracking-tight text-foreground uppercase">SEOGEO</span>
+          <span className={`font-display text-xl font-bold tracking-tight uppercase transition-colors ${
+            isScrolled ? "text-slate-900" : "text-white"
+          }`}>SEOGEO</span>
         </div>
         <div className="hidden items-center gap-8 md:flex">
           <div className="flex items-center gap-8">
-            <a href="#features" className="text-sm font-medium text-foreground/80 transition hover:text-primary">Features</a>
-            <Link href={UNDER_CONSTRUCTION_PATH} className="text-sm font-medium text-foreground/80 transition hover:text-primary">How it works</Link>
+            <a href="#features" className={`text-sm font-medium transition-colors hover:text-primary ${
+              isScrolled ? "text-slate-600" : "text-white"
+            }`}>Features</a>
+            <Link href={UNDER_CONSTRUCTION_PATH} className={`text-sm font-medium transition-colors hover:text-primary ${
+              isScrolled ? "text-slate-600" : "text-white"
+            }`}>How it works</Link>
           </div>
           
-          <div className="h-5 w-px bg-border/25" /> {/* Vertical Separator */}
+          <div className={`h-5 w-px transition-colors ${
+            isScrolled ? "bg-slate-200" : "bg-white/10"
+          }`} /> {/* Vertical Separator */}
 
           <div className="flex items-center gap-3">
-            <Link href={UNDER_CONSTRUCTION_PATH} className="rounded-full border border-border px-5 py-2 text-sm font-semibold text-foreground/70 transition hover:border-primary/50 hover:text-primary">
+            <Link href={UNDER_CONSTRUCTION_PATH} className={`rounded-xl border px-5 py-2 text-sm font-semibold transition-all hover:border-primary/50 hover:text-primary ${
+              isScrolled ? "border-slate-200 text-slate-700" : "border-white/30 text-white"
+            }`}>
               Sign In
             </Link>
-            <Link href={UNDER_CONSTRUCTION_PATH} className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]">
+            <Link href={UNDER_CONSTRUCTION_PATH} className="rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]">
               Try For Free
             </Link>
           </div>
@@ -90,7 +104,9 @@ export function Navbar() {
           aria-expanded={isMobileMenuOpen}
           aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           onClick={() => setIsMobileMenuOpen((open) => !open)}
-          className="flex h-11 w-11 items-center justify-center text-foreground/80 transition hover:text-primary md:hidden"
+          className={`flex h-11 w-11 items-center justify-center transition-colors hover:text-primary md:hidden ${
+            isScrolled ? "text-slate-600" : "text-white"
+          }`}
         >
           {isMobileMenuOpen ? (
             <X className="h-5 w-5" />
@@ -106,34 +122,42 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="relative z-20 border-b border-border bg-white/95 px-6 pb-5 backdrop-blur-xl md:hidden"
+            className={`relative z-20 border-b px-6 pb-5 backdrop-blur-xl md:hidden transition-colors ${
+              isScrolled ? "border-slate-200 bg-white/95" : "border-white/10 bg-blue-950/95"
+            }`}
           >
             <div className="mx-auto flex max-w-7xl flex-col gap-3">
               <a
                 href="#features"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="rounded-2xl px-4 py-3 text-sm font-semibold text-foreground/80 transition hover:bg-secondary hover:text-primary"
+                className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-all hover:bg-white/5 hover:text-primary ${
+                  isScrolled ? "text-slate-700" : "text-white"
+                }`}
               >
                 Features
               </a>
               <Link
                 href={UNDER_CONSTRUCTION_PATH}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="rounded-2xl px-4 py-3 text-sm font-semibold text-foreground/80 transition hover:bg-secondary hover:text-primary"
+                className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-all hover:bg-white/5 hover:text-primary ${
+                  isScrolled ? "text-slate-700" : "text-white"
+                }`}
               >
                 How it works
               </Link>
               <Link
                 href={UNDER_CONSTRUCTION_PATH}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="rounded-full border border-border px-5 py-3 text-sm font-semibold text-foreground/70 transition hover:border-primary/50 hover:text-primary"
+                className={`rounded-xl border px-5 py-3 text-sm font-semibold transition-all hover:border-primary/50 hover:text-primary ${
+                  isScrolled ? "border-slate-200 text-slate-700" : "border-white/30 text-white"
+                }`}
               >
                 Sign In
               </Link>
               <Link
                 href={UNDER_CONSTRUCTION_PATH}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
+                className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
               >
                 Try For Free
               </Link>
