@@ -81,6 +81,19 @@ function severityIconTone(severity?: string) {
   }
 }
 
+function formatSeverityLabel(severity?: string) {
+  switch (severity) {
+    case "high":
+      return "Critical";
+    case "medium":
+      return "Medium Priority";
+    case "low":
+      return "Low Priority";
+    default:
+      return severity ?? "Note";
+  }
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   reachability: "Reachability",
   crawlability: "Crawlability",
@@ -292,7 +305,7 @@ function CheckRow({
                   ? 'border-amber-200 bg-amber-50 text-amber-600'
                   : 'border-blue-200 bg-blue-50 text-blue-600'
               }`}>
-              {check.severity === 'high' ? 'Critical Action Required' : (check.severity ?? 'Note')}
+              {formatSeverityLabel(check.severity)}
             </span>
           )}
           {isIssue && check.severity && !isHero && (
@@ -301,7 +314,7 @@ function CheckRow({
                 check.severity
               )}`}
             >
-              {check.severity}
+              {formatSeverityLabel(check.severity)}
             </span>
           )}
           {!isIssue && (
@@ -880,7 +893,7 @@ export function AuditSection() {
                                     event.severity
                                   )}`}
                                 >
-                                  {event.severity}
+                                  {formatSeverityLabel(event.severity)}
                                 </span>
                               )}
                               {isPassedCheck(event.checkStatus) && (
