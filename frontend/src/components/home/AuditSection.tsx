@@ -12,7 +12,9 @@ import {
   FileText,
   Globe,
   LoaderCircle,
+  Plus,
   Radar,
+  RefreshCw,
   RotateCcw,
   ShieldCheck,
 } from "lucide-react";
@@ -333,7 +335,7 @@ function CheckRow({
               <span className="font-bold text-slate-900">
                 Page area:
               </span>{" "}
-              <code className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 font-mono border border-slate-200">
+              <code className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 font-mono border border-slate-200 break-all whitespace-pre-wrap">
                 {check.selector}
               </code>
             </p>
@@ -722,7 +724,7 @@ export function AuditSection() {
                         href={targetUrl || actionState.targetUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-slate-400 hover:text-primary transition-all underline-offset-4 underline decoration-slate-200 hover:decoration-primary/50"
+                        className="truncate max-w-[240px] sm:max-w-md lg:max-w-xl text-sm text-slate-400 hover:text-primary transition-all underline-offset-4 underline decoration-slate-200 hover:decoration-primary/50"
                       >
                         {targetUrl || actionState.targetUrl}
                       </a>
@@ -730,6 +732,34 @@ export function AuditSection() {
                       <span className="text-sm text-slate-400">
                         Preparing your audit
                       </span>
+                    )}
+
+                    {(report || hasAuditFailed) && !isPending && !isAuditActive && (
+                      <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 divide-x divide-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            React.startTransition(() => {
+                              const formData = new FormData();
+                              formData.append("url", targetUrl || "");
+                              formAction(formData);
+                            });
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 active:bg-slate-100"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="hidden sm:inline">Check again</span>
+                          <span className="sm:hidden">Re-run</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleReset}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">New Audit</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -807,7 +837,7 @@ export function AuditSection() {
                                         : "text-slate-400"
                                   }`}
                               />
-                              <span className="text-sm font-semibold text-slate-700">
+                              <span className="text-sm font-semibold text-slate-700 break-all whitespace-pre-wrap">
                                 {renderEventLead(event)}
                               </span>
                               {typeof event.severity === "string" && (
@@ -1127,14 +1157,31 @@ export function AuditSection() {
                       )}
                     </section>
 
-                    {(report || status === "FAILED") && (
-                      <button
-                        type="button"
-                        onClick={handleReset}
-                        className="mx-auto w-full max-w-sm rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95"
-                      >
-                        Run another audit
-                      </button>
+                    {(report || hasAuditFailed) && !isPending && !isAuditActive && (
+                      <div className="mx-auto flex w-full max-w-[480px] flex-col gap-3 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            React.startTransition(() => {
+                              const formData = new FormData();
+                              formData.append("url", targetUrl || "");
+                              formAction(formData);
+                            });
+                          }}
+                          className="flex h-14 w-full flex-1 items-center justify-center gap-2.5 rounded-2xl bg-primary px-6 py-4 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] hover:shadow-xl active:scale-95"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Check site again
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleReset}
+                          className="flex h-14 w-full flex-1 items-center justify-center gap-2.5 rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95"
+                        >
+                          <Plus className="h-4 w-4 text-slate-400" />
+                          Analyze new site
+                        </button>
+                      </div>
                     )}
                   </>
                 )}
