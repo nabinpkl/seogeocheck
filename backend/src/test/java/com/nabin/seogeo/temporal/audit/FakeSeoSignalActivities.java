@@ -40,6 +40,7 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
         return new SeoAuditResult(
                 targetUrl,
                 targetUrl.endsWith("/") ? targetUrl : targetUrl + "/",
+                "At Risk",
                 86,
                 Map.of(
                         "reachability", 100,

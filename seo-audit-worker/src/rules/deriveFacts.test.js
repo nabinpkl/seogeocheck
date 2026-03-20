@@ -8,6 +8,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
     finalUrl: "https://example.com/",
     statusCode: 200,
     contentType: "text/html; charset=utf-8",
+    xRobotsTag: "googlebot: noindex",
     title: "  Hello World  ",
     metaDescription: "",
     canonicalUrl: "https://example.com/",
@@ -67,6 +68,34 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
       },
     ],
     structuredDataKinds: ["json-ld", "microdata"],
+    redirectChain: {
+      status: "ok",
+      totalRedirects: 1,
+      finalUrlChanged: true,
+      finalUrl: "https://example.com/",
+      chain: [
+        {
+          url: "https://example.com",
+          statusCode: 301,
+          location: "https://example.com/",
+        },
+        {
+          url: "https://example.com/",
+          statusCode: 200,
+          location: null,
+        },
+      ],
+    },
+    robotsTxt: {
+      status: "blocked",
+      allowsCrawl: false,
+      evaluatedUserAgent: "Googlebot",
+      matchedDirective: "disallow",
+      matchedPattern: "/",
+      fetchStatusCode: 200,
+      url: "https://example.com/robots.txt",
+      finalUrl: "https://example.com/robots.txt",
+    },
   });
 
   assert.equal(facts.hasTitle, true);
@@ -75,6 +104,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.hasCanonicalUrl, true);
   assert.equal(facts.hasPrimaryHeading, true);
   assert.equal(facts.blocksIndexing, true);
+  assert.equal(facts.blocksIndexingViaHeader, true);
   assert.equal(facts.hasSocialPreview, true);
   assert.equal(facts.isReachable, true);
   assert.equal(facts.isHtmlResponse, true);
@@ -86,4 +116,8 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.linkedImageCount, 1);
   assert.equal(facts.linkedImageMissingAltCount, 1);
   assert.deepEqual(facts.structuredDataKinds, ["json-ld", "microdata"]);
+  assert.equal(facts.robotsTxtStatus, "blocked");
+  assert.equal(facts.robotsTxtAllowsCrawl, false);
+  assert.equal(facts.redirectCount, 1);
+  assert.equal(facts.canonicalConsistency, "self");
 });

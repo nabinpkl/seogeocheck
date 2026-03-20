@@ -185,10 +185,13 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
     sourceAnchors: [],
     linkedImages: [],
     structuredDataKinds: [],
+    xRobotsTag: null,
+    redirectChain: null,
+    robotsTxt: null,
   });
 });
 
-test("collectPageSignals inventories source anchors, linked images, and structured data kinds", () => {
+test("collectPageSignals inventories source anchors, linked images, structured data kinds, and preflight evidence", () => {
   const result = collectPageSignals({
     requestedUrl: "https://example.com/start",
     request: {
@@ -236,6 +239,37 @@ test("collectPageSignals inventories source anchors, linked images, and structur
         }),
       ],
     }),
+    preflight: {
+      xRobotsTag: "all",
+      redirectChain: {
+        status: "ok",
+        totalRedirects: 1,
+        finalUrlChanged: true,
+        finalUrl: "https://example.com/final",
+        chain: [
+          {
+            url: "https://example.com/start",
+            statusCode: 301,
+            location: "https://example.com/final",
+          },
+          {
+            url: "https://example.com/final",
+            statusCode: 200,
+            location: null,
+          },
+        ],
+      },
+      robotsTxt: {
+        status: "allowed",
+        allowsCrawl: true,
+        evaluatedUserAgent: "Googlebot",
+        matchedDirective: "allow",
+        matchedPattern: "/",
+        fetchStatusCode: 200,
+        url: "https://example.com/robots.txt",
+        finalUrl: "https://example.com/robots.txt",
+      },
+    },
   });
 
   assert.equal(result.sourceAnchors.length, 5);
@@ -277,4 +311,7 @@ test("collectPageSignals inventories source anchors, linked images, and structur
     },
   ]);
   assert.deepEqual(result.structuredDataKinds, ["json-ld", "microdata"]);
+  assert.equal(result.xRobotsTag, "all");
+  assert.equal(result.redirectChain.totalRedirects, 1);
+  assert.equal(result.robotsTxt.evaluatedUserAgent, "Googlebot");
 });

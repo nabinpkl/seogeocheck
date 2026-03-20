@@ -84,7 +84,7 @@ function collectStructuredDataKinds($) {
   return kinds;
 }
 
-export function collectSourceHtmlSignals({ requestedUrl, request, response, $ }) {
+export function collectSourceHtmlSignals({ requestedUrl, request, response, $, preflight = {} }) {
   const finalUrl = request.loadedUrl ?? request.url;
 
   return {
@@ -104,6 +104,9 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $ })
     sourceAnchors: collectSourceAnchors($, finalUrl),
     linkedImages: collectLinkedImages($, finalUrl),
     structuredDataKinds: collectStructuredDataKinds($),
+    xRobotsTag: preflight.xRobotsTag ?? null,
+    redirectChain: preflight.redirectChain ?? null,
+    robotsTxt: preflight.robotsTxt ?? null,
   };
 }
 

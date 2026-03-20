@@ -8,6 +8,7 @@ function createSourceSignals(overrides = {}) {
     finalUrl: "https://example.com/",
     statusCode: 200,
     contentType: "text/html; charset=utf-8",
+    xRobotsTag: null,
     title: "Example Home",
     metaDescription: "Source summary",
     canonicalUrl: "https://example.com/",
@@ -31,6 +32,31 @@ function createSourceSignals(overrides = {}) {
     ],
     linkedImages: [],
     structuredDataKinds: ["json-ld"],
+    redirectChain: {
+      status: "ok",
+      totalRedirects: 0,
+      finalUrlChanged: false,
+      finalUrl: "https://example.com/",
+      chain: [
+        {
+          url: "https://example.com/",
+          statusCode: 200,
+          location: null,
+        },
+      ],
+      error: null,
+    },
+    robotsTxt: {
+      status: "allowed",
+      allowsCrawl: true,
+      evaluatedUserAgent: "Googlebot",
+      matchedDirective: "allow",
+      matchedPattern: "/",
+      fetchStatusCode: 200,
+      url: "https://example.com/robots.txt",
+      finalUrl: "https://example.com/robots.txt",
+      error: null,
+    },
     ...overrides,
   };
 }
@@ -73,6 +99,7 @@ test("buildAuditResult compares source and rendered signals and activates discov
   });
 
   assert.deepEqual(result.rawSummary.capturePasses, ["source_html", "rendered_dom"]);
+  assert.equal(result.indexabilityVerdict, "At Risk");
   assert.equal(result.rawSummary.renderedDom.wordCount, 220);
   assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "high");
   assert.equal(result.rawSummary.renderComparison.sourceOnlyCriticalIssues, 2);
@@ -101,6 +128,7 @@ test("buildAuditResult returns a partial result when the rendered pass fails", (
   });
 
   assert.deepEqual(result.rawSummary.capturePasses, ["source_html"]);
+  assert.equal(result.indexabilityVerdict, "Indexable");
   assert.equal(result.rawSummary.renderedDom, null);
   assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "unknown");
 

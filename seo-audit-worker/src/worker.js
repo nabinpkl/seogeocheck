@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { NativeConnection, Worker } from "@temporalio/worker";
 import { buildAuditResult } from "./audit/buildAuditResult.js";
 import { collectRenderedDomSignals } from "./audit/collectRenderedDomSignals.js";
+import { collectIndexabilityPreflight } from "./audit/indexabilityPreflight.js";
 import { collectSourceHtmlSignals } from "./audit/collectPageSignals.js";
 import { toSeoAuditFailure } from "./errors.js";
 
@@ -15,7 +16,7 @@ const RENDERED_SETTLE_TIME_MS = 1500;
 const RENDERED_REQUEST_TIMEOUT_SECS = 10;
 const RENDERED_NAVIGATION_TIMEOUT_SECS = 8;
 
-async function captureSourceHtmlSignals(targetUrl, config) {
+async function captureSourceHtmlSignals(targetUrl, config, preflight = {}) {
   let sourceSignals = null;
   const crawler = new CheerioCrawler(
     {
@@ -27,6 +28,7 @@ async function captureSourceHtmlSignals(targetUrl, config) {
           request,
           response,
           $,
+          preflight,
         });
       },
     },
@@ -85,11 +87,15 @@ async function runSeoAudit(jobId, targetUrl) {
   console.log(`[seo-audit-worker] starting audit ${jobId} for ${targetUrl}`);
 
   let auditResult = null;
-  const storageDir = join(tmpdir(), `seogeo-audit-${jobId}`);
+    const storageDir = join(tmpdir(), `seogeo-audit-${jobId}`);
 
   try {
     const config = new Configuration({ storageDir });
     const sourceSignals = await captureSourceHtmlSignals(targetUrl, config);
+    const preflight = await collectIndexabilityPreflight({
+      requestedUrl: targetUrl,
+      finalUrl: sourceSignals.finalUrl,
+    });
     let renderedSignals = null;
     let renderedError = null;
 
@@ -101,7 +107,10 @@ async function runSeoAudit(jobId, targetUrl) {
     }
 
     auditResult = buildAuditResult({
-      sourceInput: sourceSignals,
+      sourceInput: {
+        ...sourceSignals,
+        ...preflight,
+      },
       renderedInput: renderedSignals,
       renderedError,
     });

@@ -39,6 +39,184 @@ const canonicalUrl = defineRule({
   },
 });
 
+const canonicalIndexabilityConsistency = defineRule({
+  id: "canonical-indexability-consistency",
+  label: "Canonical Indexability Consistency",
+  packId: "indexability",
+  priority: 6,
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.canonicalConsistency === "self") {
+      return passedCheck(
+        "canonical-indexability-consistency",
+        "Canonical aligns with the final URL",
+        "The canonical URL matches the final crawlable page URL.",
+        'head > link[rel="canonical"]',
+        "canonical-final-url",
+        {
+          canonicalUrl: facts.resolvedCanonicalUrl,
+          finalUrl: facts.finalUrl,
+        }
+      );
+    }
+
+    if (facts.canonicalConsistency === "contradicts") {
+      return issueCheck(
+        "canonical-indexability-consistency",
+        "Point the canonical URL at the page you want indexed",
+        "high",
+        "Update the canonical URL so it points at the final page URL if this page is meant to be indexed.",
+        `The canonical URL resolves to ${facts.resolvedCanonicalUrl}, while the final page URL is ${facts.finalUrl}.`,
+        'head > link[rel="canonical"]',
+        "canonical-final-url",
+        {
+          canonicalUrl: facts.resolvedCanonicalUrl,
+          finalUrl: facts.finalUrl,
+        }
+      );
+    }
+
+    return issueCheck(
+      "canonical-indexability-consistency",
+      "Add a valid canonical URL before relying on canonical self-consistency",
+      "low",
+      "Expose a valid canonical URL in the HTML response before rendering so the preferred indexable URL is explicit.",
+      "Canonical self-consistency could not be confirmed because the canonical URL is missing or invalid.",
+      'head > link[rel="canonical"]',
+      "canonical-final-url",
+      {
+        canonicalStatus: facts.canonicalStatus,
+        finalUrl: facts.finalUrl,
+      }
+    );
+  },
+});
+
+const xRobotsIndexing = defineRule({
+  id: "x-robots-indexing",
+  label: "X-Robots-Tag Indexing",
+  packId: "indexability",
+  priority: 7,
+  relatedPacks: [],
+  check: (facts) => {
+    return facts.blocksIndexingViaHeader
+      ? issueCheck(
+          "x-robots-indexing",
+          "Remove blocking X-Robots-Tag directives from the final response",
+          "high",
+          "Remove noindex-style X-Robots-Tag directives from the final HTTP response if this page is meant to appear in search results.",
+          `The final response includes X-Robots-Tag: ${facts.xRobotsTag}.`,
+          "document",
+          "x-robots-tag",
+          { xRobotsTag: facts.xRobotsTag }
+        )
+      : passedCheck(
+          "x-robots-indexing",
+          "X-Robots-Tag does not block indexing",
+          "The final HTTP response does not include an X-Robots-Tag that blocks indexing.",
+          "document",
+          "x-robots-tag",
+          { xRobotsTag: facts.xRobotsTag }
+        );
+  },
+});
+
+const robotsTxtCrawlability = defineRule({
+  id: "robots-txt-crawlability",
+  label: "robots.txt Crawlability",
+  packId: "indexability",
+  priority: 8,
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.robotsTxtAllowsCrawl === false) {
+      return issueCheck(
+        "robots-txt-crawlability",
+        "Allow crawling for this URL in robots.txt",
+        "high",
+        "Update robots.txt so Googlebot can crawl this exact URL if the page is meant to be indexed.",
+        facts.robotsTxt.matchedPattern
+          ? `robots.txt blocks this URL for ${facts.robotsTxt.evaluatedUserAgent ?? "the evaluated crawler"} with ${facts.robotsTxt.matchedDirective}: ${facts.robotsTxt.matchedPattern}.`
+          : "robots.txt blocks this URL.",
+        "document",
+        "robots-txt",
+        { robotsTxt: facts.robotsTxt }
+      );
+    }
+
+    if (facts.robotsTxtAllowsCrawl === null) {
+      return issueCheck(
+        "robots-txt-crawlability",
+        "Make robots.txt crawl rules reachable for this URL",
+        "low",
+        "Return a readable robots.txt file so crawl permissions for this URL can be confirmed reliably.",
+        facts.robotsTxt.fetchStatusCode
+          ? `The robots.txt request returned HTTP ${facts.robotsTxt.fetchStatusCode}.`
+          : "The audit could not confirm robots.txt rules for this URL.",
+        "document",
+        "robots-txt",
+        { robotsTxt: facts.robotsTxt }
+      );
+    }
+
+    return passedCheck(
+      "robots-txt-crawlability",
+      "robots.txt allows crawling this URL",
+      facts.robotsTxt.status === "missing"
+        ? "No robots.txt file was found, so crawling is not blocked for this URL."
+        : "The evaluated robots.txt rules allow this URL to be crawled.",
+      "document",
+      "robots-txt",
+      { robotsTxt: facts.robotsTxt }
+    );
+  },
+});
+
+const redirectChainClarity = defineRule({
+  id: "redirect-chain-clarity",
+  label: "Redirect Chain Clarity",
+  packId: "indexability",
+  priority: 9,
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.redirectChainStatus === "unavailable") {
+      return issueCheck(
+        "redirect-chain-clarity",
+        "Return a verifiable redirect path to the final page URL",
+        "low",
+        "Make the redirect path to the final page URL readable so the audit can confirm how crawlers reach the indexable destination.",
+        facts.redirectChain.error ?? "The audit could not verify the redirect chain for this URL.",
+        "document",
+        "redirect-chain",
+        { redirectChain: facts.redirectChain }
+      );
+    }
+
+    if (facts.redirectChainStatus === "too_many_redirects" || facts.hasLongRedirectChain) {
+      return issueCheck(
+        "redirect-chain-clarity",
+        "Shorten the redirect chain before the final page URL",
+        "medium",
+        "Reduce unnecessary redirects so crawlers reach the final page URL with fewer hops.",
+        `Detected ${facts.redirectCount} redirect${facts.redirectCount === 1 ? "" : "s"} before the final URL.`,
+        "document",
+        "redirect-chain",
+        { redirectChain: facts.redirectChain }
+      );
+    }
+
+    return passedCheck(
+      "redirect-chain-clarity",
+      facts.redirectCount === 0 ? "No redirects before the final URL" : "Redirect chain resolves cleanly",
+      facts.redirectCount === 0
+        ? "The requested URL returned the final page directly."
+        : `The requested URL resolves to the final page in ${facts.redirectCount} redirect${facts.redirectCount === 1 ? "" : "s"}.`,
+      "document",
+      "redirect-chain",
+      { redirectChain: facts.redirectChain }
+    );
+  },
+});
+
 const htmlLang = defineRule({
   id: "html-lang",
   label: "HTML Language",
@@ -189,7 +367,7 @@ const robotsIndexing = defineRule({
   id: "robots-indexing",
   label: "Robots Indexing",
   packId: "indexability",
-  priority: 7,
+  priority: 10,
   relatedPacks: [],
   check: (facts) => {
     return facts.blocksIndexing
@@ -216,6 +394,10 @@ const robotsIndexing = defineRule({
 
 export const crawlabilityRules = [
   canonicalUrl,
+  canonicalIndexabilityConsistency,
+  xRobotsIndexing,
+  robotsTxtCrawlability,
+  redirectChainClarity,
   htmlLang,
   sourceCrawlableLinks,
   anchorTextQuality,

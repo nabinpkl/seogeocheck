@@ -68,6 +68,7 @@ public class AuditReportSigner {
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("score", result.score());
         summary.put("status", AuditStatus.VERIFIED.name());
+        summary.put("indexabilityVerdict", result.indexabilityVerdict());
         summary.put("targetUrl", targetUrl);
         summary.put("issueCount", issueCount);
         summary.put("passedCheckCount", passedCheckCount);
@@ -79,6 +80,7 @@ public class AuditReportSigner {
         report.put("generatedAt", generatedAt.toString());
         report.put("targetUrl", targetUrl);
         report.put("reportType", "SEO_SIGNALS_SIGNED_AUDIT");
+        report.put("indexabilityVerdict", result.indexabilityVerdict());
         report.put("summary", summary);
         report.put("checks", checks);
         report.put("categories", result.categoryScores());

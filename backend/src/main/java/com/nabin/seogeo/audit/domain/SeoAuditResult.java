@@ -6,6 +6,7 @@ import java.util.Map;
 public record SeoAuditResult(
         String requestedUrl,
         String finalUrl,
+        String indexabilityVerdict,
         int score,
         Map<String, Integer> categoryScores,
         List<SeoAuditCheck> checks,

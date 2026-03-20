@@ -26,6 +26,73 @@ function toSeverityRank(severity) {
   }
 }
 
+function deriveIndexabilityVerdict(facts) {
+  const blockingSignals = [];
+  const riskSignals = [];
+  const unknownSignals = [];
+
+  if (!facts.isReachable || !facts.isHtmlResponse) {
+    unknownSignals.push("page_fetch_unconfirmed");
+  }
+
+  if (facts.blocksIndexing) {
+    blockingSignals.push("meta_robots_blocks_indexing");
+  }
+
+  if (facts.blocksIndexingViaHeader) {
+    blockingSignals.push("x_robots_tag_blocks_indexing");
+  }
+
+  if (facts.robotsTxtAllowsCrawl === false) {
+    blockingSignals.push("robots_txt_blocks_crawling");
+  }
+
+  if (facts.robotsTxtAllowsCrawl === null) {
+    unknownSignals.push("robots_txt_unconfirmed");
+  }
+
+  if (facts.redirectChainStatus === "unavailable") {
+    unknownSignals.push("redirect_chain_unconfirmed");
+  }
+
+  if (blockingSignals.length > 0) {
+    return {
+      verdict: "Blocked",
+      blockingSignals,
+      riskSignals,
+      unknownSignals,
+    };
+  }
+
+  if (unknownSignals.length > 0) {
+    return {
+      verdict: "Unknown",
+      blockingSignals,
+      riskSignals,
+      unknownSignals,
+    };
+  }
+
+  if (facts.canonicalContradictsIndexing) {
+    riskSignals.push("canonical_points_to_different_url");
+  }
+
+  if (facts.hasLongRedirectChain || facts.redirectChainStatus === "too_many_redirects") {
+    riskSignals.push("redirect_chain_is_long");
+  }
+
+  if (facts.sourceWordCount < 20) {
+    riskSignals.push("source_visible_text_is_thin");
+  }
+
+  return {
+    verdict: riskSignals.length > 0 ? "At Risk" : "Indexable",
+    blockingSignals,
+    riskSignals,
+    unknownSignals,
+  };
+}
+
 export function normalizeSeoAuditResult(input) {
   const sourceFacts = deriveFacts(input);
   const renderedFacts = input.renderedDom
@@ -58,6 +125,7 @@ export function normalizeSeoAuditResult(input) {
     ...ACTIVE_PACKS.map((pack) => pack.id),
     ...checks.map((check) => check.category).filter(Boolean),
   ]);
+  const indexabilityVerdict = deriveIndexabilityVerdict(sourceFacts);
 
   const categoryScores = Object.fromEntries(
     [...categoryIds].map((categoryId) => [
@@ -95,6 +163,7 @@ export function normalizeSeoAuditResult(input) {
   return {
     requestedUrl: sourceFacts.requestedUrl,
     finalUrl: sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
+    indexabilityVerdict: indexabilityVerdict.verdict,
     score: averageScore(Object.values(categoryScores)),
     categoryScores,
     checks: sortedChecks,
@@ -114,6 +183,13 @@ export function normalizeSeoAuditResult(input) {
         linkedImageMissingAltCount: sourceFacts.linkedImageMissingAltCount,
         structuredDataKinds: sourceFacts.structuredDataKinds,
       },
+      xRobotsTag: {
+        value: sourceFacts.xRobotsTag,
+        blocksIndexing: sourceFacts.blocksIndexingViaHeader,
+      },
+      robotsTxt: sourceFacts.robotsTxt,
+      redirectChain: sourceFacts.redirectChain,
+      indexabilityVerdict,
       renderedDom: renderedFacts
         ? {
             wordCount: renderedFacts.sourceWordCount,

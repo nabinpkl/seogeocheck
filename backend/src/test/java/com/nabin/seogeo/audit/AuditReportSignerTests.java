@@ -23,6 +23,7 @@ class AuditReportSignerTests {
         SeoAuditResult result = new SeoAuditResult(
                 "https://example.com",
                 "https://example.com/",
+                "At Risk",
                 88,
                 Map.of(
                         "reachability", 100,
@@ -66,5 +67,6 @@ class AuditReportSignerTests {
         assertThat(secondReport.signatureValue()).isNotBlank();
         assertThat(firstReport.signatureValue()).isEqualTo(secondReport.signatureValue());
         assertThat(firstReport.reportJson()).contains("SEO_SIGNALS_SIGNED_AUDIT");
+        assertThat(firstReport.reportJson()).contains("\"indexabilityVerdict\":\"At Risk\"");
     }
 }

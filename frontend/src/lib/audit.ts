@@ -48,10 +48,12 @@ export type AuditReport = {
   generatedAt?: string;
   targetUrl?: string;
   reportType?: string;
+  indexabilityVerdict?: string;
   summary?: {
     score?: number;
     topIssue?: string;
     status?: string;
+    indexabilityVerdict?: string;
     targetUrl?: string;
     issueCount?: number;
     passedCheckCount?: number;
@@ -92,6 +94,44 @@ export type AuditReport = {
       renderedOnlySignals?: number;
       mismatches?: number;
       renderDependencyRisk?: string;
+      [key: string]: unknown;
+    };
+    xRobotsTag?: {
+      value?: string | null;
+      blocksIndexing?: boolean;
+      [key: string]: unknown;
+    };
+    robotsTxt?: {
+      status?: string;
+      allowsCrawl?: boolean | null;
+      evaluatedUserAgent?: string | null;
+      matchedDirective?: string | null;
+      matchedPattern?: string | null;
+      fetchStatusCode?: number | null;
+      url?: string;
+      finalUrl?: string | null;
+      error?: string | null;
+      [key: string]: unknown;
+    };
+    redirectChain?: {
+      status?: string;
+      totalRedirects?: number;
+      finalUrlChanged?: boolean;
+      finalUrl?: string | null;
+      chain?: Array<{
+        url?: string;
+        statusCode?: number | null;
+        location?: string | null;
+        [key: string]: unknown;
+      }>;
+      error?: string | null;
+      [key: string]: unknown;
+    };
+    indexabilityVerdict?: {
+      verdict?: string;
+      blockingSignals?: string[];
+      riskSignals?: string[];
+      unknownSignals?: string[];
       [key: string]: unknown;
     };
     [key: string]: unknown;

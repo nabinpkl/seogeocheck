@@ -108,8 +108,8 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 2.  **Safety:** Never run destructive commands (e.g., `rm -rf`) without explicit confirmation unless marked as safe.
 3.  **Documentation:** Always update `AGENTS.md` when introducing new core patterns.
 4.  **Libraries:** If version knowledge is stale, perform a web search for the latest documentation.
-5.  **Audit Initiation:** Do not start audits from client-side direct calls when a Server Action boundary is required to protect backend credentials.
 6.  **Backward Compatibility:** Do not preserve old APIs, schemas, or behavior by default during iterative development. Favor the cleanest current vertical slice unless compatibility is explicitly requested.
+7.  **Fresh Docker Rebuild:** After every code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build` from the repository root so the full stack is rebuilt from a fresh state.
 
 ---
 
