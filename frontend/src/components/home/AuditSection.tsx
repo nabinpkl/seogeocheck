@@ -377,6 +377,7 @@ export function AuditSection() {
   );
   const [handoffJobId, setHandoffJobId] = React.useState<string | null>(null);
   const [focusedResultJobId, setFocusedResultJobId] = React.useState<string | null>(null);
+  const [isTyping, setIsTyping] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const resultPanelRef = React.useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
@@ -579,6 +580,41 @@ export function AuditSection() {
     });
   };
 
+  const simulateExampleAudit = () => {
+    if (isPending || isAuditActive || isTyping) return;
+
+    setIsTyping(true);
+    setClientError(null);
+    const targetUrl = "example.com";
+    let currentText = "";
+    const typingSpeed = 50;
+
+    const animateTyping = (index: number) => {
+      if (index <= targetUrl.length) {
+        currentText = targetUrl.slice(0, index);
+        setUrl(currentText);
+
+        if (index < targetUrl.length) {
+          setTimeout(() => animateTyping(index + 1), typingSpeed);
+        } else {
+          // Wait a bit before starting the audit
+          setTimeout(() => {
+            const formData = new FormData();
+            formData.append("url", targetUrl);
+            React.startTransition(() => {
+              formAction(formData);
+              setIsTyping(false);
+            });
+          }, 350);
+        }
+      }
+    };
+
+    // Start typing
+    setUrl("");
+    animateTyping(1);
+  };
+
   return (
     <div className="w-full self-stretch">
       <form
@@ -644,15 +680,15 @@ export function AuditSection() {
                   setUrl(event.target.value);
                   if (clientError) setClientError(null);
                 }}
-                disabled={isPending || isAuditActive}
+                disabled={isPending || isAuditActive || isTyping}
                 placeholder="Enter your website URL (e.g. example.com)"
                 className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-foreground/35 sm:text-base sm:placeholder:text-sm"
               />
             </div>
             <button
               type="submit"
-              disabled={isPending || isAuditActive}
-              className="group/btn relative mt-2 flex h-11 w-full items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-[10px] bg-primary px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-300 disabled:text-blue-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:min-w-[180px] sm:w-auto sm:text-base"
+              disabled={isPending || isAuditActive || isTyping}
+              className="group/btn relative mt-2 flex h-11 w-full items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-[10px] bg-primary px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:pointer-events-none disabled:bg-blue-300 disabled:text-blue-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:min-w-[180px] sm:w-auto sm:text-base"
             >
               <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transition-transform group-hover/btn:translate-y-0" />
               {isPending ? (
@@ -674,16 +710,14 @@ export function AuditSection() {
             </button>
           </div>
 
-          <div className={`mt-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-700 ${(isPending || isAuditActive) ? "opacity-0 translate-y-2 pointer-events-none" : "opacity-100 translate-y-0"}`}>
+          <div className={`mt-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${(isPending || isAuditActive || isTyping) ? "opacity-0 translate-y-1 pointer-events-none" : "opacity-100 translate-y-0"}`}>
             <span className="text-white/20">•</span>
             <span className="text-white/30">Ready to test?</span>
             <button
               type="button"
-              onClick={() => {
-                setUrl("example.com");
-                setClientError(null);
-              }}
-              className="text-white/70 hover:text-white transition-all underline underline-offset-4 decoration-white/20 hover:decoration-white/50"
+              onClick={simulateExampleAudit}
+              disabled={isPending || isAuditActive || isTyping}
+              className="text-white/70 hover:text-white transition-all underline underline-offset-4 decoration-white/20 hover:decoration-white/50 disabled:opacity-50 disabled:cursor-default disabled:pointer-events-none"
             >
               example.com
             </button>
