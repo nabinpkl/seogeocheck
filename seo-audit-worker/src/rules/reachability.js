@@ -8,26 +8,28 @@ const urlReachable = defineRule({
   priority: 90,
   relatedPacks: [],
   check: (facts) =>
-    facts.isReachable
+    facts.isReachable && facts.isHtmlResponse
       ? passedCheck(
           "url-reachable",
-          "URL is reachable",
-          "The page responded successfully to the audit crawl.",
+          "HTML response is reachable",
+          "The page returned a successful HTML response that crawlers can read before rendering.",
           "document",
           "http-status",
-          { statusCode: facts.statusCode }
+          { statusCode: facts.statusCode, contentType: facts.contentType }
         )
       : issueCheck(
           "url-reachable",
-          "Restore page reachability",
+          "Return a reachable HTML response before rendering",
           "high",
-          "Return a successful response for this URL so crawlers can fetch the page reliably.",
+          "Return a successful HTML response before rendering so crawlers can fetch and interpret this page reliably. Google may need rendering to see this signal later, which makes discovery or indexing less reliable than having it in source HTML.",
           facts.statusCode === null
             ? "The audit could not confirm a successful HTTP response."
-            : `The page responded with HTTP ${facts.statusCode}.`,
+            : !facts.isHtmlResponse
+              ? `The page responded with HTTP ${facts.statusCode}, but the content type was ${facts.contentType ?? "unknown"}.`
+              : `The page responded with HTTP ${facts.statusCode}.`,
           "document",
           "http-status",
-          { statusCode: facts.statusCode }
+          { statusCode: facts.statusCode, contentType: facts.contentType }
         ),
 });
 

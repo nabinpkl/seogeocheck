@@ -17,14 +17,73 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
     openGraphTitle: "",
     openGraphDescription: "Social summary",
     wordCount: 42,
+    sourceAnchors: [
+      {
+        href: "/products",
+        resolvedHref: "https://example.com/products",
+        sameOrigin: true,
+        crawlable: true,
+        text: "Products",
+        usesJavascriptHref: false,
+        isFragmentOnly: false,
+        hasMatchingFragmentTarget: false,
+      },
+      {
+        href: "javascript:void(0)",
+        resolvedHref: null,
+        sameOrigin: false,
+        crawlable: false,
+        text: "",
+        usesJavascriptHref: true,
+        isFragmentOnly: false,
+        hasMatchingFragmentTarget: false,
+      },
+      {
+        href: "/learn-more",
+        resolvedHref: "https://example.com/learn-more",
+        sameOrigin: true,
+        crawlable: true,
+        text: "Read more",
+        usesJavascriptHref: false,
+        isFragmentOnly: false,
+        hasMatchingFragmentTarget: false,
+      },
+      {
+        href: "#details",
+        resolvedHref: "https://example.com/#details",
+        sameOrigin: true,
+        crawlable: false,
+        text: "Jump to details",
+        usesJavascriptHref: false,
+        isFragmentOnly: true,
+        hasMatchingFragmentTarget: true,
+      },
+    ],
+    linkedImages: [
+      {
+        href: "/gallery",
+        resolvedHref: "https://example.com/gallery",
+        alt: null,
+      },
+    ],
+    structuredDataKinds: ["json-ld", "microdata"],
   });
 
   assert.equal(facts.hasTitle, true);
   assert.equal(facts.titleLength, 11);
   assert.equal(facts.hasMetaDescription, false);
   assert.equal(facts.hasCanonicalUrl, true);
-  assert.equal(facts.hasSingleH1, false);
+  assert.equal(facts.hasPrimaryHeading, true);
   assert.equal(facts.blocksIndexing, true);
   assert.equal(facts.hasSocialPreview, true);
   assert.equal(facts.isReachable, true);
+  assert.equal(facts.isHtmlResponse, true);
+  assert.equal(facts.sourceWordCount, 42);
+  assert.equal(facts.sameOriginCrawlableLinkCount, 2);
+  assert.equal(facts.nonCrawlableLinkCount, 2);
+  assert.equal(facts.emptyAnchorTextCount, 1);
+  assert.equal(facts.genericAnchorTextCount, 1);
+  assert.equal(facts.linkedImageCount, 1);
+  assert.equal(facts.linkedImageMissingAltCount, 1);
+  assert.deepEqual(facts.structuredDataKinds, ["json-ld", "microdata"]);
 });

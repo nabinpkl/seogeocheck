@@ -1,7 +1,4 @@
 
-
-
-
 # Giving seo signals step by step
 
 and ui too we go flow by flow
@@ -36,3 +33,8 @@ Passed
 8. Title good?
 9. Snippet/meta present?
 10. Sitemap/discovery support present?
+
+
+# Real time monitoring
+- Why update the site content then recheck then again do the same thing just real time monitor?
+- On agentic mode just watch the progress of your agents fixing your site.

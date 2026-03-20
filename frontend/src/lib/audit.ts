@@ -35,6 +35,10 @@ export type AuditReportCheck = {
   instruction?: string;
   detail?: string;
   metric?: string;
+  metadata?: {
+    evidenceSource?: string;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 };
 
@@ -55,6 +59,43 @@ export type AuditReport = {
   };
   checks?: AuditReportCheck[];
   categories?: Record<string, number>;
+  rawSummary?: {
+    worker?: string;
+    statusCode?: number;
+    contentType?: string;
+    wordCount?: number;
+    capturePasses?: string[];
+    sourceHtml?: {
+      wordCount?: number;
+      sameOriginCrawlableLinkCount?: number;
+      nonCrawlableLinkCount?: number;
+      emptyAnchorTextCount?: number;
+      genericAnchorTextCount?: number;
+      linkedImageCount?: number;
+      linkedImageMissingAltCount?: number;
+      structuredDataKinds?: string[];
+      [key: string]: unknown;
+    };
+    renderedDom?: {
+      wordCount?: number;
+      sameOriginCrawlableLinkCount?: number;
+      nonCrawlableLinkCount?: number;
+      emptyAnchorTextCount?: number;
+      genericAnchorTextCount?: number;
+      linkedImageCount?: number;
+      linkedImageMissingAltCount?: number;
+      structuredDataKinds?: string[];
+      [key: string]: unknown;
+    } | null;
+    renderComparison?: {
+      sourceOnlyCriticalIssues?: number;
+      renderedOnlySignals?: number;
+      mismatches?: number;
+      renderDependencyRisk?: string;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
   signature?: {
     present?: boolean;
     algorithm?: string;

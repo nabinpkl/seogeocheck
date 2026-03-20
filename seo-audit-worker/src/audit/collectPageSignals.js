@@ -1,4 +1,10 @@
 import { normalizeText } from "../rules/utils.js";
+import {
+  buildAnchorRecord,
+  buildLinkedImageRecord,
+  countWords,
+  normalizeHref,
+} from "./signalUtils.js";
 
 function readNamedMeta($, name) {
   const value = $(`meta[name="${name}"]`).attr("content");
@@ -10,19 +16,80 @@ function readPropertyMeta($, property) {
   return normalizeText(value);
 }
 
-function countWords(text) {
-  const normalized = normalizeText(text);
-  if (!normalized) {
-    return 0;
+function hasFragmentTarget($, fragmentId) {
+  if (!fragmentId) {
+    return false;
   }
 
-  return normalized.split(/\s+/).length;
+  const escaped = fragmentId.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  return $(`[id="${escaped}"]`).length > 0 || $(`[name="${escaped}"]`).length > 0;
 }
 
-export function collectPageSignals({ requestedUrl, request, response, $ }) {
+function collectSourceAnchors($, baseUrl) {
+  return $("a")
+    .toArray()
+    .map((anchorNode) => {
+      const href = normalizeHref($(anchorNode).attr("href"));
+      const fragmentTargets =
+        href && href.startsWith("#") && hasFragmentTarget($, href.slice(1))
+          ? [href.slice(1)]
+          : [];
+
+      return buildAnchorRecord(
+        {
+          href,
+          text: $(anchorNode).text(),
+        },
+        baseUrl,
+        fragmentTargets
+      );
+    });
+}
+
+function collectLinkedImages($, baseUrl) {
+  return $("a")
+    .toArray()
+    .flatMap((anchorNode) => {
+      const anchor = $(anchorNode);
+      const href = normalizeHref(anchor.attr("href"));
+
+      return anchor
+        .find("img")
+        .toArray()
+        .map((imageNode) =>
+          buildLinkedImageRecord(
+            {
+              href,
+              alt: $(imageNode).attr("alt"),
+            },
+            baseUrl
+          )
+        );
+    });
+}
+
+function collectStructuredDataKinds($) {
+  const kinds = [];
+
+  if ($('script[type="application/ld+json"]').length > 0) {
+    kinds.push("json-ld");
+  }
+  if ($("[itemscope]").length > 0) {
+    kinds.push("microdata");
+  }
+  if ($("[typeof]").length > 0) {
+    kinds.push("rdfa");
+  }
+
+  return kinds;
+}
+
+export function collectSourceHtmlSignals({ requestedUrl, request, response, $ }) {
+  const finalUrl = request.loadedUrl ?? request.url;
+
   return {
     requestedUrl,
-    finalUrl: request.loadedUrl ?? request.url,
+    finalUrl,
     statusCode: response?.statusCode ?? null,
     contentType: response?.headers?.["content-type"] ?? null,
     title: $("title").first().text(),
@@ -34,5 +101,10 @@ export function collectPageSignals({ requestedUrl, request, response, $ }) {
     openGraphTitle: readPropertyMeta($, "og:title"),
     openGraphDescription: readPropertyMeta($, "og:description"),
     wordCount: countWords($("body").text()),
+    sourceAnchors: collectSourceAnchors($, finalUrl),
+    linkedImages: collectLinkedImages($, finalUrl),
+    structuredDataKinds: collectStructuredDataKinds($),
   };
 }
+
+export const collectPageSignals = collectSourceHtmlSignals;

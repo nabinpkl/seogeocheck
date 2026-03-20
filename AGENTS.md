@@ -36,16 +36,16 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 
 ### Tier 2: Specialized Workers
 - **Path:** `seo-audit-worker/` (or worker directories)
-- **Tech:** Node.js + Temporal TypeScript SDK + Crawlee.
-- **Logic:** Custom SEO signal extraction, crawlability checks, metadata checks, and future browser-executed technical checks.
+- **Tech:** Node.js + Temporal TypeScript SDK + Crawlee + Playwright.
+- **Logic:** Custom SEO signal extraction, crawlability checks, metadata checks, and browser-executed comparison checks against the rendered DOM.
 - **Normalization Contract:** Node workers must translate raw tool output into SEOGEO-native findings with imperative `instruction` text before results are returned to the orchestrator.
-- **Rule Authoring Pattern:** SEO worker checks must be organized as `collect evidence -> derive facts -> evaluate rules -> score packs`. Shared evidence should be collected once and reused across rules; cross-cutting rules keep one primary pack and may annotate secondary relevance without duplicating findings.
+- **Rule Authoring Pattern:** SEO worker checks must be organized as `collect source HTML evidence -> derive source facts -> collect rendered DOM evidence -> compare surfaces -> evaluate rules -> score packs`. Shared evidence should be collected once per surface and reused across rules; source HTML remains authoritative for fix priority, while rendered evidence adds comparison context and render-dependency risk.
 
 ### Target Worker Topology
 - **API Tier:** Owns external HTTP contracts, audit initiation, SSE stream delivery, and final report retrieval.
 - **Java Worker Tier:** Owns Temporal workflow orchestration, persistence coordination, report signing, and Java-native extraction such as `jsoup`.
 - **Node Worker Tier:** Owns custom SEO-signal extraction and future specialized crawl/browser activities on dedicated Temporal task queues.
-- **Current Slice:** The backend currently combines the API tier and Java worker tier, while the SEO audit worker runs as a dedicated Node Temporal worker on its own task queue.
+- **Current Slice:** The backend currently combines the API tier and Java worker tier, while the SEO audit worker runs as a dedicated Node Temporal worker on its own task queue with a dual-pass `source_html -> rendered_dom -> comparison` flow.
 - **Architecture Direction:** The active direction is `API + Java worker + Node worker`, with worker roles independently scalable and specialized crawl work executed through Temporal instead of HTTP wrappers.
 
 ---

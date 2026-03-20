@@ -6,11 +6,13 @@
   "packageManager": "pnpm@10.32.1",
   "scripts": {
     "start": "node src/worker.js",
-    "test": "node --test"
+    "test": "node --test",
+    "install:browsers": "playwright install chromium"
   },
   "dependencies": {
     "@temporalio/common": "^1.11.7",
     "@temporalio/worker": "^1.11.7",
-    "crawlee": "^3.16.0"
+    "crawlee": "^3.16.0",
+    "playwright": "^1.56.1"
   }
 }

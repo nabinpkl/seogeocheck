@@ -1,15 +1,81 @@
-import { CheerioCrawler, Configuration } from "crawlee";
+import { CheerioCrawler, Configuration, PlaywrightCrawler } from "crawlee";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { NativeConnection, Worker } from "@temporalio/worker";
-import { collectPageSignals } from "./audit/collectPageSignals.js";
+import { buildAuditResult } from "./audit/buildAuditResult.js";
+import { collectRenderedDomSignals } from "./audit/collectRenderedDomSignals.js";
+import { collectSourceHtmlSignals } from "./audit/collectPageSignals.js";
 import { toSeoAuditFailure } from "./errors.js";
-import { normalizeSeoAuditResult } from "./normalize.js";
 
 const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? "127.0.0.1:7233";
 const TEMPORAL_NAMESPACE = process.env.TEMPORAL_NAMESPACE ?? "default";
 const SEO_AUDIT_TASK_QUEUE = process.env.SEO_AUDIT_TASK_QUEUE ?? "seogeo-seo-signals";
+const RENDERED_SETTLE_TIME_MS = 1500;
+const RENDERED_REQUEST_TIMEOUT_SECS = 10;
+const RENDERED_NAVIGATION_TIMEOUT_SECS = 8;
+
+async function captureSourceHtmlSignals(targetUrl, config) {
+  let sourceSignals = null;
+  const crawler = new CheerioCrawler(
+    {
+      maxConcurrency: 1,
+      maxRequestsPerCrawl: 1,
+      requestHandler: async ({ request, response, $ }) => {
+        sourceSignals = collectSourceHtmlSignals({
+          requestedUrl: targetUrl,
+          request,
+          response,
+          $,
+        });
+      },
+    },
+    config
+  );
+
+  await crawler.run([targetUrl]);
+
+  if (!sourceSignals) {
+    throw new Error("The SEO audit worker did not capture any source HTML signals.");
+  }
+
+  return sourceSignals;
+}
+
+async function captureRenderedDomSignals(targetUrl, config) {
+  let renderedSignals = null;
+  const crawler = new PlaywrightCrawler(
+    {
+      maxConcurrency: 1,
+      maxRequestsPerCrawl: 1,
+      navigationTimeoutSecs: RENDERED_NAVIGATION_TIMEOUT_SECS,
+      requestHandlerTimeoutSecs: RENDERED_REQUEST_TIMEOUT_SECS,
+      preNavigationHooks: [
+        async (_context, gotoOptions) => {
+          gotoOptions.waitUntil = "load";
+        },
+      ],
+      requestHandler: async ({ request, response, page }) => {
+        renderedSignals = await collectRenderedDomSignals({
+          requestedUrl: targetUrl,
+          finalUrl: request.loadedUrl ?? request.url,
+          response,
+          page,
+          settleTimeMs: RENDERED_SETTLE_TIME_MS,
+        });
+      },
+    },
+    config
+  );
+
+  await crawler.run([targetUrl]);
+
+  if (!renderedSignals) {
+    throw new Error("The rendered DOM pass did not capture comparable signals.");
+  }
+
+  return renderedSignals;
+}
 
 async function runSeoAudit(jobId, targetUrl) {
   if (typeof targetUrl !== "string" || targetUrl.trim() === "") {
@@ -23,29 +89,22 @@ async function runSeoAudit(jobId, targetUrl) {
 
   try {
     const config = new Configuration({ storageDir });
-    const crawler = new CheerioCrawler(
-      {
-        maxConcurrency: 1,
-        maxRequestsPerCrawl: 1,
-        requestHandler: async ({ request, response, $ }) => {
-          auditResult = normalizeSeoAuditResult(
-            collectPageSignals({
-              requestedUrl: targetUrl,
-              request,
-              response,
-              $,
-            })
-          );
-        },
-      },
-      config
-    );
+    const sourceSignals = await captureSourceHtmlSignals(targetUrl, config);
+    let renderedSignals = null;
+    let renderedError = null;
 
-    await crawler.run([targetUrl]);
-
-    if (!auditResult) {
-      throw new Error("The SEO audit worker did not capture any page signals.");
+    try {
+      renderedSignals = await captureRenderedDomSignals(targetUrl, config);
+    } catch (error) {
+      renderedError = error;
+      console.warn(`[seo-audit-worker] rendered DOM comparison unavailable for ${jobId}:`, error);
     }
+
+    auditResult = buildAuditResult({
+      sourceInput: sourceSignals,
+      renderedInput: renderedSignals,
+      renderedError,
+    });
 
     return auditResult;
   } catch (error) {

@@ -40,16 +40,17 @@ SEOGEO follows a three-phase mutation-to-report flow. In the web app, this begin
 - **Workflow:** Temporal 1.33+
 - **Frontend:** Next.js 16 (React 19), Tailwind 4
 - **State:** TanStack Query (Server) & Zustand (Client)
-- **SEO Worker:** Node.js, Crawlee
+- **SEO Worker:** Node.js, Crawlee, Playwright
 
 ### SEO Rule Authoring
 
 The SEO audit worker follows an evidence-first rule pipeline:
 
-- collect raw page evidence in `seo-audit-worker/src/audit/`
-- derive reusable facts in `seo-audit-worker/src/rules/deriveFacts.js`
-- evaluate rules from explicit registries in `seo-audit-worker/src/rules/`
-- score the report using ordered audit packs
+- collect `source_html` evidence in `seo-audit-worker/src/audit/`
+- derive reusable source facts in `seo-audit-worker/src/rules/deriveFacts.js`
+- collect `rendered_dom` evidence with Playwright for the same page
+- compare source and rendered surfaces to detect render dependency and mismatches
+- evaluate rules and comparison findings into ordered audit packs
 
 ### State Ownership
 
@@ -98,6 +99,7 @@ The backend listens on port `8080`.
 From the `seo-audit-worker/` folder:
 ```sh
 pnpm install
+pnpm run install:browsers
 pnpm start
 ```
 The worker connects to Temporal and polls the SEO signals task queue.

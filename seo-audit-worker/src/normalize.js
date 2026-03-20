@@ -1,5 +1,6 @@
 import { ACTIVE_PACKS, SORTED_RULES } from "./rules/index.js";
 import { deriveFacts } from "./rules/deriveFacts.js";
+import { compareSurfaces } from "./rules/compareSurfaces.js";
 
 function clampScore(score) {
   return Math.max(0, Math.min(100, Math.round(score)));
@@ -26,23 +27,44 @@ function toSeverityRank(severity) {
 }
 
 export function normalizeSeoAuditResult(input) {
-  const facts = deriveFacts(input);
-  const checks = SORTED_RULES.map((rule) => {
-    const result = rule.check(facts);
+  const sourceFacts = deriveFacts(input);
+  const renderedFacts = input.renderedDom
+    ? deriveFacts({
+        ...input.renderedDom,
+        requestedUrl: sourceFacts.requestedUrl,
+        finalUrl: input.renderedDom.finalUrl ?? sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
+      })
+    : null;
+  const sourceChecks = SORTED_RULES.map((rule) => {
+    const result = rule.check(sourceFacts);
     return {
       ...result,
+      metadata: {
+        ...(result.metadata ?? {}),
+        evidenceSource: "source_html",
+      },
       category: rule.packId,
       priority: rule.priority,
       relatedPacks: rule.relatedPacks,
     };
   });
+  const comparison = compareSurfaces({
+    sourceFacts,
+    renderedFacts,
+    renderedError: input.renderedError,
+  });
+  const checks = [...sourceChecks, ...comparison.checks];
+  const categoryIds = new Set([
+    ...ACTIVE_PACKS.map((pack) => pack.id),
+    ...checks.map((check) => check.category).filter(Boolean),
+  ]);
 
   const categoryScores = Object.fromEntries(
-    ACTIVE_PACKS.map((pack) => [
-      pack.id,
+    [...categoryIds].map((categoryId) => [
+      categoryId,
       averageScore(
         checks
-          .filter((check) => check.category === pack.id)
+          .filter((check) => check.category === categoryId)
           .map((check) => (check.status === "passed" ? 100 : 0))
       ),
     ])
@@ -71,16 +93,40 @@ export function normalizeSeoAuditResult(input) {
     .map(({ category, priority, relatedPacks, ...check }) => check);
 
   return {
-    requestedUrl: facts.requestedUrl,
-    finalUrl: facts.finalUrl ?? facts.requestedUrl,
+    requestedUrl: sourceFacts.requestedUrl,
+    finalUrl: sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
     score: averageScore(Object.values(categoryScores)),
     categoryScores,
     checks: sortedChecks,
     rawSummary: {
       worker: "seo-audit-worker",
-      statusCode: facts.statusCode ?? null,
-      contentType: facts.contentType ?? null,
-      wordCount: facts.wordCount ?? 0,
+      statusCode: sourceFacts.statusCode ?? null,
+      contentType: sourceFacts.contentType ?? null,
+      wordCount: sourceFacts.wordCount ?? 0,
+      capturePasses: renderedFacts ? ["source_html", "rendered_dom"] : ["source_html"],
+      sourceHtml: {
+        wordCount: sourceFacts.sourceWordCount,
+        sameOriginCrawlableLinkCount: sourceFacts.sameOriginCrawlableLinkCount,
+        nonCrawlableLinkCount: sourceFacts.nonCrawlableLinkCount,
+        emptyAnchorTextCount: sourceFacts.emptyAnchorTextCount,
+        genericAnchorTextCount: sourceFacts.genericAnchorTextCount,
+        linkedImageCount: sourceFacts.linkedImageCount,
+        linkedImageMissingAltCount: sourceFacts.linkedImageMissingAltCount,
+        structuredDataKinds: sourceFacts.structuredDataKinds,
+      },
+      renderedDom: renderedFacts
+        ? {
+            wordCount: renderedFacts.sourceWordCount,
+            sameOriginCrawlableLinkCount: renderedFacts.sameOriginCrawlableLinkCount,
+            nonCrawlableLinkCount: renderedFacts.nonCrawlableLinkCount,
+            emptyAnchorTextCount: renderedFacts.emptyAnchorTextCount,
+            genericAnchorTextCount: renderedFacts.genericAnchorTextCount,
+            linkedImageCount: renderedFacts.linkedImageCount,
+            linkedImageMissingAltCount: renderedFacts.linkedImageMissingAltCount,
+            structuredDataKinds: renderedFacts.structuredDataKinds,
+          }
+        : null,
+      renderComparison: comparison.summary,
     },
   };
 }

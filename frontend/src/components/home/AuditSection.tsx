@@ -9,7 +9,7 @@ import {
   BadgeCheck,
   CheckCircle2,
   ChevronRight,
-  CircleCheckBig,
+  FileText,
   Globe,
   LoaderCircle,
   Radar,
@@ -60,46 +60,23 @@ function severityTone(severity?: string) {
 function severityCardTone(severity?: string) {
   switch (severity) {
     case "high":
-      return "border-rose-500/40 bg-rose-500/[0.08] hover:bg-rose-500/[0.12]";
+      return "border-rose-200 bg-rose-50/40 hover:bg-rose-50/60";
     case "medium":
-      return "border-amber-500/40 bg-amber-500/[0.08] hover:bg-amber-500/[0.12]";
+      return "border-amber-200 bg-amber-50/40 hover:bg-amber-50/60";
     default:
-      return "border-white/10 bg-white/5 hover:bg-white/[0.08]";
-  }
-}
-
-function severityTextTone(severity?: string) {
-  switch (severity) {
-    case "high":
-      return "text-rose-200/70";
-    case "medium":
-      return "text-amber-200/70";
-    default:
-      return "text-blue-200/70";
+      return "border-blue-200/50 bg-blue-50/30 hover:bg-blue-50/50";
   }
 }
 
 function severityIconTone(severity?: string) {
   switch (severity) {
     case "high":
-      return "border-rose-500/20 bg-rose-500/10 text-rose-500/80 shadow-[0_0_10px_rgba(244,63,94,0.3)]";
+      return "border-rose-200 bg-rose-50 text-rose-600 shadow-sm";
     case "medium":
-      return "border-amber-500/20 bg-amber-500/10 text-amber-500/80 shadow-[0_0_10px_rgba(245,158,11,0.3)]";
+      return "border-amber-200 bg-amber-50 text-amber-600 shadow-sm";
     default:
-      return "border-primary/20 bg-primary/5 text-primary";
+      return "border-blue-200 bg-blue-50 text-blue-600 shadow-sm";
   }
-}
-
-function categoryTone(score: number) {
-  if (score >= 90) {
-    return "bg-emerald-50 text-emerald-700 ring-emerald-200";
-  }
-
-  if (score >= 75) {
-    return "bg-amber-50 text-amber-700 ring-amber-200";
-  }
-
-  return "bg-rose-50 text-rose-700 ring-rose-200";
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -219,16 +196,58 @@ function formatCategoryLabel(key: string) {
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
-function recommendedFixesBadgeTone(issueCount: number, findings: AuditReportCheck[]) {
-  if (issueCount === 0) {
-    return "bg-emerald-100 text-emerald-700";
+function formatEvidenceSource(evidenceSource?: string) {
+  if (evidenceSource === "source_html") {
+    return "Source HTML";
   }
 
-  if (findings.some((finding) => finding.severity === "high")) {
-    return "bg-rose-100 text-rose-700";
+  if (evidenceSource === "rendered_dom") {
+    return "Rendered DOM";
   }
 
-  return "bg-amber-100 text-amber-700";
+  if (evidenceSource === "surface_comparison") {
+    return "Surface Comparison";
+  }
+
+  if (!evidenceSource) {
+    return null;
+  }
+
+  return evidenceSource.replaceAll("_", " ");
+}
+
+function formatStructuredDataKinds(kinds?: string[]) {
+  if (!Array.isArray(kinds) || kinds.length === 0) {
+    return "None detected";
+  }
+
+  return kinds.join(", ");
+}
+
+function renderDependencyTone(risk?: string) {
+  switch (risk) {
+    case "high":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    case "medium":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    case "low":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-600";
+  }
+}
+
+function formatRenderDependencyLabel(risk?: string) {
+  switch (risk) {
+    case "high":
+      return "High render dependency";
+    case "medium":
+      return "Medium render dependency";
+    case "low":
+      return "Low render dependency";
+    default:
+      return "Rendered comparison unavailable";
+  }
 }
 
 function CheckRow({
@@ -241,6 +260,7 @@ function CheckRow({
   isHero?: boolean;
 }) {
   const isIssue = kind === "issue";
+  const evidenceSourceLabel = formatEvidenceSource(check.metadata?.evidenceSource);
 
   return (
     <details
@@ -253,19 +273,29 @@ function CheckRow({
           <ChevronRight className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-bold text-white tracking-tight">
+          <div className="truncate text-sm font-bold text-slate-900 tracking-tight">
             {check.label ?? (isIssue ? "Technical Finding" : "Optimized Signal")}
           </div>
+          {evidenceSourceLabel && (
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
+              Audited from {evidenceSourceLabel}
+            </div>
+          )}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {isHero && (
-            <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
-              Critical Action Required
+            <span className={`rounded-full border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] shadow-sm ${check.severity === 'high'
+                ? 'border-rose-200 bg-rose-50 text-rose-600'
+                : check.severity === 'medium'
+                  ? 'border-amber-200 bg-amber-50 text-amber-600'
+                  : 'border-blue-200 bg-blue-50 text-blue-600'
+              }`}>
+              {check.severity === 'high' ? 'Critical Action Required' : (check.severity ?? 'Note')}
             </span>
           )}
           {isIssue && check.severity && !isHero && (
             <span
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] ${severityTone(
+              className={`rounded-full px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] ${severityTone(
                 check.severity
               )}`}
             >
@@ -273,18 +303,18 @@ function CheckRow({
             </span>
           )}
           {!isIssue && (
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 border border-emerald-500/20">
+            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700 border border-emerald-500/20">
               Passed
             </span>
           )}
         </div>
       </summary>
 
-      <div className={`border-t border-white/5 px-5 py-4 text-left text-sm ${isIssue ? "text-white/80" : "text-emerald-200/80"}`}>
+      <div className={`border-t border-slate-100 px-5 py-4 text-left text-sm ${isIssue ? "text-slate-600" : "text-emerald-700"}`}>
         <div className="space-y-2">
           {isIssue && check.instruction && (
             <p>
-              <span className="font-bold text-white">
+              <span className="font-bold text-slate-900">
                 Recommended fix:
               </span>{" "}
               {check.instruction}
@@ -292,7 +322,7 @@ function CheckRow({
           )}
           {!isIssue && check.detail && (
             <p>
-              <span className="font-bold text-white">
+              <span className="font-bold text-slate-900">
                 What is working:
               </span>{" "}
               {check.detail}
@@ -300,23 +330,23 @@ function CheckRow({
           )}
           {check.selector && (
             <p>
-              <span className="font-bold text-white">
+              <span className="font-bold text-slate-900">
                 Page area:
               </span>{" "}
-              <code className="rounded bg-white/10 px-2 py-1 text-xs text-white/90 font-mono">
+              <code className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 font-mono border border-slate-200">
                 {check.selector}
               </code>
             </p>
           )}
           {check.metric && (
             <p>
-              <span className="font-semibold text-blue-200">Metric:</span>{" "}
+              <span className="font-semibold text-slate-900">Metric:</span>{" "}
               {check.metric}
             </p>
           )}
           {!isIssue && !check.detail && check.instruction && (
             <p>
-              <span className="font-semibold text-blue-200">
+              <span className="font-semibold text-slate-900">
                 Why this passed:
               </span>{" "}
               {check.instruction}
@@ -324,7 +354,7 @@ function CheckRow({
           )}
           {isIssue && !check.instruction && check.detail && (
             <p>
-              <span className="font-semibold text-blue-200">
+              <span className="font-semibold text-slate-900">
                 Recommendation:
               </span>{" "}
               {check.detail}
@@ -338,6 +368,7 @@ function CheckRow({
 
 export function AuditSection() {
   const [url, setUrl] = React.useState("");
+  const [clientError, setClientError] = React.useState<string | null>(null);
   const [actionState, formAction, isPending] = React.useActionState(
     startAuditAction,
     initialAuditActionState
@@ -379,6 +410,15 @@ export function AuditSection() {
   React.useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  React.useEffect(() => {
+    if (clientError) {
+      const timer = setTimeout(() => {
+        setClientError(null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [clientError]);
 
   React.useEffect(() => {
     if (
@@ -461,7 +501,6 @@ export function AuditSection() {
     typeof report?.summary?.passedCheckCount === "number"
       ? report.summary.passedCheckCount
       : reportPassedChecks.length;
-  const hasVerifiedSignature = Boolean(report?.signature?.present);
   const hasAuditFailed = status === "FAILED";
   const isAuditSettled = Boolean(report) || status === "FAILED";
   const isAuditActive = Boolean(jobId) && !isAuditSettled;
@@ -495,10 +534,12 @@ export function AuditSection() {
   const progressValue = hasAuditFailed ? 100 : report ? 100 : currentProgress;
   const progressLabel = hasAuditFailed ? "Failed" : report ? "Ready" : `${currentProgress}%`;
   const progressBarClassName = hasAuditFailed ? "bg-rose-500" : "bg-primary";
-  const recommendedFixesBadgeClassName = recommendedFixesBadgeTone(
-    issueCount,
-    reportFindings
-  );
+  const sourceHtmlSummary = report?.rawSummary?.sourceHtml;
+  const renderedDomSummary = report?.rawSummary?.renderedDom;
+  const renderComparisonSummary = report?.rawSummary?.renderComparison;
+  const capturePasses = Array.isArray(report?.rawSummary?.capturePasses)
+    ? report.rawSummary.capturePasses
+    : [];
   const currentStepMessage = hasAuditFailed
     ? userFacingError ?? "We couldn't finish reviewing this site."
     : pendingReport
@@ -527,6 +568,7 @@ export function AuditSection() {
     setHandoffJobId(null);
     setFocusedResultJobId(null);
     setUrl("");
+    setClientError(null);
     queryClient.removeQueries({
       queryKey: jobId ? auditReportQueryKey(jobId) : ["audit-report", "idle"],
     });
@@ -537,18 +579,69 @@ export function AuditSection() {
 
   return (
     <div className="w-full self-stretch">
-      <form action={formAction} className="mx-auto mt-16 mb-12 w-full max-w-2xl px-4 sm:px-0">
+      <form
+        action={formAction}
+        onSubmit={(e) => {
+          const trimmedUrl = url.trim();
+          if (!trimmedUrl) {
+            e.preventDefault();
+            setClientError("Enter a website URL to start the audit.");
+            return;
+          }
+
+          const targetUrl = trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://")
+            ? trimmedUrl
+            : `https://${trimmedUrl}`;
+
+          try {
+            const urlObj = new URL(targetUrl);
+            if (!urlObj.hostname.includes(".")) {
+              e.preventDefault();
+              setClientError("Please enter a valid domain (e.g., example.com)");
+              return;
+            }
+          } catch {
+            e.preventDefault();
+            setClientError("That URL does not look valid yet.");
+            return;
+          }
+          setClientError(null);
+        }}
+        className="mx-auto mt-16 mb-12 w-full max-w-2xl px-4 sm:px-0"
+      >
         <div className="group relative">
-          <div className="relative flex flex-col rounded-2xl border border-white bg-white p-1.5 shadow-xl sm:flex-row sm:items-center transition-all focus-within:ring-4 focus-within:ring-white/10">
+          <AnimatePresence>
+            {clientError && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="absolute -top-10 left-0 right-0 z-30 flex justify-start px-2"
+              >
+                <div className="flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-1.5 text-xs font-bold text-rose-600 shadow-sm backdrop-blur-sm">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {clientError}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div
+            className={`relative flex flex-col rounded-2xl border bg-white p-1.5 shadow-xl sm:flex-row sm:items-center transition-all focus-within:ring-4 focus-within:ring-primary/5 ${clientError ? "border-rose-300 ring-4 ring-rose-500/10" : "border-slate-200"
+              }`}
+          >
             <div className="flex flex-1 items-center px-4 sm:px-6">
-              <Globe className="h-5 w-5 text-foreground/20 transition-colors group-focus-within:text-primary" />
+              <Globe className={`h-5 w-5 transition-colors ${clientError ? "text-rose-400" : "text-slate-400 group-focus-within:text-primary"}`} />
               <input
                 ref={inputRef}
                 autoFocus
                 type="text"
                 name="url"
                 value={url}
-                onChange={(event) => setUrl(event.target.value)}
+                onChange={(event) => {
+                  setUrl(event.target.value);
+                  if (clientError) setClientError(null);
+                }}
                 disabled={isPending || isAuditActive}
                 placeholder="Enter your website URL (e.g. example.com)"
                 className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-foreground/35 sm:text-base sm:placeholder:text-sm"
@@ -578,6 +671,21 @@ export function AuditSection() {
               )}
             </button>
           </div>
+
+          <div className={`mt-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-700 ${(isPending || isAuditActive) ? "opacity-0 translate-y-2 pointer-events-none" : "opacity-100 translate-y-0"}`}>
+            <span className="text-white/20">•</span>
+            <span className="text-white/30">Ready to test?</span>
+            <button
+              type="button"
+              onClick={() => {
+                setUrl("example.com");
+                setClientError(null);
+              }}
+              className="text-white/70 hover:text-white transition-all underline underline-offset-4 decoration-white/20 hover:decoration-white/50"
+            >
+              example.com
+            </button>
+          </div>
         </div>
       </form>
 
@@ -588,81 +696,107 @@ export function AuditSection() {
             initial={{ opacity: 0, scale: 0.97, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
-            className="mx-auto mt-16 w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-blue-950/60 shadow-2xl backdrop-blur-xl"
+            className="mx-auto mt-16 w-full max-w-6xl"
           >
             <div
-              className={`grid gap-0 ${showProgressSidebar ? "md:grid-cols-[1.35fr_0.85fr]" : ""
+              className={`grid gap-6 ${showProgressSidebar ? "lg:grid-cols-[1fr_380px]" : "grid-cols-1"
                 }`}
             >
-              <div className="p-8 md:p-12">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-400">
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full ${status === "FAILED"
+              <div className="flex flex-col gap-6">
+                {/* Status & Header Card */}
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${status === "FAILED"
                           ? "bg-rose-500"
                           : status === "VERIFIED"
                             ? "bg-emerald-500"
                             : "animate-pulse bg-primary"
-                        }`}
-                    />
-                    {formatStatusLabel(status, isPending)}
-                  </span>
-                  <span className="text-sm text-blue-500">
-                    {targetUrl || actionState.targetUrl || "Preparing your audit"}
-                  </span>
-                </div>
+                          }`}
+                      />
+                      {formatStatusLabel(status, isPending)}
+                    </span>
+                    {(targetUrl || actionState.targetUrl) ? (
+                      <a
+                        href={targetUrl || actionState.targetUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-slate-400 hover:text-primary transition-all underline-offset-4 underline decoration-slate-200 hover:decoration-primary/50"
+                      >
+                        {targetUrl || actionState.targetUrl}
+                      </a>
+                    ) : (
+                      <span className="text-sm text-slate-400">
+                        Preparing your audit
+                      </span>
+                    )}
+                  </div>
 
-                <div className="mt-6 flex items-center gap-3 text-white">
-                  {hasAuditFailed ? (
-                    <>
-                      <AlertCircle className="h-5 w-5 text-rose-500" />
-                      <p className="text-lg font-semibold text-rose-700">
-                        We hit a problem reviewing your site
-                      </p>
-                    </>
-                  ) : pendingReport ? (
-                    <>
-                      <ShieldCheck className="h-5 w-5 text-primary" />
-                      <p className="text-lg font-semibold">
-                        Finalizing your results
-                      </p>
-                    </>
-                  ) : !report && (
-                    <>
-                      <Radar className="h-5 w-5 text-primary" />
-                      <p className="text-lg font-semibold">
-                        Reviewing your site now
-                      </p>
-                    </>
+                  <div className="mt-6 flex items-center gap-3 text-slate-900">
+                    {hasAuditFailed ? (
+                      <>
+                        <AlertCircle className="h-5 w-5 text-rose-500" />
+                        <p className="text-xl font-bold tracking-tight text-rose-800">
+                          Technical Audit Interrupted
+                        </p>
+                      </>
+                    ) : pendingReport ? (
+                      <>
+                        <ShieldCheck className="h-5 w-5 text-primary" />
+                        <p className="text-xl font-bold tracking-tight">
+                          Finalizing Intelligence Data
+                        </p>
+                      </>
+                    ) : (reportScore > 0 || report) ? (
+                      <>
+                        <FileText className="h-5 w-5 text-primary" />
+                        <p className="text-xl font-bold tracking-tight">
+                          Visibility Analysis & Search Intelligence Report
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <Radar className="h-5 w-5 text-primary" />
+                        <p className="text-xl font-bold tracking-tight">
+                          Reviewing Technical Search Signals
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {userFacingError && (
+                    <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+                      {userFacingError}
+                    </div>
                   )}
                 </div>
 
-                {userFacingError && (
-                  <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
-                    {userFacingError}
-                  </div>
-                )}
-
                 {!report && (
-                  <div className="mt-8 space-y-4">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                    <div className="mb-6 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">
+                      Live Audit Stream
+                    </div>
                     {events.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-white/10 px-5 py-6 text-sm text-blue-500">
-                        Getting your first results ready...
+                      <div className="rounded-2xl border border-dashed border-slate-200 px-5 py-10 text-center text-sm text-slate-400">
+                        <LoaderCircle className="mx-auto mb-4 h-6 w-6 animate-spin text-primary/40" />
+                        Waiting for technical signals...
                       </div>
                     ) : (
-                      events.map((event) => (
-                        <div
-                          key={String(event.eventId)}
-                          className={`rounded-2xl border px-5 py-4 ${event.type === "error"
-                              ? "border-rose-900/40 bg-rose-950/20"
+                      <div className="space-y-4">
+                        {events.map((event) => (
+                          <div
+                            key={String(event.eventId)}
+                            className={`rounded-2xl border px-5 py-4 ${event.type === "error"
+                              ? "border-rose-100 bg-rose-50/30"
                               : isPassedCheck(event.checkStatus)
-                                ? "border-emerald-900/40 bg-emerald-950/20"
-                                : "border-white/5 bg-white/5"
-                            }`}
-                        >
-                          <div className="flex flex-wrap items-center gap-3">
-                            <CheckCircle2
-                              className={`h-5 w-5 ${event.type === "error"
+                                ? "border-emerald-100 bg-emerald-50/30"
+                                : "border-slate-100 bg-slate-50"
+                              }`}
+                          >
+                            <div className="flex flex-wrap items-center gap-3">
+                              <CheckCircle2
+                                className={`h-5 w-5 ${event.type === "error"
                                   ? "text-rose-500"
                                   : isIssueCheck(event.checkStatus)
                                     ? "text-primary"
@@ -670,171 +804,169 @@ export function AuditSection() {
                                       ? "text-emerald-500"
                                       : event.type === "complete"
                                         ? "text-emerald-500"
-                                        : "text-blue-500"
-                                }`}
-                            />
-                            <span className="text-sm font-semibold text-blue-200">
-                              {renderEventLead(event)}
-                            </span>
-                            {typeof event.severity === "string" && (
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] ${severityTone(
-                                  event.severity
-                                )}`}
-                              >
-                                {event.severity}
+                                        : "text-slate-400"
+                                  }`}
+                              />
+                              <span className="text-sm font-semibold text-slate-700">
+                                {renderEventLead(event)}
                               </span>
-                            )}
-                            {isPassedCheck(event.checkStatus) && (
-                              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
-                                Passed
-                              </span>
-                            )}
-                            <span className="ml-auto text-xs text-blue-500">
-                              {formatTimestamp(
-                                typeof event.timestamp === "string"
-                                  ? event.timestamp
-                                  : undefined
+                              {typeof event.severity === "string" && (
+                                <span
+                                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] ${severityTone(
+                                    event.severity
+                                  )}`}
+                                >
+                                  {event.severity}
+                                </span>
                               )}
-                            </span>
-                          </div>
+                              {isPassedCheck(event.checkStatus) && (
+                                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+                                  Passed
+                                </span>
+                              )}
+                              <span className="ml-auto text-xs text-slate-400">
+                                {formatTimestamp(
+                                  typeof event.timestamp === "string"
+                                    ? event.timestamp
+                                    : undefined
+                                )}
+                              </span>
+                            </div>
 
-                          {(event.selector || renderEventDetail(event)) && (
-                            <details className="mt-3 rounded-xl bg-white/5 px-4 py-3 text-left text-sm text-blue-400/80">
-                              <summary className="cursor-pointer list-none font-semibold text-blue-300">
-                                {isPassedCheck(event.checkStatus) ? "Why this passed" : "Suggested fix"}
-                              </summary>
-                              <div className="mt-3 space-y-2">
-                                {typeof event.selector === "string" && (
-                                  <p>
-                                    <span className="font-semibold text-blue-300">
-                                      Page area:
-                                    </span>{" "}
-                                    <code className="rounded bg-white/10 px-2 py-1 text-xs">
-                                      {event.selector}
-                                    </code>
-                                  </p>
-                                )}
-                                {renderEventDetail(event) && (
-                                  <p>
-                                    <span className="font-semibold text-blue-300">
-                                      {isPassedCheck(event.checkStatus) ? "What went well:" : "Recommendation:"}
-                                    </span>{" "}
-                                    {renderEventDetail(event)}
-                                  </p>
-                                )}
-                              </div>
-                            </details>
-                          )}
-                        </div>
-                      ))
+                            {(event.selector || renderEventDetail(event)) && (
+                              <details className="mt-3 rounded-xl bg-white/50 border border-slate-100 px-4 py-3 text-left text-sm text-slate-600">
+                                <summary className="cursor-pointer list-none font-semibold text-slate-700">
+                                  {isPassedCheck(event.checkStatus) ? "Why this passed" : "Suggested fix"}
+                                </summary>
+                                <div className="mt-3 space-y-2">
+                                  {typeof event.selector === "string" && (
+                                    <p>
+                                      <span className="font-semibold text-slate-700">
+                                        Page area:
+                                      </span>{" "}
+                                      <code className="rounded bg-white px-2 py-1 text-xs border border-slate-200 text-slate-700">
+                                        {event.selector}
+                                      </code>
+                                    </p>
+                                  )}
+                                  {renderEventDetail(event) && (
+                                    <p>
+                                      <span className="font-semibold text-slate-700">
+                                        {isPassedCheck(event.checkStatus) ? "What went well:" : "Recommendation:"}
+                                      </span>{" "}
+                                      {renderEventDetail(event)}
+                                    </p>
+                                  )}
+                                </div>
+                              </details>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}
 
                 {report && (
-                  <div className="mt-8 space-y-5">
-                    {/* Command Hub: Unified Audit Stats */}
-                    <div className="group/hub relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-blue-950/40 p-10 shadow-[0_45px_100px_rgba(0,0,0,0.5)] md:p-12 lg:p-14">
+                  <>
+                    {/* Command Hub Card */}
+                    <div className="group/hub relative overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white p-10 shadow-sm md:p-12 lg:p-14">
                       {/* Decorative Background Elements */}
                       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        <div className="absolute inset-0 bg-black/10" />
+                        <div className="absolute inset-0 bg-slate-50/50" />
                       </div>
 
                       <div className="relative flex flex-col items-center gap-12 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24">
                         {/* Primary Stat: Visibility Rating: Circular HUD */}
                         <div className="flex flex-col items-center">
-                          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-200/60 mb-6">
+                          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6">
                             Visibility Score
                           </div>
-                          
+
                           <div className="relative h-44 w-44 flex items-center justify-center font-mono group/score">
                             {/* SVG Gauge Background */}
                             <svg className="absolute inset-0 h-full w-full rotate-[-90deg]" viewBox="0 0 160 160">
-                              <circle cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-white/[0.05]" />
-                              <circle 
-                                cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12" 
+                              <circle cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-slate-100" />
+                              <circle
+                                cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12"
                                 strokeDasharray={2 * Math.PI * 70}
                                 strokeDashoffset={2 * Math.PI * 70 * (1 - reportScore / 100)}
                                 className={`${reportScore > 70 ? "text-emerald-500" : reportScore > 40 ? "text-primary" : "text-rose-500"} transition-all duration-1000 ease-out`}
                                 strokeLinecap="round"
                               />
                             </svg>
-                            
+
                             {/* Score Display */}
                             <div className="flex flex-col items-center leading-none group-hover/score:scale-110 transition-transform duration-300">
-                              <span className="text-6xl font-black text-white tracking-tighter">{reportScore}</span>
-                              <span className="text-[10px] font-black text-blue-400/40 uppercase tracking-[0.2em] mt-1">/100</span>
+                              <span className="text-6xl font-black text-slate-900 tracking-tighter">{reportScore}</span>
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">/100</span>
                             </div>
                           </div>
 
-                          <div className="mt-8 flex items-center gap-2.5 rounded-2xl bg-white/[0.03] border border-white/5 py-2.5 px-5 backdrop-blur-md">
+                          <div className="mt-8 flex items-center gap-2.5 rounded-2xl bg-white border border-slate-200 py-2.5 px-5 shadow-sm">
                             <div className={`h-1.5 w-1.5 rounded-full ${reportScore > 70 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : reportScore > 40 ? "bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"}`} />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-700">
                               {reportScore > 70 ? "High Authority" : reportScore > 40 ? "Moderate Reach" : "Optimizing Visibility"}
                             </span>
                           </div>
                         </div>
 
                         {/* Subtle Vertical Divider */}
-                        <div className="hidden lg:block h-32 w-px bg-white/10" />
+                        <div className="hidden lg:block h-32 w-px bg-slate-200" />
 
                         {/* Secondary Stats Group */}
                         <div className="flex items-center gap-12 sm:gap-20 lg:gap-16 xl:gap-24">
                           {/* Gaps Hub */}
-                          <button 
+                          <button
                             onClick={() => document.getElementById('requires-attention')?.scrollIntoView({ behavior: 'smooth' })}
                             className="group/stat flex flex-col items-center lg:items-start transition-transform hover:scale-105 cursor-pointer text-left"
                           >
-                            <div className="text-6xl font-black text-rose-500 font-mono leading-none tracking-tighter lg:text-7xl drop-shadow-[0_0_20px_rgba(244,63,94,0.2)]">
+                            <div className="text-6xl font-black text-rose-500 font-mono leading-none tracking-tighter lg:text-7xl drop-shadow-[0_0_20px_rgba(244,63,94,0.1)]">
                               {issueCount}
                             </div>
-                            <div className="mt-2 text-[9px] font-bold text-rose-100/40 uppercase tracking-[0.2em]">
-                              Things need your attention   
+                            <div className="mt-2 text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                              Things need your attention
                             </div>
-                            <div className="mt-4 h-0.5 w-8 bg-rose-500/20 transition-all group-hover/stat:w-full group-hover/stat:bg-rose-500/40" />
+                            <div className="mt-4 h-0.5 w-8 bg-rose-500/20 transition-all group-hover/stat:w-full group-hover/stat:bg-rose-500" />
                           </button>
 
                           {/* Signals Hub */}
-                          <button 
+                          <button
                             onClick={() => document.getElementById('passed-checks')?.scrollIntoView({ behavior: 'smooth' })}
                             className="group/stat flex flex-col items-center lg:items-start transition-transform hover:scale-105 cursor-pointer text-left"
                           >
-                            <div className="text-6xl font-black text-emerald-500 font-mono leading-none tracking-tighter lg:text-7xl drop-shadow-[0_0_20_rgba(16,185,129,0.2)]">
+                            <div className="text-6xl font-black text-emerald-500 font-mono leading-none tracking-tighter lg:text-7xl drop-shadow-[0_0_20_rgba(16,185,129,0.1)]">
                               {passedCheckCount}
                             </div>
-                            <div className="mt-2 text-[9px] font-bold text-emerald-100/40 uppercase tracking-[0.2em]">
+                            <div className="mt-2 text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
                               Checks passed
                             </div>
-                            <div className="mt-4 h-0.5 w-8 bg-emerald-500/20 transition-all group-hover/stat:w-full group-hover/stat:bg-emerald-500/40" />
+                            <div className="mt-4 h-0.5 w-8 bg-emerald-500/20 transition-all group-hover/stat:w-full group-hover/stat:bg-emerald-500" />
                           </button>
                         </div>
                       </div>
                     </div>
 
-                    {/* Technical Breakdown Section */}
+                    {/* Technical Breakdown Card */}
                     {categoryScores.length > 0 && (
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-6 py-4">
-                          <div className="h-px flex-1 bg-white/10" />
-                          <div className="rounded-full border border-white/10 bg-white/5 px-6 py-2 backdrop-blur-sm">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-200">
-                              Technical Scores
-                            </h3>
-                          </div>
-                          <div className="h-px flex-1 bg-white/10" />
+                      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                        <div className="mb-8 flex items-center gap-4">
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-500">
+                            Technical Scores
+                          </h3>
+                          <div className="h-px flex-1 bg-slate-100" />
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                           {categoryScores.map((category) => (
-                            <div key={category.key} className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-5 transition-all hover:bg-white/[0.04]">
+                            <div key={category.key} className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/30 p-5 transition-all hover:bg-slate-50">
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-blue-100">{category.label}</span>
-                                <span className={`text-sm font-black font-mono ${category.score > 70 ? "text-emerald-400" : category.score > 40 ? "text-primary" : "text-rose-400"
+                                <span className="text-xs font-bold text-slate-700">{category.label}</span>
+                                <span className={`text-sm font-black font-mono ${category.score > 70 ? "text-emerald-600" : category.score > 40 ? "text-primary" : "text-rose-600"
                                   }`}>{category.score}</span>
                               </div>
-                              <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-white/5">
+                              <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-white border border-slate-100">
                                 <div
-                                  className={`h-full opacity-60 transition-all duration-1000 ${category.score > 70 ? "bg-emerald-500" : category.score > 40 ? "bg-primary" : "bg-rose-500"
+                                  className={`h-full transition-all duration-1000 ${category.score > 70 ? "bg-emerald-500" : category.score > 40 ? "bg-primary" : "bg-rose-500"
                                     }`}
                                   style={{ width: `${category.score}%` }}
                                 />
@@ -845,136 +977,220 @@ export function AuditSection() {
                       </div>
                     )}
 
-                    <div className="space-y-12">
-                      <section id="requires-attention" className="space-y-6 scroll-mt-10">
-                        <div className="flex items-end justify-between px-2">
-                          <div className="flex flex-col gap-1">
-                            <h3 className="text-2xl font-black text-white tracking-tight">
-                              Requires Your Attention
-                            </h3>
-                          </div>
-                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400/80">
-                            {issueCount} Issues Detected
-                          </span>
-                        </div>
-
-                        {/* Feature the Top Priority (Critical Action) but using the shared CheckRow style */}
-                        {(() => {
-                          const topCheck = reportChecks.find(c => c.label === report.summary?.topIssue);
-                          if (!topCheck) return null;
-
-                          return (
-                            <div className="mb-4">
-                              <CheckRow
-                                check={topCheck}
-                                kind="issue"
-                                isHero={true}
-                              />
+                    {/* Audit Surface Card (Redesigned Compact) */}
+                    {!!report?.rawSummary && (
+                      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                        <div className="flex flex-col gap-6">
+                          {/* Top: Meta info & Primary Description */}
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="space-y-1">
+                              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Audit Surface</div>
+                              <p className="text-xs text-slate-500 max-w-xl">Google prioritizes source HTML. We compare static vs rendered states to identify JavaScript dependencies.</p>
                             </div>
-                          );
-                        })()}
-
-                        {reportFindings.filter(finding => finding.label !== report.summary?.topIssue).length === 0 ? (
-                          !reportChecks.find(c => c.label === report.summary?.topIssue) && (
-                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-5 text-sm text-emerald-800">
-                              No urgent issues were flagged in this audit. Your site cleared every tracked check in this slice.
-                            </div>
-                          )
-                        ) : (
-                          <div className="space-y-3">
-                            {reportFindings
-                              .filter(finding => finding.label !== report.summary?.topIssue)
-                              .map((finding, index) => (
-                                <CheckRow
-                                  key={finding.id ?? `${finding.selector}-${index}`}
-                                  check={finding}
-                                  kind="issue"
-                                />
+                            <div className="flex flex-wrap gap-1.5">
+                              {capturePasses.map((pass) => (
+                                <span key={pass} className="rounded-full border border-slate-100 bg-slate-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-500 shadow-sm transition-colors hover:bg-white">
+                                  {formatEvidenceSource(pass) ?? pass}
+                                </span>
                               ))}
+                              <div className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${renderDependencyTone(renderComparisonSummary?.renderDependencyRisk)} shadow-sm`}>
+                                {formatRenderDependencyLabel(renderComparisonSummary?.renderDependencyRisk)}
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </section>
 
-                      <section id="passed-checks" className="space-y-6 scroll-mt-10">
-                        <div className="flex items-end justify-between">
-                          <div>
-                            <h3 className="text-2xl font-bold text-white tracking-tight">
-                              Passed Checks
-                            </h3>
-                          </div>
-                          <span className="text-sm font-bold text-blue-400/80">
-                            {passedCheckCount} Validated
-                          </span>
-                        </div>
-
-                        {reportPassedChecks.length === 0 ? (
-                          <div className="rounded-2xl border border-dashed border-border px-5 py-5 text-sm text-foreground/55">
-                            We did not capture any confirmed passed checks for this run.
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {reportPassedChecks.map((check, index) => (
-                              <CheckRow
-                                key={check.id ?? `${check.selector}-${index}`}
-                                check={check}
-                                kind="passed"
-                              />
+                          {/* Middle: 4-Col Grid of Primary Metrics */}
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            {[
+                              { label: "Source Word Count", value: sourceHtmlSummary?.wordCount ?? 0, type: "static" },
+                              { label: "Source Links", value: sourceHtmlSummary?.sameOriginCrawlableLinkCount ?? 0, type: "static" },
+                              { label: "Rendered Word Count", value: renderedDomSummary?.wordCount ?? "—", type: "dynamic" },
+                              { label: "Rendered Links", value: renderedDomSummary?.sameOriginCrawlableLinkCount ?? "—", type: "dynamic" },
+                            ].map((stat, i) => (
+                              <div key={i} className="flex flex-col gap-1 rounded-xl border border-slate-100 bg-slate-50/30 p-3.5 shadow-sm">
+                                <span className={`text-[8px] font-black uppercase tracking-wider ${stat.type === "static" ? "text-slate-400" : "text-primary/70"}`}>
+                                  {stat.label}
+                                </span>
+                                <span className="text-lg font-black text-slate-900 leading-none">{stat.value}</span>
+                              </div>
                             ))}
                           </div>
-                        )}
-                      </section>
-                    </div>
-                  </div>
+
+                          {/* Bottom: Surface Intelligence Strip */}
+                          <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex items-center gap-6">
+                              <div className="flex items-center gap-2 border-r border-slate-100 pr-6">
+                                <span className="text-sm font-black text-rose-500">{renderComparisonSummary?.sourceOnlyCriticalIssues ?? 0}</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase">Critical Gaps</span>
+                              </div>
+                              <div className="flex items-center gap-2 border-r border-slate-100 pr-6">
+                                <span className="text-sm font-black text-primary">{renderComparisonSummary?.renderedOnlySignals ?? 0}</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase">Rendered Signals</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-black text-slate-900">{renderComparisonSummary?.mismatches ?? 0}</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase">Mismatches</span>
+                              </div>
+                            </div>
+                            <div className="flex gap-4 border-t border-slate-100 pt-3 lg:border-t-0 lg:pt-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-black uppercase text-slate-300">Schema (S)</span>
+                                <span className="text-[10px] font-bold text-slate-600 truncate max-w-[120px]">{formatStructuredDataKinds(sourceHtmlSummary?.structuredDataKinds)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-black uppercase text-slate-300">Schema (R)</span>
+                                <span className="text-[10px] font-bold text-slate-600 truncate max-w-[120px]">{formatStructuredDataKinds(renderedDomSummary?.structuredDataKinds)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Requires Attention Card */}
+                    <section id="requires-attention" className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm scroll-mt-24 space-y-6">
+                      <div className="flex items-end justify-between px-2">
+                        <div className="flex flex-col gap-1">
+                          <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                            Requires Your Attention
+                          </h3>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                          {issueCount} Issues Detected
+                        </span>
+                      </div>
+
+                      {/* Feature the Top Priority (Critical Action) */}
+                      {(() => {
+                        const topCheck = reportChecks.find(c => c.label === report.summary?.topIssue);
+                        if (!topCheck) return null;
+
+                        return (
+                          <div className="mb-4">
+                            <CheckRow
+                              check={topCheck}
+                              kind="issue"
+                              isHero={true}
+                            />
+                          </div>
+                        );
+                      })()}
+
+                      {reportFindings.filter(finding => finding.label !== report.summary?.topIssue).length === 0 ? (
+                        !reportChecks.find(c => c.label === report.summary?.topIssue) && (
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-5 text-sm text-emerald-800 text-center">
+                            No urgent issues were flagged in this audit. Your site cleared every tracked check in this slice.
+                          </div>
+                        )
+                      ) : (
+                        <div className="space-y-3">
+                          {reportFindings
+                            .filter(finding => finding.label !== report.summary?.topIssue)
+                            .map((finding, index) => (
+                              <CheckRow
+                                key={finding.id ?? `${finding.selector}-${index}`}
+                                check={finding}
+                                kind="issue"
+                              />
+                            ))}
+                        </div>
+                      )}
+                    </section>
+
+                    {/* Passed Checks Card */}
+                    <section id="passed-checks" className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm scroll-mt-24 space-y-6">
+                      <div className="flex items-end justify-between px-2">
+                        <div>
+                          <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
+                            Passed Checks
+                          </h3>
+                        </div>
+                        <span className="text-sm font-bold text-slate-400">
+                          {passedCheckCount} Validated
+                        </span>
+                      </div>
+
+                      {reportPassedChecks.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-slate-200 px-5 py-10 text-center text-sm text-slate-400">
+                          We did not capture any confirmed passed checks for this run.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {reportPassedChecks.map((check, index) => (
+                            <CheckRow
+                              key={check.id ?? `${check.selector}-${index}`}
+                              check={check}
+                              kind="passed"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    {(report || status === "FAILED") && (
+                      <button
+                        type="button"
+                        onClick={handleReset}
+                        className="mx-auto w-full max-w-sm rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95"
+                      >
+                        Run another audit
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
               {showProgressSidebar && (
-                <div className="border-t border-border bg-secondary/20 p-8 md:border-t-0 md:border-l">
-                  <div className="rounded-3xl bg-blue-900/40 p-6 shadow-sm">
-                    <div className="text-sm font-bold uppercase tracking-[0.2em] text-blue-500">
-                      Progress
+                <div className="lg:sticky lg:top-24 h-fit space-y-6">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                    <div className="text-sm font-bold uppercase tracking-[0.2em] text-primary">
+                      Live Pulse
                     </div>
-                    <div className="mt-6 space-y-5">
+                    <div className="mt-8 space-y-6">
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
-                          Live updates
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                          Connection
                         </div>
                         <div
-                          className={`mt-2 text-lg font-semibold ${hasAuditFailed ? "text-rose-400" : "text-white"
+                          className={`mt-2 text-xl font-bold ${hasAuditFailed ? "text-rose-600" : "text-slate-900"
                             }`}
                         >
                           {formatConnectionLabel(connectionStatus, status)}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
-                          Website
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                          Targets
                         </div>
-                        <div className="mt-2 break-all text-sm text-blue-300">
+                        <div className="mt-2 break-all text-sm font-medium text-slate-600">
                           {targetUrl || actionState.targetUrl || "Waiting"}
                         </div>
                       </div>
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
-                          Issues found
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="rounded-2xl bg-rose-50 p-4 border border-rose-100">
+                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-400 mb-1">
+                            Gaps
+                          </div>
+                          <div className="text-3xl font-black text-rose-500">
+                            {liveFindings.length}
+                          </div>
                         </div>
-                        <div className="mt-2 text-4xl font-black text-primary">
-                          {liveFindings.length}
+                        <div className="rounded-2xl bg-emerald-50 p-4 border border-emerald-100">
+                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-1">
+                            Signals
+                          </div>
+                          <div className="text-3xl font-black text-emerald-500">
+                            {livePassedChecks.length}
+                          </div>
                         </div>
                       </div>
+
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
-                          Checks passed
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
+                          Visibility Mapping
                         </div>
-                        <div className="mt-2 text-4xl font-black text-emerald-400">
-                          {livePassedChecks.length}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
-                          Progress
-                        </div>
-                        <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
+                        <div className="relative h-2 overflow-hidden rounded-full bg-slate-100">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${progressBarClassName}`}
                             style={{
@@ -983,55 +1199,46 @@ export function AuditSection() {
                           />
                         </div>
                         <div
-                          className={`mt-2 text-sm ${hasAuditFailed ? "text-rose-400" : "text-blue-400"
+                          className={`mt-2 text-[10px] font-black font-mono ${hasAuditFailed ? "text-rose-600" : "text-slate-500"
                             }`}
                         >
                           {progressLabel}
                         </div>
                       </div>
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
-                          Current step
+
+                      <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
+                          Active Operation
                         </div>
                         <div
-                          className={`mt-2 flex items-center gap-2 text-sm ${hasAuditFailed ? "text-rose-400" : "text-blue-300"
+                          className={`flex items-center gap-2 text-sm font-bold ${hasAuditFailed ? "text-rose-600" : "text-slate-900"
                             }`}
                         >
                           {hasAuditFailed ? (
                             <>
                               <AlertCircle className="h-4 w-4 text-rose-500" />
-                              {currentStepMessage}
+                              <span className="truncate">{currentStepMessage}</span>
                             </>
                           ) : pendingReport ? (
                             <>
                               <LoaderCircle className="h-4 w-4 animate-spin text-primary" />
-                              {currentStepMessage}
+                              <span className="truncate">{currentStepMessage}</span>
                             </>
                           ) : report ? (
                             <>
                               <BadgeCheck className="h-4 w-4 text-emerald-500" />
-                              {currentStepMessage}
+                              <span className="truncate">{currentStepMessage}</span>
                             </>
                           ) : (
                             <>
-                              <Radar className="h-4 w-4 text-primary" />
-                              {currentStepMessage}
+                              <Radar className="h-4 w-4 text-primary animate-pulse" />
+                              <span className="truncate">{currentStepMessage}</span>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
                   </div>
-
-                  {(report || status === "FAILED") && (
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      className="mt-6 w-full rounded-2xl border border-primary/20 bg-white/5 px-5 py-4 text-sm font-bold text-primary shadow-sm transition hover:bg-primary/10"
-                    >
-                      Run another audit
-                    </button>
-                  )}
                 </div>
               )}
             </div>
