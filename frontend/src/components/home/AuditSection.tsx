@@ -456,6 +456,7 @@ export function AuditSection() {
     });
     connectToStream();
     setHandoffJobId(null);
+    window.scrollTo(0, 0);
   }, [
     actionState.jobId,
     actionState.ok,
@@ -565,19 +566,32 @@ export function AuditSection() {
         : "Checking your site";
 
   React.useEffect(() => {
-    if (!report || !jobId || focusedResultJobId === jobId || !resultPanelRef.current) {
+    // Only scroll to results if we have a report, it's a new jobId, 
+    // and we're not currently waiting for a re-audit action state to settle.
+    if (!report || !jobId || focusedResultJobId === jobId || !resultPanelRef.current || isPending) {
       return;
     }
 
     const nextTop =
       resultPanelRef.current.getBoundingClientRect().top + window.scrollY - 96;
 
-    window.scrollTo({
-      top: Math.max(nextTop, 0),
-      behavior: "smooth",
-    });
+    window.scrollTo(0, Math.max(nextTop, 0));
     setFocusedResultJobId(jobId);
-  }, [focusedResultJobId, jobId, report]);
+  }, [focusedResultJobId, jobId, report, isPending]);
+
+  const handleReAudit = React.useCallback((e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+
+    // Reverting to instant scroll as requested to avoid downward jitter
+    window.scrollTo(0, 0);
+
+    React.startTransition(() => {
+      const formData = new FormData();
+      formData.append("url", targetUrl || "");
+      formAction(formData);
+    });
+  }, [formAction, targetUrl]);
 
   const handleReset = () => {
     reset();
@@ -745,7 +759,7 @@ export function AuditSection() {
             initial={{ opacity: 0, scale: 0.97, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
-            className="mx-auto mt-16 w-full max-w-6xl"
+            className="mx-auto mt-16 w-full max-w-6xl min-h-[400px]"
           >
             <div
               className={`grid gap-6 ${showProgressSidebar ? "lg:grid-cols-[1fr_380px]" : "grid-cols-1"
@@ -781,17 +795,11 @@ export function AuditSection() {
                       </span>
                     )}
 
-                    {(report || hasAuditFailed) && !isPending && !isAuditActive && (
+                    {(report || hasAuditFailed) && !isAuditActive && (
                       <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 divide-x divide-slate-100">
                         <button
                           type="button"
-                          onClick={() => {
-                            React.startTransition(() => {
-                              const formData = new FormData();
-                              formData.append("url", targetUrl || "");
-                              formAction(formData);
-                            });
-                          }}
+                          onClick={handleReAudit}
                           className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 active:bg-slate-100"
                         >
                           <RefreshCw className="h-3.5 w-3.5 text-primary/70" />
@@ -1134,17 +1142,11 @@ export function AuditSection() {
                       )}
                     </section>
 
-                    {(report || hasAuditFailed) && !isPending && !isAuditActive && (
+                    {(report || hasAuditFailed) && !isAuditActive && (
                       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-3 sm:flex-row">
                         <button
                           type="button"
-                          onClick={() => {
-                            React.startTransition(() => {
-                              const formData = new FormData();
-                              formData.append("url", targetUrl || "");
-                              formAction(formData);
-                            });
-                          }}
+                          onClick={handleReAudit}
                           className="flex h-14 w-full flex-1 items-center justify-center gap-2.5 rounded-2xl bg-primary px-6 py-4 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] hover:shadow-xl active:scale-95"
                         >
                           <RefreshCw className="h-4 w-4" />
