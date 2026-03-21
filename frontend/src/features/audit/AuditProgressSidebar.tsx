@@ -6,10 +6,7 @@ import {
   Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  MetaLabel,
-  SurfaceCard,
-} from "@/components/system/audit/primitives";
+import { MetaLabel, SurfaceCard } from "./primitives";
 
 type AuditProgressSidebarProps = {
   connectionLabel: string;

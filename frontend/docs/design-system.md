@@ -3,12 +3,12 @@
 ## Purpose
 - Establish a source-owned design system for all new frontend work without changing existing marketing or audit UI in this slice.
 - Keep `src/components/ui` generic and reusable.
-- Keep `src/components/system` specific to SEOGEO product language and repeated business patterns.
+- Keep domain-specific TSX in `src/features/*`.
 
 ## Layering Contract
 - `ui/*`: shadcn-based primitives with stable variant props and no SEOGEO-specific copy, iconography, or layout assumptions.
-- `system/*`: SEOGEO wrappers and compositions such as page shells, status language, metric framing, empty states, and audit callouts.
-- Feature-local components: use only when behavior is unique to a single feature and not yet a repeated pattern.
+- `features/*`: domain-owned TSX, controllers, and feature-specific view-model shaping.
+- `layout/*`: global chrome only.
 
 ## Tokens
 - Typography:
@@ -66,3 +66,4 @@
 - Magic UI is intentionally deferred.
 - When introduced later, use it only for additive, decorative, or marketing moments.
 - Do not base core navigation, forms, or data-dense product surfaces on Magic UI components.
+

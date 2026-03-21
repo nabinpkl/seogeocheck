@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import { startAuditAction } from "@/app/actions/start-audit";
@@ -12,14 +11,6 @@ import {
 } from "@/lib/audit-query";
 import type { AuditReport } from "@/types/audit";
 import { useAuditStore } from "@/store/use-audit-store";
-import { AuditCategoryScoreGrid } from "@/components/system/audit/AuditCategoryScoreGrid";
-import { AuditChecksSection } from "@/components/system/audit/AuditChecksSection";
-import { AuditInputPanel } from "@/components/system/audit/AuditInputPanel";
-import { AuditLiveStreamPanel } from "@/components/system/audit/AuditLiveStreamPanel";
-import { AuditProgressSidebar } from "@/components/system/audit/AuditProgressSidebar";
-import { AuditResultActions } from "@/components/system/audit/AuditResultActions";
-import { AuditScoreHero } from "@/components/system/audit/AuditScoreHero";
-import { AuditStatusHeader } from "@/components/system/audit/AuditStatusHeader";
 import {
   buildAuditCheckRowModel,
   buildAuditHeaderModel,
@@ -28,7 +19,8 @@ import {
   formatConnectionLabel,
   isIssueCheck,
   isPassedCheck,
-} from "@/components/system/audit/view-models";
+} from "./view-models";
+import type { AuditSectionViewProps } from "./AuditSection.types";
 
 async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
   const response = await fetch(reportUrl, {
@@ -46,7 +38,7 @@ async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
   return (await response.json()) as AuditReport;
 }
 
-export function AuditSection() {
+export function useAuditSectionController(): AuditSectionViewProps {
   const [url, setUrl] = React.useState("");
   const [clientError, setClientError] = React.useState<string | null>(null);
   const [actionState, formAction, isPending] = React.useActionState(
@@ -215,7 +207,13 @@ export function AuditSection() {
         : "Checking your site";
 
   React.useEffect(() => {
-    if (!report || !jobId || focusedResultJobId === jobId || !resultPanelRef.current || isPending) {
+    if (
+      !report ||
+      !jobId ||
+      focusedResultJobId === jobId ||
+      !resultPanelRef.current ||
+      isPending
+    ) {
       return;
     }
 
@@ -343,7 +341,6 @@ export function AuditSection() {
       "passed"
     )
   );
-  const liveStreamRows = events.map(buildAuditStreamRowModel);
   const headerModel = buildAuditHeaderModel({
     status,
     isPending,
@@ -358,10 +355,6 @@ export function AuditSection() {
   const topIssueRow = topIssue
     ? buildAuditCheckRowModel(topIssue, "issue", { isHero: true })
     : null;
-  const statusHeaderActions =
-    (report || hasAuditFailed) && !isAuditActive ? (
-      <AuditResultActions compact onReAudit={handleReAudit} onReset={handleReset} />
-    ) : null;
   const currentOperationState = hasAuditFailed
     ? "failed"
     : pendingReport
@@ -370,115 +363,73 @@ export function AuditSection() {
         ? "ready"
         : "active";
 
-  return (
-    <div className="w-full self-stretch">
-      <AuditInputPanel
-        action={formAction}
-        onSubmit={handleSubmit}
-        inputRef={inputRef}
-        url={url}
-        clientError={clientError}
-        isPending={isPending}
-        isAuditActive={isAuditActive}
-        isTyping={isTyping}
-        onUrlChange={(value) => {
-          setUrl(value);
-          if (clientError) {
-            setClientError(null);
-          }
-        }}
-        onExampleAudit={simulateExampleAudit}
-      />
-
-      <AnimatePresence initial={false}>
-        {jobId || isPending || userFacingError ? (
-          <motion.div
-            ref={resultPanelRef}
-            initial={{ opacity: 0, scale: 0.97, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 10 }}
-            className="mx-auto mt-16 min-h-[400px] w-full max-w-6xl"
-          >
-            <div
-              className={`grid gap-6 ${
-                showProgressSidebar ? "lg:grid-cols-[1fr_380px]" : "grid-cols-1"
-              }`}
-            >
-              <div className="flex flex-col gap-6">
-                <AuditStatusHeader model={headerModel} actions={statusHeaderActions} />
-
-                {!report ? <AuditLiveStreamPanel rows={liveStreamRows} /> : null}
-
-                {report ? (
-                  <>
-                    <AuditScoreHero
-                      reportScore={reportScore}
-                      issueCount={issueCount}
-                      passedCheckCount={passedCheckCount}
-                      onScrollToIssues={() =>
-                        document
-                          .getElementById("requires-attention")
-                          ?.scrollIntoView({ behavior: "smooth" })
-                      }
-                      onScrollToPassed={() =>
-                        document
-                          .getElementById("passed-checks")
-                          ?.scrollIntoView({ behavior: "smooth" })
-                      }
-                    />
-
-                    <AuditCategoryScoreGrid categories={categoryScores} />
-
-                    <section id="requires-attention">
-                      <AuditChecksSection
-                        id="requires-attention-panel"
-                        title="Requires Your Attention"
-                        countLabel={`${issueCount} Issues Detected`}
-                        heroRow={topIssueRow}
-                        rows={issueRows}
-                        emptyMessage="No urgent issues were flagged in this audit. Your site cleared every tracked check in this slice."
-                        emptyTone="success"
-                      />
-                    </section>
-
-                    <section id="passed-checks">
-                      <AuditChecksSection
-                        id="passed-checks-panel"
-                        title="Passed Checks"
-                        countLabel={`${passedCheckCount} Validated`}
-                        rows={passedRows}
-                        emptyMessage="We did not capture any confirmed passed checks for this run."
-                      />
-                    </section>
-
-                    {!isAuditActive ? (
-                      <AuditResultActions
-                        onReAudit={handleReAudit}
-                        onReset={handleReset}
-                      />
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-
-              {showProgressSidebar ? (
-                <AuditProgressSidebar
-                  connectionLabel={formatConnectionLabel(connectionStatus, status)}
-                  hasAuditFailed={hasAuditFailed}
-                  targetUrlLabel={targetUrl || actionState.targetUrl || "Waiting"}
-                  gapsCount={liveFindings.length}
-                  signalsCount={livePassedChecks.length}
-                  progressValue={progressValue}
-                  progressLabel={progressLabel}
-                  progressBarClassName={progressBarClassName}
-                  currentStepMessage={currentStepMessage}
-                  operationState={currentOperationState}
-                />
-              ) : null}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
-  );
+  return {
+    inputRef,
+    resultPanelRef,
+    visibility: {
+      showResultPanel: Boolean(jobId || isPending || userFacingError),
+      showLiveStream: !report,
+      showProgressSidebar,
+    },
+    inputPanel: {
+      action: formAction,
+      onSubmit: handleSubmit,
+      url,
+      clientError,
+      isPending,
+      isAuditActive,
+      isTyping,
+      onUrlChange: (value) => {
+        setUrl(value);
+        if (clientError) {
+          setClientError(null);
+        }
+      },
+      onExampleAudit: simulateExampleAudit,
+    },
+    statusHeader: {
+      model: headerModel,
+      showCompactActions: (Boolean(report) || hasAuditFailed) && !isAuditActive,
+    },
+    liveStream: {
+      rows: events.map(buildAuditStreamRowModel),
+    },
+    progressSidebar: {
+      connectionLabel: formatConnectionLabel(connectionStatus, status),
+      hasAuditFailed,
+      targetUrlLabel: targetUrl || actionState.targetUrl || "Waiting",
+      gapsCount: liveFindings.length,
+      signalsCount: livePassedChecks.length,
+      progressValue,
+      progressLabel,
+      progressBarClassName,
+      currentStepMessage,
+      operationState: currentOperationState,
+    },
+    results: report
+      ? {
+          reportScore,
+          issueCount,
+          passedCheckCount,
+          categoryScores,
+          topIssueRow,
+          issueRows,
+          passedRows,
+          onScrollToIssues: () =>
+            document
+              .getElementById("requires-attention")
+              ?.scrollIntoView({ behavior: "smooth" }),
+          onScrollToPassed: () =>
+            document
+              .getElementById("passed-checks")
+              ?.scrollIntoView({ behavior: "smooth" }),
+          onReAudit: handleReAudit,
+          onReset: handleReset,
+        }
+      : null,
+    actions: {
+      onReAudit: handleReAudit,
+      onReset: handleReset,
+    },
+  };
 }

@@ -1,9 +1,6 @@
 import * as React from "react";
-import {
-  StatusPill,
-  SurfaceCard,
-} from "@/components/system/audit/primitives";
-import type { AuditHeaderModel } from "@/components/system/audit/models";
+import { StatusPill, SurfaceCard } from "./primitives";
+import type { AuditHeaderModel } from "./models";
 
 type AuditStatusHeaderProps = {
   model: AuditHeaderModel;

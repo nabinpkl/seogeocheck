@@ -1,12 +1,7 @@
 import * as React from "react";
 import { CheckCircle2 } from "lucide-react";
-import {
-  EmptyPanelState,
-  SectionEyebrow,
-  SeverityBadge,
-  SurfaceCard,
-} from "@/components/system/audit/primitives";
-import type { AuditStreamRowModel } from "@/components/system/audit/models";
+import { EmptyPanelState, SectionEyebrow, SeverityBadge, SurfaceCard } from "./primitives";
+import type { AuditStreamRowModel } from "./models";
 
 const rowToneClasses = {
   error: "border-rose-100 bg-rose-50/30",

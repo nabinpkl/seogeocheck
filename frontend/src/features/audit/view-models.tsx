@@ -11,7 +11,7 @@ import type {
   AuditHeaderModel,
   AuditStreamRowModel,
   AuditTone,
-} from "@/components/system/audit/models";
+} from "./models";
 
 const CATEGORY_LABELS: Record<string, string> = {
   reachability: "Reachability",

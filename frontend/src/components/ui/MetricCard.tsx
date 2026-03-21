@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { StatusBadge, type StatusBadgeTone } from "@/components/system/StatusBadge";
+import { StatusBadge, type StatusBadgeTone } from "./StatusBadge";
 import { cn } from "@/lib/utils";
 
 type MetricCardProps = {

@@ -51,18 +51,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AuditCallout } from "@/components/system/AuditCallout";
-import { EmptyState, EmptyStateAction } from "@/components/system/EmptyState";
-import { MetricCard } from "@/components/system/MetricCard";
-import { PageShell } from "@/components/system/PageShell";
-import { SectionHeading } from "@/components/system/SectionHeading";
-import { StatusBadge } from "@/components/system/StatusBadge";
-import { AuditCategoryScoreGrid } from "@/components/system/audit/AuditCategoryScoreGrid";
-import { AuditCheckRow } from "@/components/system/audit/AuditCheckRow";
-import { AuditProgressSidebar } from "@/components/system/audit/AuditProgressSidebar";
-import { AuditResultActions } from "@/components/system/audit/AuditResultActions";
-import { AuditScoreHero } from "@/components/system/audit/AuditScoreHero";
-import { AuditStatusHeader } from "@/components/system/audit/AuditStatusHeader";
+import { EmptyState, EmptyStateAction } from "@/components/ui/EmptyState";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { PageShell } from "@/components/ui/PageShell";
+import { SectionHeading } from "@/components/ui/SectionHeading";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AuditCallout } from "@/features/audit/AuditCallout";
+import { AuditCategoryScoreGrid } from "@/features/audit/AuditCategoryScoreGrid";
+import { AuditCheckRow } from "@/features/audit/AuditCheckRow";
+import { AuditProgressSidebar } from "@/features/audit/AuditProgressSidebar";
+import { AuditResultActions } from "@/features/audit/AuditResultActions";
+import { AuditScoreHero } from "@/features/audit/AuditScoreHero";
+import { AuditStatusHeader } from "@/features/audit/AuditStatusHeader";
 import {
   Activity,
   AlertTriangle,
@@ -125,7 +125,7 @@ export function DesignSystemGallery() {
         <SectionHeading
           eyebrow="Internal"
           title="SEOGEO Design System"
-          description="A hidden gallery for visual QA, primitive validation, and system-level composition examples. Existing product screens stay untouched while new work adopts these foundations."
+          description="A hidden gallery for visual QA, primitive validation, and feature-owned composition examples. Existing product screens stay untouched while new work adopts these foundations."
           action={
             <>
               <Button asChild variant="outline">
@@ -151,7 +151,7 @@ export function DesignSystemGallery() {
           <MetricCard
             label="Migration Rule"
             value="New UI Only"
-            helper="New or intentionally rewritten screens must use system primitives instead of fresh ad hoc buttons, cards, inputs, badges, or progress bars."
+            helper="New or intentionally rewritten screens must use shared UI primitives instead of fresh ad hoc buttons, cards, inputs, badges, or progress bars."
             delta="Locked"
             deltaDirection="flat"
             tone="info"
@@ -293,7 +293,7 @@ export function DesignSystemGallery() {
                     <TabsTrigger value="history">History</TabsTrigger>
                   </TabsList>
                   <TabsContent value="summary" className="rounded-2xl border border-border p-4">
-                    Summary content should use system shells and cards rather than ad hoc wrappers.
+                    Summary content should use shared shells and cards rather than ad hoc wrappers.
                   </TabsContent>
                   <TabsContent value="findings" className="rounded-2xl border border-border p-4">
                     Findings views can compose badges, status cards, and audit callouts.
@@ -370,8 +370,8 @@ export function DesignSystemGallery() {
 
           <aside className="space-y-8">
             <AuditCallout
-              title="Source-owned system components"
-              description="The `ui/*` layer stays generic. Repeated SEOGEO language such as audit status, empty-result framing, and metric tiles belongs in `system/*` wrappers."
+              title="Source-owned UI and feature ownership"
+              description="The `ui/*` layer stays generic. Repeated SEOGEO language such as audit status, empty-result framing, and audit metric tiles belongs in the owning `features/*` folder."
               statusLabel="Governed"
               tone="info"
               meta="Design system rules live in frontend/docs and AGENTS.md."

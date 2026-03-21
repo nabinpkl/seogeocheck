@@ -1,8 +1,8 @@
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { EvidenceTag, SeverityBadge } from "@/components/system/audit/primitives";
-import type { AuditCheckRowModel } from "@/components/system/audit/models";
+import { EvidenceTag, SeverityBadge } from "./primitives";
+import type { AuditCheckRowModel } from "./models";
 
 const rowToneClasses = {
   issue: {

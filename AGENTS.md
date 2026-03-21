@@ -90,18 +90,17 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 ### Frontend Requirements
 - **Runtime:** Next.js 16+ (React 19)
 - **Styling:** Tailwind CSS 4+
-- **Design System Foundation:** shadcn/ui registry primitives in `frontend/src/components/ui` + SEOGEO compositions in `frontend/src/components/system`
+- **Design System Foundation:** shadcn/ui registry primitives in `frontend/src/components/ui` + domain-owned TSX in `frontend/src/features/*`
 - **Package Manager:** pnpm
 - **Data Fetching:** TanStack Query v5+ (Server State)
 - **State Management:** Zustand v5+ (Client State)
 
 ### Frontend Design System Rules
 - `frontend/src/components/ui` is the source-owned primitive layer. Keep it generic and product-agnostic.
-- `frontend/src/components/system` is the SEOGEO composition layer for repeated product framing such as page shells, status badges, metric cards, empty states, and audit callouts.
-- For new or intentionally rewritten screens, do **not** introduce fresh ad hoc button, input, textarea, badge, card, separator, skeleton, progress, dialog, sheet, tab, tooltip, or accordion patterns when an existing system component fits.
-- Existing legacy marketing and audit surfaces may remain unchanged until an intentional migration slice touches them.
-- Use the hidden dev-only gallery route at `/internal/design-system` during local development for visual QA of primitives and system components.
-- Magic UI is deferred until the core design system is stable; when introduced later, keep it additive and decorative rather than foundational for core product UI.
+- `frontend/src/features/*` owns domain-specific TSX, controllers, and view-model shaping. Use `frontend/src/features/audit` for audit UI and `frontend/src/features/marketing` for homepage marketing sections.
+- `frontend/src/components/layout` owns only global site chrome such as the navbar and footer.
+- For new or intentionally rewritten screens, do **not** introduce fresh ad hoc button, input, textarea, badge, card, separator, skeleton, progress, dialog, sheet, tab, tooltip, or accordion patterns when an existing `components/ui` primitive or composition fits.
+- Use the hidden dev-only gallery route at `/internal/design-system` during local development for visual QA of `components/ui` primitives and feature-owned compositions.
 
 ### Data Ownership Rules
 - **TanStack Query:** Exclusively owns data synchronized from the server.
@@ -118,7 +117,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 3.  **Documentation:** Always update `AGENTS.md` when introducing new core patterns.
 4.  **Libraries:** If version knowledge is stale, perform a web search for the latest documentation.
 6.  **Backward Compatibility:** Do not preserve old APIs, schemas, or behavior by default during iterative development. Favor the cleanest current vertical slice unless compatibility is explicitly requested.
-7.  **Fresh Docker Rebuild:** After every non-frontend code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build -d` from the repository root so the backend stack is rebuilt from a fresh state.
+7.  **Fresh Docker Rebuild:** After every backend code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build -d` from the repository root so the backend stack is rebuilt from a fresh state.
 
 ---
 

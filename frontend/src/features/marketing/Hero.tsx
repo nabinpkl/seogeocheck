@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { AuditSection } from "./AuditSection";
+import { AuditSection } from "@/features/audit/AuditSection";
 
 export function Hero() {
   return (

@@ -1,10 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import {
-  SectionEyebrow,
-  SurfaceCard,
-} from "@/components/system/audit/primitives";
-import type { AuditCategoryScoreModel } from "@/components/system/audit/models";
+import { SectionEyebrow, SurfaceCard } from "./primitives";
+import type { AuditCategoryScoreModel } from "./models";
 
 const scoreToneClasses = {
   success: "text-emerald-600 bg-emerald-500 border-emerald-500",

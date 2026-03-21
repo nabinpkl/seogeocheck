@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { DesignSystemGallery } from "@/components/system/DesignSystemGallery";
+import { DesignSystemGallery } from "@/features/design-system/DesignSystemGallery";
 
 export const dynamic = "force-dynamic";
 
