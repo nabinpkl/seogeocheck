@@ -43,17 +43,31 @@ const initialState = {
   lastEventAt: null as string | null,
 };
 
-let activeEventSource: EventSource | null = null;
-
-function disconnectActiveStream() {
-  if (activeEventSource) {
-    activeEventSource.close();
-    activeEventSource = null;
-  }
-}
-
 export const useAuditStore = create<AuditStore>((set, get) => {
-  const ingestEvent = (event: AuditStreamEvent) => {
+  const eventSourcesByJobId = new Map<string, EventSource>();
+
+  const closeStream = (jobId: string | null | undefined) => {
+    if (!jobId) {
+      return;
+    }
+
+    const eventSource = eventSourcesByJobId.get(jobId);
+    if (!eventSource) {
+      return;
+    }
+
+    eventSource.close();
+    eventSourcesByJobId.delete(jobId);
+  };
+
+  const closeAllStreams = () => {
+    for (const eventSource of eventSourcesByJobId.values()) {
+      eventSource.close();
+    }
+    eventSourcesByJobId.clear();
+  };
+
+  const ingestEvent = (event: AuditStreamEvent, streamJobId: string) => {
     const nextEventId =
       typeof event.eventId === "string" ? event.eventId : String(event.eventId ?? "");
 
@@ -82,14 +96,14 @@ export const useAuditStore = create<AuditStore>((set, get) => {
     }));
 
     if (event.type === "complete" || event.type === "error") {
-      disconnectActiveStream();
+      closeStream(streamJobId);
     }
   };
 
   return {
     ...initialState,
     primeAudit: (payload) => {
-      disconnectActiveStream();
+      closeStream(get().jobId);
       set({
         ...initialState,
         jobId: payload.jobId,
@@ -105,32 +119,63 @@ export const useAuditStore = create<AuditStore>((set, get) => {
         return;
       }
 
-      disconnectActiveStream();
+      closeStream(jobId);
       set({ connectionStatus: "connecting", error: null });
 
       const eventSource = new EventSource(streamUrl);
-      activeEventSource = eventSource;
+      eventSourcesByJobId.set(jobId, eventSource);
 
       eventSource.onopen = () => {
+        if (eventSourcesByJobId.get(jobId) !== eventSource) {
+          return;
+        }
+
         if (get().jobId === jobId) {
           set({ connectionStatus: "open" });
         }
       };
 
       eventSource.onmessage = (message) => {
+        if (eventSourcesByJobId.get(jobId) !== eventSource) {
+          return;
+        }
+
         try {
           const event = JSON.parse(message.data) as AuditStreamEvent;
-          ingestEvent(event);
+
+          if (typeof event.jobId === "string" && event.jobId !== jobId) {
+            return;
+          }
+
+          if (get().jobId !== jobId) {
+            return;
+          }
+
+          ingestEvent(event, jobId);
         } catch {
+          if (get().jobId !== jobId) {
+            closeStream(jobId);
+            return;
+          }
+
           set({
             connectionStatus: "closed",
             error: "We couldn't read one of the live audit updates.",
           });
-          disconnectActiveStream();
+          closeStream(jobId);
         }
       };
 
       eventSource.onerror = () => {
+        if (eventSourcesByJobId.get(jobId) !== eventSource) {
+          return;
+        }
+
+        if (get().jobId !== jobId) {
+          closeStream(jobId);
+          return;
+        }
+
         const currentStatus = get().status;
         if (
           currentStatus === "COMPLETE" ||
@@ -144,11 +189,11 @@ export const useAuditStore = create<AuditStore>((set, get) => {
           connectionStatus: "closed",
           error: "We lost the live connection before your audit finished.",
         });
-        disconnectActiveStream();
+        closeStream(jobId);
       };
     },
     markVerified: () => {
-      disconnectActiveStream();
+      closeStream(get().jobId);
       set((state) => ({
         ...state,
         status: "VERIFIED",
@@ -159,7 +204,7 @@ export const useAuditStore = create<AuditStore>((set, get) => {
       }));
     },
     reset: () => {
-      disconnectActiveStream();
+      closeAllStreams();
       set(initialState);
     },
   };
