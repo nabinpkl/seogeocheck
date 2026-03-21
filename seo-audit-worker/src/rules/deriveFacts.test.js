@@ -14,8 +14,38 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
     htmlCanonicalLinks: [{ href: "https://example.com/", rel: "canonical" }],
     headerCanonicalLinks: [{ href: "https://example.com/", rel: "canonical" }],
     h1Count: 2,
+    headingOutline: [
+      { level: 1, text: "Hello World" },
+      { level: 3, text: "Jumped section" },
+    ],
+    bodyImages: [
+      {
+        src: "/hero.jpg",
+        resolvedSrc: "https://example.com/hero.jpg",
+        alt: null,
+        role: null,
+        ariaHidden: null,
+        width: 1200,
+        height: 630,
+        hasUsableSrc: true,
+        isExplicitlyDecorative: false,
+        isTrackingPixel: false,
+      },
+      {
+        src: "/tracking/pixel.gif",
+        resolvedSrc: "https://example.com/tracking/pixel.gif",
+        alt: null,
+        role: null,
+        ariaHidden: null,
+        width: 1,
+        height: 1,
+        hasUsableSrc: true,
+        isExplicitlyDecorative: false,
+        isTrackingPixel: true,
+      },
+    ],
     lang: "en",
-    metaRobotsTags: ["index,follow"],
+    metaRobotsTags: ["index,follow,noarchive"],
     googlebotRobotsTags: ["noindex"],
     openGraphTitle: "",
     openGraphDescription: "Social summary",
@@ -185,6 +215,11 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.genericAnchorTextCount, 1);
   assert.equal(facts.linkedImageCount, 1);
   assert.equal(facts.linkedImageMissingAltCount, 1);
+  assert.equal(facts.headingOutlineCount, 2);
+  assert.equal(facts.headingHierarchySkipCount, 1);
+  assert.equal(facts.bodyImageCount, 2);
+  assert.equal(facts.eligibleBodyImageCount, 1);
+  assert.equal(facts.bodyImageMissingAltCount, 1);
   assert.deepEqual(facts.structuredDataKinds, ["json-ld", "microdata"]);
   assert.equal(facts.robotsTxtStatus, "blocked");
   assert.equal(facts.robotsTxtAllowsCrawl, false);
@@ -196,7 +231,9 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.canonicalControl.status, "clear");
   assert.equal(facts.titleControl.status, "too_short");
   assert.equal(facts.metaDescriptionControl.status, "missing");
-  assert.equal(facts.headingControl.status, "multiple");
+  assert.equal(facts.headingControl.status, "multiple_and_skipped");
+  assert.equal(facts.bodyImageAltControl.status, "missing_alt");
+  assert.equal(facts.langControl.status, "valid");
   assert.equal(facts.structuredDataControl.status, "valid");
   assert.equal(facts.socialMetadataControl.status, "incomplete");
   assert.equal(facts.robotsPreviewControl.status, "clear");
@@ -207,4 +244,6 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.alternateLanguageControl.status, "present");
   assert.equal(facts.linkDiscoveryControl.internalNofollowCount, 1);
   assert.equal(facts.linkDiscoveryControl.blockedByRelCount, 1);
+  assert.equal(facts.robotsControl.hasNoarchiveDirective, true);
+  assert.equal(facts.canonicalSelfReferenceControl.status, "not_applicable");
 });

@@ -6,10 +6,19 @@ const ROBOTS_STATUS_FIELDS = [
   "indexing",
   "following",
   "snippet",
+  "archive",
+  "translate",
   "maxSnippet",
   "maxImagePreview",
   "maxVideoPreview",
 ];
+const NON_USEFUL_LANGUAGE_TAGS = new Set([
+  "und",
+  "zxx",
+  "x-default",
+  "unknown",
+  "auto",
+]);
 const DIRECTIVE_PREFIXES = new Set([
   "index",
   "noindex",
@@ -92,6 +101,8 @@ function summarizeTarget(entries) {
   const indexingValues = uniqueValues(entries.flatMap((entry) => entry.indexingValues));
   const followingValues = uniqueValues(entries.flatMap((entry) => entry.followingValues));
   const snippetValues = uniqueValues(entries.flatMap((entry) => entry.snippetValues));
+  const archiveValues = uniqueValues(entries.flatMap((entry) => entry.archiveValues));
+  const translateValues = uniqueValues(entries.flatMap((entry) => entry.translateValues));
   const maxSnippetValues = uniqueValues(entries.flatMap((entry) => entry.maxSnippetValues));
   const maxImagePreviewValues = uniqueValues(entries.flatMap((entry) => entry.maxImagePreviewValues));
   const maxVideoPreviewValues = uniqueValues(entries.flatMap((entry) => entry.maxVideoPreviewValues));
@@ -101,12 +112,16 @@ function summarizeTarget(entries) {
     indexingValues,
     followingValues,
     snippetValues,
+    archiveValues,
+    translateValues,
     maxSnippetValues,
     maxImagePreviewValues,
     maxVideoPreviewValues,
     indexing: statusFromValues(indexingValues),
     following: statusFromValues(followingValues),
     snippet: statusFromValues(snippetValues),
+    archive: statusFromValues(archiveValues),
+    translate: statusFromValues(translateValues),
     maxSnippet: statusFromValues(maxSnippetValues),
     maxImagePreview: statusFromValues(maxImagePreviewValues),
     maxVideoPreview: statusFromValues(maxVideoPreviewValues),
@@ -118,6 +133,8 @@ function parseDirectiveText(rawValue) {
   const indexingValues = [];
   const followingValues = [];
   const snippetValues = [];
+  const archiveValues = [];
+  const translateValues = [];
   const maxSnippetValues = [];
   const maxImagePreviewValues = [];
   const maxVideoPreviewValues = [];
@@ -155,6 +172,11 @@ function parseDirectiveText(rawValue) {
     }
 
     if (token === "noarchive" || token === "notranslate") {
+      if (token === "noarchive") {
+        archiveValues.push(token);
+      } else {
+        translateValues.push(token);
+      }
       continue;
     }
 
@@ -184,6 +206,8 @@ function parseDirectiveText(rawValue) {
     indexingValues: uniqueValues(indexingValues),
     followingValues: uniqueValues(followingValues),
     snippetValues: uniqueValues(snippetValues),
+    archiveValues: uniqueValues(archiveValues),
+    translateValues: uniqueValues(translateValues),
     maxSnippetValues: uniqueValues(maxSnippetValues),
     maxImagePreviewValues: uniqueValues(maxImagePreviewValues),
     maxVideoPreviewValues: uniqueValues(maxVideoPreviewValues),
@@ -498,6 +522,27 @@ export function buildAlternateLanguageControl(htmlAlternateLinks, headerAlternat
   };
 }
 
+function resolveEffectiveField(allTarget, targetedTarget, field, valuesField) {
+  if (Array.isArray(targetedTarget?.[valuesField]) && targetedTarget[valuesField].length > 0) {
+    return {
+      value: targetedTarget[field] ?? null,
+      values: targetedTarget[valuesField],
+    };
+  }
+
+  if (Array.isArray(allTarget?.[valuesField]) && allTarget[valuesField].length > 0) {
+    return {
+      value: allTarget[field] ?? null,
+      values: allTarget[valuesField],
+    };
+  }
+
+  return {
+    value: null,
+    values: [],
+  };
+}
+
 export function buildRobotsControl(metaRobotsTags, googlebotRobotsTags, xRobotsTagHeaders) {
   const entries = [
     ...(Array.isArray(metaRobotsTags) ? metaRobotsTags : []).map((rawValue) => ({
@@ -557,7 +602,30 @@ export function buildRobotsControl(metaRobotsTags, googlebotRobotsTags, xRobotsT
     }
   }
 
-  const effectiveTarget = targets.googlebot ?? targets.all ?? null;
+  const effectiveTarget = targets.googlebot ? "googlebot" : targets.all ? "all" : null;
+  const effectiveIndexing = resolveEffectiveField(allTarget, googlebotTarget, "indexing", "indexingValues");
+  const effectiveFollowing = resolveEffectiveField(allTarget, googlebotTarget, "following", "followingValues");
+  const effectiveSnippet = resolveEffectiveField(allTarget, googlebotTarget, "snippet", "snippetValues");
+  const effectiveArchive = resolveEffectiveField(allTarget, googlebotTarget, "archive", "archiveValues");
+  const effectiveTranslate = resolveEffectiveField(allTarget, googlebotTarget, "translate", "translateValues");
+  const effectiveMaxSnippet = resolveEffectiveField(
+    allTarget,
+    googlebotTarget,
+    "maxSnippet",
+    "maxSnippetValues"
+  );
+  const effectiveMaxImagePreview = resolveEffectiveField(
+    allTarget,
+    googlebotTarget,
+    "maxImagePreview",
+    "maxImagePreviewValues"
+  );
+  const effectiveMaxVideoPreview = resolveEffectiveField(
+    allTarget,
+    googlebotTarget,
+    "maxVideoPreview",
+    "maxVideoPreviewValues"
+  );
 
   return {
     status:
@@ -574,11 +642,18 @@ export function buildRobotsControl(metaRobotsTags, googlebotRobotsTags, xRobotsT
     targetedOverrides,
     unsupportedTokens: uniqueValues(entries.flatMap((entry) => entry.unsupportedTokens)),
     malformedTokens: uniqueValues(entries.flatMap((entry) => entry.malformedTokens)),
-    effectiveIndexing: effectiveTarget?.indexing ?? null,
-    effectiveFollowing: effectiveTarget?.following ?? null,
-    effectiveSnippet: effectiveTarget?.snippet ?? null,
-    effectiveTarget: targets.googlebot ? "googlebot" : targets.all ? "all" : null,
-    hasBlockingNoindex: effectiveTarget?.indexing === "noindex",
+    effectiveIndexing: effectiveIndexing.value,
+    effectiveFollowing: effectiveFollowing.value,
+    effectiveSnippet: effectiveSnippet.value,
+    effectiveArchive: effectiveArchive.value,
+    effectiveTranslate: effectiveTranslate.value,
+    effectiveMaxSnippet: effectiveMaxSnippet.values[0] ?? null,
+    effectiveMaxImagePreview: effectiveMaxImagePreview.values[0] ?? null,
+    effectiveMaxVideoPreview: effectiveMaxVideoPreview.values[0] ?? null,
+    effectiveTarget,
+    hasBlockingNoindex: effectiveIndexing.value === "noindex",
+    hasNoarchiveDirective: effectiveArchive.value === "noarchive",
+    hasNotranslateDirective: effectiveTranslate.value === "notranslate",
   };
 }
 
@@ -644,10 +719,193 @@ export function buildMetaDescriptionControl(metaDescription) {
   };
 }
 
-export function buildHeadingControl(h1Count) {
+export function buildHeadingControl(h1Count, headingOutline = []) {
+  const normalizedOutline = Array.isArray(headingOutline)
+    ? headingOutline.filter((heading) => Number.isInteger(heading?.level) && heading.level >= 1 && heading.level <= 6)
+    : [];
+  const skippedTransitions = [];
+
+  for (let index = 1; index < normalizedOutline.length; index += 1) {
+    const previous = normalizedOutline[index - 1];
+    const current = normalizedOutline[index];
+
+    if (current.level > previous.level + 1) {
+      skippedTransitions.push({
+        fromLevel: previous.level,
+        toLevel: current.level,
+        expectedNextLevel: previous.level + 1,
+        headingText: current.text ?? null,
+      });
+    }
+  }
+
+  const hasMultipleH1 = h1Count > 1;
+  const hasSkippedLevels = skippedTransitions.length > 0;
+
   return {
-    status: h1Count === 0 ? "missing" : h1Count === 1 ? "single" : "multiple",
+    status:
+      h1Count === 0
+        ? "missing"
+        : hasMultipleH1 && hasSkippedLevels
+          ? "multiple_and_skipped"
+          : hasMultipleH1
+            ? "multiple"
+            : hasSkippedLevels
+              ? "skipped"
+              : "single",
     h1Count,
+    headingCount: normalizedOutline.length,
+    skippedTransitions,
+    hasMultipleH1,
+    hasSkippedLevels,
+  };
+}
+
+export function buildBodyImageAltControl(bodyImages = []) {
+  const normalizedImages = Array.isArray(bodyImages) ? bodyImages : [];
+  const eligibleImages = normalizedImages.filter(
+    (image) => image?.hasUsableSrc && !image?.isExplicitlyDecorative && !image?.isTrackingPixel
+  );
+  const missingAltImages = eligibleImages.filter((image) => !image?.alt);
+
+  return {
+    status:
+      eligibleImages.length === 0
+        ? "not_applicable"
+        : missingAltImages.length > 0
+          ? "missing_alt"
+          : "complete",
+    totalImageCount: normalizedImages.length,
+    eligibleImageCount: eligibleImages.length,
+    missingAltCount: missingAltImages.length,
+    excludedMissingSrcCount: normalizedImages.filter((image) => !image?.hasUsableSrc).length,
+    excludedDecorativeCount: normalizedImages.filter((image) => image?.isExplicitlyDecorative).length,
+    excludedTrackingPixelCount: normalizedImages.filter((image) => image?.isTrackingPixel).length,
+    missingAltImages: missingAltImages.slice(0, 5).map((image) => ({
+      src: image.resolvedSrc ?? image.src ?? null,
+      alt: image.alt ?? null,
+    })),
+  };
+}
+
+export function buildLangControl(lang) {
+  const raw = normalizeText(lang);
+  if (!raw) {
+    return {
+      status: "missing",
+      value: null,
+      canonicalValue: null,
+    };
+  }
+
+  const normalized = raw.toLowerCase();
+  if (NON_USEFUL_LANGUAGE_TAGS.has(normalized)) {
+    return {
+      status: "invalid",
+      value: raw,
+      canonicalValue: null,
+    };
+  }
+
+  try {
+    const canonicalValue = Intl.getCanonicalLocales(raw)[0] ?? null;
+    if (!canonicalValue || NON_USEFUL_LANGUAGE_TAGS.has(canonicalValue.toLowerCase())) {
+      return {
+        status: "invalid",
+        value: raw,
+        canonicalValue,
+      };
+    }
+
+    return {
+      status: "valid",
+      value: raw,
+      canonicalValue,
+    };
+  } catch {
+    return {
+      status: "invalid",
+      value: raw,
+      canonicalValue: null,
+    };
+  }
+}
+
+export function buildCanonicalSelfReferenceControl({
+  canonicalControl,
+  finalUrl,
+  isReachable,
+  isHtmlResponse,
+  robotsControl,
+}) {
+  const hasIndexingConflict = (robotsControl?.sameTargetConflicts ?? []).some(
+    (conflict) => conflict.field === "indexing"
+  );
+  const expectsSelfReference =
+    isReachable === true &&
+    isHtmlResponse === true &&
+    robotsControl?.hasBlockingNoindex !== true &&
+    !hasIndexingConflict;
+
+  if (!expectsSelfReference) {
+    return {
+      status: "not_applicable",
+      expectsSelfReference: false,
+      finalUrl: finalUrl ?? null,
+      resolvedCanonicalUrl: canonicalControl?.resolvedCanonicalUrl ?? null,
+    };
+  }
+
+  if (canonicalControl?.status === "missing") {
+    return {
+      status: "missing",
+      expectsSelfReference: true,
+      finalUrl: finalUrl ?? null,
+      resolvedCanonicalUrl: null,
+    };
+  }
+
+  if (canonicalControl?.status === "invalid") {
+    return {
+      status: "invalid",
+      expectsSelfReference: true,
+      finalUrl: finalUrl ?? null,
+      resolvedCanonicalUrl: null,
+    };
+  }
+
+  if (canonicalControl?.status === "multiple" || canonicalControl?.status === "conflict") {
+    return {
+      status: "not_evaluable",
+      expectsSelfReference: true,
+      finalUrl: finalUrl ?? null,
+      resolvedCanonicalUrl: canonicalControl?.resolvedCanonicalUrl ?? null,
+    };
+  }
+
+  if (canonicalControl?.consistency === "self") {
+    return {
+      status: "self",
+      expectsSelfReference: true,
+      finalUrl: finalUrl ?? null,
+      resolvedCanonicalUrl: canonicalControl?.resolvedCanonicalUrl ?? null,
+    };
+  }
+
+  if (canonicalControl?.consistency === "contradicts") {
+    return {
+      status: "contradicts",
+      expectsSelfReference: true,
+      finalUrl: finalUrl ?? null,
+      resolvedCanonicalUrl: canonicalControl?.resolvedCanonicalUrl ?? null,
+    };
+  }
+
+  return {
+    status: "unknown",
+    expectsSelfReference: true,
+    finalUrl: finalUrl ?? null,
+    resolvedCanonicalUrl: canonicalControl?.resolvedCanonicalUrl ?? null,
   };
 }
 
@@ -732,18 +990,9 @@ export function buildRobotsPreviewControl(robotsControl) {
     ["snippet", "maxSnippet", "maxImagePreview", "maxVideoPreview"].includes(conflict.field)
   );
   const effectiveSnippet = robotsControl?.effectiveSnippet ?? null;
-  const effectiveMaxSnippet =
-    Array.isArray(robotsControl?.targets?.[robotsControl?.effectiveTarget]?.maxSnippetValues)
-      ? robotsControl.targets[robotsControl.effectiveTarget].maxSnippetValues[0] ?? null
-      : null;
-  const effectiveMaxImagePreview =
-    Array.isArray(robotsControl?.targets?.[robotsControl?.effectiveTarget]?.maxImagePreviewValues)
-      ? robotsControl.targets[robotsControl.effectiveTarget].maxImagePreviewValues[0] ?? null
-      : null;
-  const effectiveMaxVideoPreview =
-    Array.isArray(robotsControl?.targets?.[robotsControl?.effectiveTarget]?.maxVideoPreviewValues)
-      ? robotsControl.targets[robotsControl.effectiveTarget].maxVideoPreviewValues[0] ?? null
-      : null;
+  const effectiveMaxSnippet = robotsControl?.effectiveMaxSnippet ?? null;
+  const effectiveMaxImagePreview = robotsControl?.effectiveMaxImagePreview ?? null;
+  const effectiveMaxVideoPreview = robotsControl?.effectiveMaxVideoPreview ?? null;
 
   const restrictiveSignals = [];
   if (effectiveSnippet === "nosnippet") {

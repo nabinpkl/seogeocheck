@@ -11,8 +11,22 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
     metaDescription: "",
     canonicalUrl: "#top",
     h1Count: 2,
-    lang: "en",
-    robotsContent: "index,follow",
+    headingOutline: [
+      { level: 1, text: "Home" },
+      { level: 3, text: "Skipped section" },
+    ],
+    bodyImages: [
+      {
+        src: "/hero.jpg",
+        resolvedSrc: "https://example.com/hero.jpg",
+        alt: null,
+        hasUsableSrc: true,
+        isExplicitlyDecorative: false,
+        isTrackingPixel: false,
+      },
+    ],
+    lang: "en_US",
+    robotsContent: "index,follow,noarchive,notranslate",
     openGraphTitle: "",
     openGraphDescription: "Useful summary",
     wordCount: 12,
@@ -81,10 +95,13 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
   assert.equal(result.rawSummary.sourceHtml.sameOriginCrawlableLinkCount, 0);
   assert.equal(result.rawSummary.indexabilityVerdict.verdict, "Unknown");
   assert.equal(result.rawSummary.canonicalControl.status, "invalid");
+  assert.equal(result.rawSummary.canonicalSelfReferenceControl.status, "invalid");
   assert.equal(result.rawSummary.canonicalTargetControl.status, "not_applicable");
   assert.equal(result.rawSummary.titleControl.status, "too_short");
   assert.equal(result.rawSummary.metaDescriptionControl.status, "missing");
-  assert.equal(result.rawSummary.headingControl.status, "multiple");
+  assert.equal(result.rawSummary.headingControl.status, "multiple_and_skipped");
+  assert.equal(result.rawSummary.bodyImageAltControl.status, "missing_alt");
+  assert.equal(result.rawSummary.langControl.status, "invalid");
   assert.equal(result.rawSummary.socialMetadataControl.status, "incomplete");
   assert.equal(result.rawSummary.robotsPreviewControl.status, "clear");
   assert.equal(result.rawSummary.viewportControl.status, "missing");
@@ -92,8 +109,15 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
   assert.equal(result.rawSummary.headHygieneControl.status, "clear");
   assert.equal(result.rawSummary.structuredDataControl.status, "none");
   assert.equal(result.rawSummary.robotsControl.status, "clear");
+  assert.equal(result.rawSummary.robotsControl.hasNoarchiveDirective, true);
+  assert.equal(result.rawSummary.robotsControl.hasNotranslateDirective, true);
+  assert.equal(result.rawSummary.sourceHtml.headingHierarchySkipCount, 1);
+  assert.equal(result.rawSummary.sourceHtml.bodyImageMissingAltCount, 1);
   assert.equal(result.checks.some((check) => check.id === "document-title-quality"), true);
   assert.equal(result.checks.some((check) => check.id === "heading-structure"), true);
+  assert.equal(result.checks.some((check) => check.id === "body-image-alt"), true);
+  assert.equal(result.checks.some((check) => check.id === "robots-noarchive"), true);
+  assert.equal(result.checks.some((check) => check.id === "robots-notranslate"), true);
   assert.equal(result.checks.some((check) => check.id === "canonical-target-health"), true);
   assert.equal(result.checks.some((check) => check.id === "social-preview-core"), true);
   assert.equal(result.checks.some((check) => check.id === "twitter-preview-core"), true);
@@ -113,6 +137,7 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
     metaDescription: "Source summary",
     canonicalUrl: "https://example.com/",
     h1Count: 1,
+    bodyImages: [],
     lang: "en",
     robotsContent: "index,follow",
     openGraphTitle: "Example Home",
@@ -198,6 +223,7 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
       metaDescription: "Rendered summary",
       canonicalUrl: "https://example.com/",
       h1Count: 1,
+      bodyImages: [],
       lang: "en",
       robotsContent: "index,follow",
       openGraphTitle: "Example Home",
@@ -247,6 +273,7 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
   assert.equal(result.indexabilityVerdict, "Indexable");
   assert.deepEqual(result.rawSummary.capturePasses, ["source_html", "rendered_dom"]);
   assert.equal(result.rawSummary.renderedDom.wordCount, 150);
+  assert.equal(result.rawSummary.renderedDom.bodyImageCount, 0);
   assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "medium");
   assert.equal(result.rawSummary.indexabilityVerdict.verdict, "Indexable");
   assert.equal(result.categoryScores.discovery, 0);
@@ -443,7 +470,7 @@ test("normalizeSeoAuditResult groups presence and quality checks into shared sco
   assert.equal(titleChecks.every((check) => check.metadata?.problemFamily === "document_title"), true);
 });
 
-test("normalizeSeoAuditResult keeps new metadata coverage advisory-only", () => {
+test("normalizeSeoAuditResult keeps advisory robots coverage non-blocking", () => {
   const result = normalizeSeoAuditResult({
     requestedUrl: "https://example.com",
     finalUrl: "https://example.com/",
@@ -453,7 +480,7 @@ test("normalizeSeoAuditResult keeps new metadata coverage advisory-only", () => 
     metaDescription: "This description is long enough to avoid the short metadata threshold in the audit.",
     canonicalUrl: "https://example.com/",
     h1Count: 1,
-    robotsContent: "index,follow",
+    robotsContent: "index,follow,noarchive,notranslate",
     wordCount: 120,
     sourceAnchors: [],
     linkedImages: [],
@@ -497,4 +524,6 @@ test("normalizeSeoAuditResult keeps new metadata coverage advisory-only", () => 
   assert.equal(result.indexabilityVerdict, "Indexable");
   assert.equal(result.checks.some((check) => check.id === "head-duplicate-hygiene"), true);
   assert.equal(result.checks.some((check) => check.id === "meta-viewport"), true);
+  assert.equal(result.checks.some((check) => check.id === "robots-noarchive"), true);
+  assert.equal(result.checks.some((check) => check.id === "robots-notranslate"), true);
 });

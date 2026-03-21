@@ -15,6 +15,20 @@ test("collectRenderedDomSignals waits for settle time and returns rendered signa
       metaRobotsTags: ["index,follow"],
       googlebotRobotsTags: ["index,follow"],
       h1Count: 1,
+      headingOutline: [
+        { level: 1, text: "Rendered title" },
+        { level: 3, text: "Skipped subheading" },
+      ],
+      bodyImages: [
+        {
+          src: "/hero.png",
+          alt: "",
+          role: null,
+          ariaHidden: null,
+          width: "1200",
+          height: "630",
+        },
+      ],
       lang: "en",
       robotsContent: "index,follow",
       openGraphTitle: "Rendered title",
@@ -53,6 +67,24 @@ test("collectRenderedDomSignals waits for settle time and returns rendered signa
   assert.deepEqual(calls, [["waitForTimeout", 1500]]);
   assert.equal(result.title, "Rendered title");
   assert.equal(result.wordCount, 3);
+  assert.deepEqual(result.headingOutline, [
+    { level: 1, text: "Rendered title" },
+    { level: 3, text: "Skipped subheading" },
+  ]);
+  assert.deepEqual(result.bodyImages, [
+    {
+      src: "/hero.png",
+      resolvedSrc: "https://example.com/hero.png",
+      alt: null,
+      role: null,
+      ariaHidden: null,
+      width: 1200,
+      height: 630,
+      hasUsableSrc: true,
+      isExplicitlyDecorative: false,
+      isTrackingPixel: false,
+    },
+  ]);
   assert.deepEqual(result.metaRobotsTags, ["index,follow"]);
   assert.deepEqual(result.googlebotRobotsTags, ["index,follow"]);
   assert.deepEqual(result.sourceAnchors, [

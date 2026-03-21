@@ -73,8 +73,13 @@ export type AuditReport = {
       nonCrawlableLinkCount?: number;
       emptyAnchorTextCount?: number;
       genericAnchorTextCount?: number;
+      headingOutlineCount?: number;
+      headingHierarchySkipCount?: number;
       linkedImageCount?: number;
       linkedImageMissingAltCount?: number;
+      bodyImageCount?: number;
+      eligibleBodyImageCount?: number;
+      bodyImageMissingAltCount?: number;
       structuredDataKinds?: string[];
       [key: string]: unknown;
     };
@@ -84,8 +89,13 @@ export type AuditReport = {
       nonCrawlableLinkCount?: number;
       emptyAnchorTextCount?: number;
       genericAnchorTextCount?: number;
+      headingOutlineCount?: number;
+      headingHierarchySkipCount?: number;
       linkedImageCount?: number;
       linkedImageMissingAltCount?: number;
+      bodyImageCount?: number;
+      eligibleBodyImageCount?: number;
+      bodyImageMissingAltCount?: number;
       structuredDataKinds?: string[];
       [key: string]: unknown;
     } | null;
@@ -106,8 +116,15 @@ export type AuditReport = {
       effectiveIndexing?: string | null;
       effectiveFollowing?: string | null;
       effectiveSnippet?: string | null;
+      effectiveArchive?: string | null;
+      effectiveTranslate?: string | null;
+      effectiveMaxSnippet?: string | null;
+      effectiveMaxImagePreview?: string | null;
+      effectiveMaxVideoPreview?: string | null;
       effectiveTarget?: string | null;
       hasBlockingNoindex?: boolean;
+      hasNoarchiveDirective?: boolean;
+      hasNotranslateDirective?: boolean;
       entries?: Array<Record<string, unknown>>;
       sameTargetConflicts?: Array<Record<string, unknown>>;
       targetedOverrides?: Array<Record<string, unknown>>;
@@ -127,6 +144,13 @@ export type AuditReport = {
       invalidCandidates?: Array<Record<string, unknown>>;
       [key: string]: unknown;
     };
+    canonicalSelfReferenceControl?: {
+      status?: string;
+      expectsSelfReference?: boolean;
+      finalUrl?: string | null;
+      resolvedCanonicalUrl?: string | null;
+      [key: string]: unknown;
+    };
     alternateLanguageControl?: {
       status?: string;
       annotations?: Array<Record<string, unknown>>;
@@ -142,6 +166,23 @@ export type AuditReport = {
       internalNofollowCount?: number;
       blockedByRelCount?: number;
       affectedLinks?: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    };
+    bodyImageAltControl?: {
+      status?: string;
+      totalImageCount?: number;
+      eligibleImageCount?: number;
+      missingAltCount?: number;
+      excludedMissingSrcCount?: number;
+      excludedDecorativeCount?: number;
+      excludedTrackingPixelCount?: number;
+      missingAltImages?: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    };
+    langControl?: {
+      status?: string;
+      value?: string | null;
+      canonicalValue?: string | null;
       [key: string]: unknown;
     };
     robotsTxt?: {

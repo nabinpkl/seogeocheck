@@ -1,5 +1,7 @@
 import {
   buildAnchorRecord,
+  buildBodyImageRecord,
+  buildHeadingRecord,
   buildLinkedImageRecord,
   countWords,
 } from "./signalUtils.js";
@@ -35,6 +37,20 @@ export async function collectRenderedDomSignals({
       metaDescription: attr('meta[name="description"]', "content"),
       canonicalUrl: attr('link[rel="canonical"]', "href"),
       h1Count: document.querySelectorAll("h1").length,
+      headingOutline: Array.from(
+        document.querySelectorAll("body h1, body h2, body h3, body h4, body h5, body h6")
+      ).map((heading) => ({
+        level: Number.parseInt(heading.tagName.slice(1), 10),
+        text: textOf(heading.innerText || heading.textContent),
+      })),
+      bodyImages: Array.from(document.querySelectorAll("body img")).map((image) => ({
+        src: image.getAttribute("src"),
+        alt: image.getAttribute("alt"),
+        role: image.getAttribute("role"),
+        ariaHidden: image.getAttribute("aria-hidden"),
+        width: image.getAttribute("width"),
+        height: image.getAttribute("height"),
+      })),
       lang: document.documentElement.getAttribute("lang"),
       robotsContent: attr('meta[name="robots"]', "content"),
       metaRobotsTags: attrs('meta[name="robots"]', "content"),
@@ -77,6 +93,10 @@ export async function collectRenderedDomSignals({
     metaDescription: snapshot.metaDescription,
     canonicalUrl: snapshot.canonicalUrl,
     h1Count: snapshot.h1Count,
+    headingOutline: snapshot.headingOutline
+      .map((heading) => buildHeadingRecord(heading))
+      .filter(Boolean),
+    bodyImages: snapshot.bodyImages.map((image) => buildBodyImageRecord(image, finalUrl)),
     lang: snapshot.lang,
     robotsContent: snapshot.robotsContent,
     metaRobotsTags: snapshot.metaRobotsTags,

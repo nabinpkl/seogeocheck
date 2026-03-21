@@ -136,6 +136,82 @@ const robotsDirectiveHygiene = defineRule({
   },
 });
 
+const robotsNoarchive = defineRule({
+  id: "robots-noarchive",
+  label: "Robots Noarchive",
+  packId: "crawlability",
+  priority: 6,
+  problemFamily: "robots_controls",
+  check: (facts) => {
+    if (facts.robotsControl.hasNoarchiveDirective) {
+      return issueCheck(
+        "robots-noarchive",
+        "Remove noarchive if cached search snippets are desired",
+        "low",
+        "Remove the noarchive directive from source HTML or headers if this page should allow cached copies in search experiences.",
+        `The effective robots directives for ${facts.robotsControl.effectiveTarget ?? "the evaluated crawler"} include noarchive.`,
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-noarchive",
+        {
+          effectiveTarget: facts.robotsControl.effectiveTarget,
+          effectiveArchive: facts.robotsControl.effectiveArchive,
+          targetedOverrides: facts.robotsControl.targetedOverrides,
+        }
+      );
+    }
+
+    return passedCheck(
+      "robots-noarchive",
+      "Robots directives do not prevent archiving",
+      "The effective robots directives do not include noarchive for the evaluated crawler.",
+      'head > meta[name="robots"], head > meta[name="googlebot"], document',
+      "robots-noarchive",
+      {
+        effectiveTarget: facts.robotsControl.effectiveTarget,
+        effectiveArchive: facts.robotsControl.effectiveArchive,
+      }
+    );
+  },
+});
+
+const robotsNotranslate = defineRule({
+  id: "robots-notranslate",
+  label: "Robots Notranslate",
+  packId: "crawlability",
+  priority: 6,
+  problemFamily: "robots_controls",
+  check: (facts) => {
+    if (facts.robotsControl.hasNotranslateDirective) {
+      return issueCheck(
+        "robots-notranslate",
+        "Remove notranslate if search translation support is desired",
+        "low",
+        "Remove the notranslate directive from source HTML or headers if this page should remain eligible for search translation features.",
+        `The effective robots directives for ${facts.robotsControl.effectiveTarget ?? "the evaluated crawler"} include notranslate.`,
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-notranslate",
+        {
+          effectiveTarget: facts.robotsControl.effectiveTarget,
+          effectiveTranslate: facts.robotsControl.effectiveTranslate,
+          targetedOverrides: facts.robotsControl.targetedOverrides,
+        }
+      );
+    }
+
+    return passedCheck(
+      "robots-notranslate",
+      "Robots directives allow translation support",
+      "The effective robots directives do not include notranslate for the evaluated crawler.",
+      'head > meta[name="robots"], head > meta[name="googlebot"], document',
+      "robots-notranslate",
+      {
+        effectiveTarget: facts.robotsControl.effectiveTarget,
+        effectiveTranslate: facts.robotsControl.effectiveTranslate,
+      }
+    );
+  },
+});
+
 const canonicalSignals = defineRule({
   id: "canonical-signals",
   label: "Canonical Signals",
@@ -143,32 +219,6 @@ const canonicalSignals = defineRule({
   priority: 7,
   problemFamily: "canonical_controls",
   check: (facts) => {
-    if (facts.canonicalControl.status === "missing") {
-      return issueCheck(
-        "canonical-signals",
-        "Add a canonical target for this page",
-        "medium",
-        "Expose one canonical target for this page so crawlers receive a clear preferred URL.",
-        null,
-        'head > link[rel="canonical"]',
-        "canonical-status",
-        { canonicalControl: facts.canonicalControl }
-      );
-    }
-
-    if (facts.canonicalControl.status === "invalid") {
-      return issueCheck(
-        "canonical-signals",
-        "Fix invalid canonical targets",
-        "medium",
-        "Replace invalid canonical targets with one valid HTTP(S) canonical URL.",
-        "All detected canonical targets were invalid, fragment-only, or non-HTTP.",
-        'head > link[rel="canonical"]',
-        "canonical-status",
-        { canonicalControl: facts.canonicalControl }
-      );
-    }
-
     if (facts.canonicalControl.status === "multiple") {
       return issueCheck(
         "canonical-signals",
@@ -197,8 +247,8 @@ const canonicalSignals = defineRule({
 
     return passedCheck(
       "canonical-signals",
-      "Canonical signals are clear",
-      "The page exposes one usable canonical target without cross-surface conflicts.",
+      "Canonical signals are structurally clear",
+      "The page does not expose duplicate or conflicting canonical declarations across tracked surfaces.",
       'head > link[rel="canonical"]',
       "canonical-status",
       { canonicalControl: facts.canonicalControl }
@@ -213,27 +263,64 @@ const canonicalIndexabilityConsistency = defineRule({
   priority: 8,
   problemFamily: "canonical_controls",
   check: (facts) => {
-    if (!facts.canonicalControl.resolvedCanonicalUrl) {
+    if (facts.canonicalSelfReferenceControl.status === "not_applicable") {
       return passedCheck(
         "canonical-indexability-consistency",
-        "Canonical consistency is not applicable yet",
-        "A valid canonical target is not available yet, so self-consistency cannot be evaluated.",
+        "Self-referencing canonical is not required here",
+        "This page is not currently in the eligible indexable state where a self-referencing canonical is required by this audit.",
         'head > link[rel="canonical"]',
         "canonical-final-url",
-        { canonicalControl: facts.canonicalControl, finalUrl: facts.finalUrl }
+        facts.canonicalSelfReferenceControl
       );
     }
 
-    if (facts.canonicalControl.consistency === "contradicts") {
+    if (facts.canonicalSelfReferenceControl.status === "missing") {
+      return issueCheck(
+        "canonical-indexability-consistency",
+        "Add a self-referencing canonical for this indexable page",
+        "high",
+        "Add one self-referencing canonical in source HTML so the indexable page points at its own final URL.",
+        `The final page URL is ${facts.finalUrl}, but no canonical target was declared.`,
+        'head > link[rel="canonical"]',
+        "canonical-final-url",
+        facts.canonicalSelfReferenceControl
+      );
+    }
+
+    if (facts.canonicalSelfReferenceControl.status === "invalid") {
+      return issueCheck(
+        "canonical-indexability-consistency",
+        "Fix the canonical so it self-references this indexable page",
+        "high",
+        "Replace invalid canonical markup with one valid self-referencing canonical that resolves to the final page URL.",
+        "The current canonical declarations are invalid, fragment-only, or non-HTTP.",
+        'head > link[rel="canonical"]',
+        "canonical-final-url",
+        facts.canonicalSelfReferenceControl
+      );
+    }
+
+    if (facts.canonicalSelfReferenceControl.status === "contradicts") {
       return issueCheck(
         "canonical-indexability-consistency",
         "Canonical target differs from the final page URL",
         "high",
         "Point the canonical target at the final page URL if this page is the version you want indexed.",
-        `The canonical target resolves to ${facts.canonicalControl.resolvedCanonicalUrl}, while the final page URL is ${facts.finalUrl}.`,
+        `The canonical target resolves to ${facts.canonicalSelfReferenceControl.resolvedCanonicalUrl}, while the final page URL is ${facts.finalUrl}.`,
         'head > link[rel="canonical"]',
         "canonical-final-url",
-        { canonicalControl: facts.canonicalControl, finalUrl: facts.finalUrl }
+        facts.canonicalSelfReferenceControl
+      );
+    }
+
+    if (facts.canonicalSelfReferenceControl.status === "not_evaluable") {
+      return passedCheck(
+        "canonical-indexability-consistency",
+        "Self-referencing canonical will be evaluated after structural fixes",
+        "The canonical declaration needs duplicate or conflict cleanup before self-reference can be evaluated reliably.",
+        'head > link[rel="canonical"]',
+        "canonical-final-url",
+        facts.canonicalSelfReferenceControl
       );
     }
 
@@ -243,7 +330,7 @@ const canonicalIndexabilityConsistency = defineRule({
       "The canonical target resolves to the final page URL.",
       'head > link[rel="canonical"]',
       "canonical-final-url",
-      { canonicalControl: facts.canonicalControl, finalUrl: facts.finalUrl }
+      facts.canonicalSelfReferenceControl
     );
   },
 });
@@ -531,15 +618,26 @@ const htmlLang = defineRule({
   priority: 25,
   problemFamily: "html_lang",
   check: (facts) => {
-    return facts.lang
+    return facts.langControl.status === "valid"
       ? passedCheck(
           "html-lang",
           "HTML language is declared",
           "The HTML response before rendering declares its document language.",
           "html",
           null,
-          { lang: facts.lang }
+          facts.langControl
         )
+      : facts.langControl.status === "invalid"
+        ? issueCheck(
+            "html-lang",
+            "Use a valid HTML lang value in source HTML",
+            "low",
+            "Use a valid, meaningful BCP 47 language tag in the HTML response before rendering so language targeting is explicit without relying on rendered JavaScript.",
+            `The current lang value "${facts.lang}" is invalid or too weak for this audit.`,
+            "html",
+            null,
+            facts.langControl
+          )
       : issueCheck(
           "html-lang",
           "Declare the page language in the HTML response before rendering",
@@ -548,7 +646,7 @@ const htmlLang = defineRule({
           null,
           "html",
           null,
-          { lang: null }
+          facts.langControl
         );
   },
 });
@@ -707,6 +805,8 @@ export const crawlabilityRules = [
   robotsDirectiveConflicts,
   robotsIndexing,
   robotsDirectiveHygiene,
+  robotsNoarchive,
+  robotsNotranslate,
   canonicalSignals,
   canonicalIndexabilityConsistency,
   canonicalTargetHealth,

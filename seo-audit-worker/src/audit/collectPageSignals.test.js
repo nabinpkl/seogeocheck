@@ -5,6 +5,8 @@ import { collectPageSignals } from "./collectPageSignals.js";
 function createElement(type, options = {}) {
   return {
     type,
+    tagName: options.tagName ?? type,
+    name: options.name ?? type,
     attrs: options.attrs ?? {},
     textValue: options.textValue ?? "",
     htmlValue: options.htmlValue ?? null,
@@ -188,6 +190,10 @@ function createCheerioStub(document) {
         );
       case "body":
         return createCollection([createElement("body", { textValue: document.bodyText ?? "" })], document);
+      case "body img":
+        return createCollection(document.bodyImages ?? [], document);
+      case "body h1, body h2, body h3, body h4, body h5, body h6":
+        return createCollection(document.headingOutline ?? [], document);
       case "a":
         return createCollection(document.anchors ?? [], document);
       case 'script[type="application/ld+json"]':
@@ -277,6 +283,20 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
       twitterImage: "https://example.com/twitter.jpg",
       viewportContent: "width=device-width, initial-scale=1",
       bodyText: "One two three four",
+      headingOutline: [
+        createElement("h1", { textValue: "Main title" }),
+        createElement("h3", { textValue: "Jumped heading" }),
+      ],
+      bodyImages: [
+        createElement("img", {
+          attrs: {
+            src: "/hero.jpg",
+            alt: "",
+            width: "1200",
+            height: "630",
+          },
+        }),
+      ],
       anchors: [],
       structuredDataKinds: [],
       structuredDataJsonLdBlocks: [],
@@ -294,6 +314,30 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
     metaDescription: "Useful summary",
     canonicalUrl: "https://example.com/",
     h1Count: 2,
+    headingOutline: [
+      {
+        level: 1,
+        text: "Main title",
+      },
+      {
+        level: 3,
+        text: "Jumped heading",
+      },
+    ],
+    bodyImages: [
+      {
+        src: "/hero.jpg",
+        resolvedSrc: "https://example.com/hero.jpg",
+        alt: null,
+        role: null,
+        ariaHidden: null,
+        width: 1200,
+        height: 630,
+        hasUsableSrc: true,
+        isExplicitlyDecorative: false,
+        isTrackingPixel: false,
+      },
+    ],
     lang: "en",
     robotsContent: "index,follow",
     metaRobotsTags: ["index,follow"],
@@ -400,6 +444,35 @@ test("collectPageSignals inventories source anchors, linked images, structured d
       viewportContent: "width=device-width, initial-scale=1",
       bodyText: "Body copy lives here",
       fragmentTargets: ["details"],
+      headingOutline: [
+        createElement("h1", { textValue: "Products" }),
+        createElement("h2", { textValue: "Overview" }),
+        createElement("h4", { textValue: "Deep jump" }),
+      ],
+      bodyImages: [
+        createElement("img", {
+          attrs: {
+            src: "/content-photo.jpg",
+            alt: "",
+            width: "800",
+            height: "600",
+          },
+        }),
+        createElement("img", {
+          attrs: {
+            src: "/tracking/pixel.gif",
+            width: "1",
+            height: "1",
+          },
+        }),
+        createElement("img", {
+          attrs: {
+            src: "/decorative-divider.svg",
+            alt: "",
+            role: "presentation",
+          },
+        }),
+      ],
       structuredDataKinds: ["json-ld", "microdata"],
       structuredDataJsonLdBlocks: ['{"@context":"https://schema.org","@type":"WebPage"}'],
       iconLinks: [
@@ -540,6 +613,49 @@ test("collectPageSignals inventories source anchors, linked images, structured d
       href: "/gallery",
       resolvedHref: "https://example.com/gallery",
       alt: null,
+    },
+  ]);
+  assert.deepEqual(result.headingOutline, [
+    { level: 1, text: "Products" },
+    { level: 2, text: "Overview" },
+    { level: 4, text: "Deep jump" },
+  ]);
+  assert.deepEqual(result.bodyImages, [
+    {
+      src: "/content-photo.jpg",
+      resolvedSrc: "https://example.com/content-photo.jpg",
+      alt: null,
+      role: null,
+      ariaHidden: null,
+      width: 800,
+      height: 600,
+      hasUsableSrc: true,
+      isExplicitlyDecorative: false,
+      isTrackingPixel: false,
+    },
+    {
+      src: "/tracking/pixel.gif",
+      resolvedSrc: "https://example.com/tracking/pixel.gif",
+      alt: null,
+      role: null,
+      ariaHidden: null,
+      width: 1,
+      height: 1,
+      hasUsableSrc: true,
+      isExplicitlyDecorative: false,
+      isTrackingPixel: true,
+    },
+    {
+      src: "/decorative-divider.svg",
+      resolvedSrc: "https://example.com/decorative-divider.svg",
+      alt: null,
+      role: "presentation",
+      ariaHidden: null,
+      width: null,
+      height: null,
+      hasUsableSrc: true,
+      isExplicitlyDecorative: true,
+      isTrackingPixel: false,
     },
   ]);
   assert.deepEqual(result.structuredDataKinds, ["json-ld", "microdata"]);

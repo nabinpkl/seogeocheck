@@ -1,5 +1,8 @@
 import { normalizeText } from "../rules/utils.js";
 
+const PIXEL_OR_SPACER_PATTERN =
+  /(?:^|[\/._-])(pixel|spacer|blank|transparent|tracking|tracker|beacon)(?:[\/._-]|$)/i;
+
 export function countWords(text) {
   const normalized = normalizeText(text);
   if (!normalized) {
@@ -86,5 +89,61 @@ export function buildLinkedImageRecord(image, baseUrl) {
     href,
     resolvedHref: resolveHref(href, baseUrl),
     alt: normalizeText(image?.alt),
+  };
+}
+
+function normalizeDimension(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.round(value));
+  }
+
+  const normalized = normalizeText(value);
+  if (!normalized || !/^\d+$/.test(normalized)) {
+    return null;
+  }
+
+  return Math.max(0, Number.parseInt(normalized, 10));
+}
+
+export function buildHeadingRecord(heading) {
+  const fallbackLevel =
+    typeof heading?.tagName === "string" && /^h([1-6])$/i.test(heading.tagName)
+      ? Number.parseInt(heading.tagName.slice(1), 10)
+      : null;
+  const level = Number.isFinite(heading?.level) ? Math.round(heading.level) : fallbackLevel;
+
+  if (!Number.isInteger(level) || level < 1 || level > 6) {
+    return null;
+  }
+
+  return {
+    level,
+    text: normalizeText(heading?.text),
+  };
+}
+
+export function buildBodyImageRecord(image, baseUrl) {
+  const src = normalizeHref(image?.src);
+  const resolvedSrc = src ? resolveHref(src, baseUrl) : null;
+  const role = normalizeText(image?.role)?.toLowerCase() ?? null;
+  const ariaHidden = normalizeText(image?.ariaHidden)?.toLowerCase() ?? null;
+  const width = normalizeDimension(image?.width);
+  const height = normalizeDimension(image?.height);
+  const isExplicitlyDecorative =
+    role === "presentation" || role === "none" || ariaHidden === "true";
+  const isTrackingPixel =
+    (width === 1 && height === 1) || (src ? PIXEL_OR_SPACER_PATTERN.test(src) : false);
+
+  return {
+    src,
+    resolvedSrc,
+    alt: normalizeText(image?.alt),
+    role,
+    ariaHidden,
+    width,
+    height,
+    hasUsableSrc: Boolean(src && resolvedSrc),
+    isExplicitlyDecorative,
+    isTrackingPixel,
   };
 }

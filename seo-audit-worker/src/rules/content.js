@@ -101,20 +101,30 @@ const headingStructure = defineRule({
       return passedCheck(
         "heading-structure",
         "Heading structure will be evaluated after a primary heading is added",
-        "The source HTML needs a primary heading before H1 structure can be evaluated.",
+        "The source HTML needs a primary heading before heading hierarchy quality can be evaluated.",
         "body h1",
         "h1-count",
         facts.headingControl
       );
     }
 
-    if (facts.headingControl.status === "multiple") {
+    if (facts.headingControl.hasMultipleH1 || facts.headingControl.hasSkippedLevels) {
+      const detailParts = [];
+      if (facts.headingControl.hasMultipleH1) {
+        detailParts.push(`Detected ${facts.headingControl.h1Count} H1 elements in source HTML.`);
+      }
+      if (facts.headingControl.hasSkippedLevels) {
+        detailParts.push(
+          `Detected ${facts.headingControl.skippedTransitions.length} heading level jump${facts.headingControl.skippedTransitions.length === 1 ? "" : "s"} that skip intermediate levels.`
+        );
+      }
+
       return issueCheck(
         "heading-structure",
-        "Reduce multiple H1 elements in source HTML",
+        "Tighten the heading hierarchy in source HTML",
         "low",
-        "Prefer one primary H1 in the source HTML so the main topic stays unambiguous before rendering.",
-        `Detected ${facts.headingControl.h1Count} H1 elements in source HTML.`,
+        "Use one primary H1 and avoid jumping over heading levels in the source HTML so the content outline stays clear before rendering.",
+        detailParts.join(" "),
         "body h1",
         "h1-count",
         facts.headingControl
@@ -123,8 +133,8 @@ const headingStructure = defineRule({
 
     return passedCheck(
       "heading-structure",
-      "Heading structure uses a single H1",
-      "The source HTML exposes one primary H1.",
+      "Heading structure is orderly",
+      "The source HTML exposes one primary H1 without skipped heading levels.",
       "body h1",
       "h1-count",
       facts.headingControl
@@ -132,34 +142,40 @@ const headingStructure = defineRule({
   },
 });
 
-const linkedImageAlt = defineRule({
-  id: "linked-image-alt",
-  label: "Linked Image Alt",
+const bodyImageAlt = defineRule({
+  id: "body-image-alt",
+  label: "Body Image Alt",
   packId: "contentVisibility",
   priority: 6,
   relatedPacks: [],
   check: (facts) => {
-    return facts.linkedImageMissingAltCount === 0
+    return facts.bodyImageAltControl.status !== "missing_alt"
       ? passedCheck(
-          "linked-image-alt",
-          "Linked images include alt text",
-          "Linked images in the source HTML before rendering include alt text.",
-          "a img",
-          "linked-images-missing-alt",
+          "body-image-alt",
+          "Eligible body images include alt text",
+          "Eligible body images in the source HTML before rendering include alt text.",
+          "body img",
+          "body-images-missing-alt",
           {
+            bodyImageCount: facts.bodyImageCount,
+            eligibleBodyImageCount: facts.eligibleBodyImageCount,
+            bodyImageMissingAltCount: facts.bodyImageMissingAltCount,
             linkedImageCount: facts.linkedImageCount,
             linkedImageMissingAltCount: facts.linkedImageMissingAltCount,
           }
         )
       : issueCheck(
-          "linked-image-alt",
-          "Add alt text to linked images in the HTML response before rendering",
+          "body-image-alt",
+          "Add alt text to meaningful body images in source HTML",
           "medium",
-          "Add descriptive alt text to linked images in the HTML response before rendering so linked media still communicates destination context without relying on rendered JavaScript.",
-          `Detected ${facts.linkedImageMissingAltCount} linked image${facts.linkedImageMissingAltCount === 1 ? "" : "s"} without alt text.`,
-          "a img",
-          "linked-images-missing-alt",
+          "Add descriptive alt text to meaningful body images in the HTML response before rendering so image content is understandable without relying on rendered JavaScript.",
+          `Detected ${facts.bodyImageMissingAltCount} eligible body image${facts.bodyImageMissingAltCount === 1 ? "" : "s"} without alt text.`,
+          "body img",
+          "body-images-missing-alt",
           {
+            bodyImageCount: facts.bodyImageCount,
+            eligibleBodyImageCount: facts.eligibleBodyImageCount,
+            bodyImageMissingAltCount: facts.bodyImageMissingAltCount,
             linkedImageCount: facts.linkedImageCount,
             linkedImageMissingAltCount: facts.linkedImageMissingAltCount,
           }
@@ -172,5 +188,5 @@ export const contentRules = [
   sourceVisibleText,
   headingStructure,
   contentDepth,
-  linkedImageAlt,
+  bodyImageAlt,
 ];

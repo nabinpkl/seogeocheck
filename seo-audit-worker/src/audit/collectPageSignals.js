@@ -1,6 +1,8 @@
 import { normalizeText } from "../rules/utils.js";
 import {
   buildAnchorRecord,
+  buildBodyImageRecord,
+  buildHeadingRecord,
   buildLinkedImageRecord,
   countWords,
   normalizeHref,
@@ -166,6 +168,36 @@ function collectLinkedImages($, baseUrl) {
     });
 }
 
+function collectHeadingOutline($) {
+  return $("body h1, body h2, body h3, body h4, body h5, body h6")
+    .toArray()
+    .map((headingNode) =>
+      buildHeadingRecord({
+        tagName: headingNode?.tagName ?? headingNode?.name ?? headingNode?.type ?? null,
+        text: $(headingNode).text(),
+      })
+    )
+    .filter(Boolean);
+}
+
+function collectBodyImages($, baseUrl) {
+  return $("body img")
+    .toArray()
+    .map((imageNode) =>
+      buildBodyImageRecord(
+        {
+          src: $(imageNode).attr("src"),
+          alt: $(imageNode).attr("alt"),
+          role: $(imageNode).attr("role"),
+          ariaHidden: $(imageNode).attr("aria-hidden"),
+          width: $(imageNode).attr("width"),
+          height: $(imageNode).attr("height"),
+        },
+        baseUrl
+      )
+    );
+}
+
 function collectStructuredDataKinds($) {
   const kinds = [];
 
@@ -206,6 +238,8 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
     metaDescription: readNamedMeta($, "description"),
     canonicalUrl: htmlCanonicalLinks[0]?.href ?? null,
     h1Count: $("h1").length,
+    headingOutline: collectHeadingOutline($),
+    bodyImages: collectBodyImages($, finalUrl),
     lang: $("html").attr("lang") ?? null,
     robotsContent: metaRobotsTags[0] ?? null,
     metaRobotsTags,

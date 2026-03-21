@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildBodyImageAltControl,
   buildCanonicalControl,
+  buildCanonicalSelfReferenceControl,
   buildCanonicalTargetControl,
   buildFaviconControl,
   buildHeadingControl,
   buildHeadHygieneControl,
+  buildLangControl,
   buildMetaDescriptionControl,
   buildRobotsControl,
   buildRobotsPreviewControl,
@@ -28,10 +31,68 @@ test("title and meta controls enforce shared threshold boundaries", () => {
   assert.equal(buildMetaDescriptionControl("A".repeat(161)).status, "too_long");
 });
 
-test("heading control distinguishes missing, single, and multiple H1 states", () => {
+test("heading control distinguishes missing, single, multiple, and skipped heading states", () => {
   assert.equal(buildHeadingControl(0).status, "missing");
-  assert.equal(buildHeadingControl(1).status, "single");
-  assert.equal(buildHeadingControl(2).status, "multiple");
+  assert.equal(buildHeadingControl(1, [{ level: 1, text: "Main" }]).status, "single");
+  assert.equal(buildHeadingControl(2, [{ level: 1, text: "Main" }]).status, "multiple");
+
+  const skipped = buildHeadingControl(1, [
+    { level: 1, text: "Main" },
+    { level: 3, text: "Jumped heading" },
+  ]);
+  assert.equal(skipped.status, "skipped");
+  assert.deepEqual(skipped.skippedTransitions, [
+    {
+      fromLevel: 1,
+      toLevel: 3,
+      expectedNextLevel: 2,
+      headingText: "Jumped heading",
+    },
+  ]);
+});
+
+test("body image alt control excludes decorative and tracking images but keeps meaningful images in scope", () => {
+  const control = buildBodyImageAltControl([
+    {
+      src: "/hero.jpg",
+      resolvedSrc: "https://example.com/hero.jpg",
+      alt: null,
+      hasUsableSrc: true,
+      isExplicitlyDecorative: false,
+      isTrackingPixel: false,
+    },
+    {
+      src: "/decorative-divider.svg",
+      resolvedSrc: "https://example.com/decorative-divider.svg",
+      alt: null,
+      hasUsableSrc: true,
+      isExplicitlyDecorative: true,
+      isTrackingPixel: false,
+    },
+    {
+      src: "/tracking/pixel.gif",
+      resolvedSrc: "https://example.com/tracking/pixel.gif",
+      alt: null,
+      hasUsableSrc: true,
+      isExplicitlyDecorative: false,
+      isTrackingPixel: true,
+    },
+  ]);
+
+  assert.equal(control.status, "missing_alt");
+  assert.equal(control.eligibleImageCount, 1);
+  assert.equal(control.missingAltCount, 1);
+  assert.equal(control.excludedDecorativeCount, 1);
+  assert.equal(control.excludedTrackingPixelCount, 1);
+});
+
+test("lang control accepts valid BCP 47 tags and rejects invalid or placeholder values", () => {
+  assert.equal(buildLangControl(null).status, "missing");
+  assert.equal(buildLangControl("en").status, "valid");
+  assert.equal(buildLangControl("en-us").canonicalValue, "en-US");
+  assert.equal(buildLangControl("x-default").status, "invalid");
+  assert.equal(buildLangControl("unknown").status, "invalid");
+  assert.equal(buildLangControl("en_US").status, "invalid");
 });
 
 test("structured data control inventories valid, invalid, empty, and incomplete JSON-LD blocks", () => {
@@ -189,6 +250,46 @@ test("robots preview control summarizes restrictive and conflicting preview dire
 
   const conflict = buildRobotsPreviewControl(buildRobotsControl(["snippet, nosnippet"], [], []));
   assert.equal(conflict.status, "conflict");
+});
+
+test("robots control carries advisory directives through general and crawler-specific overrides", () => {
+  const inherited = buildRobotsControl(["noarchive"], ["noindex"], []);
+  assert.equal(inherited.hasNoarchiveDirective, true);
+  assert.equal(inherited.effectiveArchive, "noarchive");
+  assert.equal(inherited.hasNotranslateDirective, false);
+
+  const targeted = buildRobotsControl(["index,follow"], ["notranslate"], []);
+  assert.equal(targeted.hasNotranslateDirective, true);
+  assert.equal(targeted.effectiveTranslate, "notranslate");
+});
+
+test("canonical self-reference control only expects a self-canonical for eligible indexable pages", () => {
+  const canonicalControl = buildCanonicalControl(
+    [{ href: "https://example.com/page", rel: "canonical" }],
+    [],
+    "https://example.com/page",
+    "https://example.com/page"
+  );
+
+  const applicable = buildCanonicalSelfReferenceControl({
+    canonicalControl,
+    finalUrl: "https://example.com/page",
+    isReachable: true,
+    isHtmlResponse: true,
+    robotsControl: buildRobotsControl(["index,follow"], [], []),
+  });
+  assert.equal(applicable.status, "self");
+  assert.equal(applicable.expectsSelfReference, true);
+
+  const blocked = buildCanonicalSelfReferenceControl({
+    canonicalControl: buildCanonicalControl([], [], "https://example.com/page", "https://example.com/page"),
+    finalUrl: "https://example.com/page",
+    isReachable: true,
+    isHtmlResponse: true,
+    robotsControl: buildRobotsControl(["noindex"], [], []),
+  });
+  assert.equal(blocked.status, "not_applicable");
+  assert.equal(blocked.expectsSelfReference, false);
 });
 
 test("viewport, favicon, and head hygiene controls classify basic source-head quality states", () => {

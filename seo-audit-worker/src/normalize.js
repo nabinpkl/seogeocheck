@@ -86,8 +86,8 @@ function deriveIndexabilityVerdict(facts) {
   }
 
   if (
-    facts.canonicalControl.status !== "clear" ||
-    facts.canonicalControl.consistency === "contradicts"
+    facts.canonicalSelfReferenceControl?.expectsSelfReference === true &&
+    facts.canonicalSelfReferenceControl.status !== "self"
   ) {
     riskSignals.push("canonical_points_to_different_url");
   }
@@ -212,8 +212,13 @@ export function normalizeSeoAuditResult(input) {
         nonCrawlableLinkCount: sourceFacts.nonCrawlableLinkCount,
         emptyAnchorTextCount: sourceFacts.emptyAnchorTextCount,
         genericAnchorTextCount: sourceFacts.genericAnchorTextCount,
+        headingOutlineCount: sourceFacts.headingOutlineCount,
+        headingHierarchySkipCount: sourceFacts.headingHierarchySkipCount,
         linkedImageCount: sourceFacts.linkedImageCount,
         linkedImageMissingAltCount: sourceFacts.linkedImageMissingAltCount,
+        bodyImageCount: sourceFacts.bodyImageCount,
+        eligibleBodyImageCount: sourceFacts.eligibleBodyImageCount,
+        bodyImageMissingAltCount: sourceFacts.bodyImageMissingAltCount,
         structuredDataKinds: sourceFacts.structuredDataKinds,
       },
       xRobotsTag: {
@@ -222,12 +227,15 @@ export function normalizeSeoAuditResult(input) {
       },
       robotsControl: sourceFacts.robotsControl,
       canonicalControl: sourceFacts.canonicalControl,
+      canonicalSelfReferenceControl: sourceFacts.canonicalSelfReferenceControl,
       canonicalTargetControl: sourceFacts.canonicalTargetControl,
       alternateLanguageControl: sourceFacts.alternateLanguageControl,
       linkDiscoveryControl: sourceFacts.linkDiscoveryControl,
       titleControl: sourceFacts.titleControl,
       metaDescriptionControl: sourceFacts.metaDescriptionControl,
       headingControl: sourceFacts.headingControl,
+      bodyImageAltControl: sourceFacts.bodyImageAltControl,
+      langControl: sourceFacts.langControl,
       socialMetadataControl: sourceFacts.socialMetadataControl,
       robotsPreviewControl: sourceFacts.robotsPreviewControl,
       viewportControl: sourceFacts.viewportControl,
@@ -244,8 +252,13 @@ export function normalizeSeoAuditResult(input) {
             nonCrawlableLinkCount: renderedFacts.nonCrawlableLinkCount,
             emptyAnchorTextCount: renderedFacts.emptyAnchorTextCount,
             genericAnchorTextCount: renderedFacts.genericAnchorTextCount,
+            headingOutlineCount: renderedFacts.headingOutlineCount,
+            headingHierarchySkipCount: renderedFacts.headingHierarchySkipCount,
             linkedImageCount: renderedFacts.linkedImageCount,
             linkedImageMissingAltCount: renderedFacts.linkedImageMissingAltCount,
+            bodyImageCount: renderedFacts.bodyImageCount,
+            eligibleBodyImageCount: renderedFacts.eligibleBodyImageCount,
+            bodyImageMissingAltCount: renderedFacts.bodyImageMissingAltCount,
             structuredDataKinds: renderedFacts.structuredDataKinds,
           }
         : null,

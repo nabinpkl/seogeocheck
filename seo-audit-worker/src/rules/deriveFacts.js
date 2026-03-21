@@ -1,11 +1,14 @@
 import { normalizeText } from "./utils.js";
 import {
   buildAlternateLanguageControl,
+  buildBodyImageAltControl,
   buildCanonicalControl,
+  buildCanonicalSelfReferenceControl,
   buildCanonicalTargetControl,
   buildFaviconControl,
   buildHeadingControl,
   buildHeadHygieneControl,
+  buildLangControl,
   buildLinkDiscoveryControl,
   buildMetaDescriptionControl,
   buildRobotsPreviewControl,
@@ -54,6 +57,33 @@ function normalizeLinkedImage(image) {
   };
 }
 
+function normalizeHeading(heading) {
+  const level = Number.isFinite(heading?.level) ? Math.round(heading.level) : null;
+
+  return {
+    level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : null,
+    text: normalizeText(heading?.text),
+  };
+}
+
+function normalizeBodyImage(image) {
+  const width = Number.isFinite(image?.width) ? Math.round(image.width) : null;
+  const height = Number.isFinite(image?.height) ? Math.round(image.height) : null;
+
+  return {
+    src: normalizeText(image?.src),
+    resolvedSrc: normalizeText(image?.resolvedSrc),
+    alt: normalizeText(image?.alt),
+    role: normalizeText(image?.role)?.toLowerCase() ?? null,
+    ariaHidden: normalizeText(image?.ariaHidden)?.toLowerCase() ?? null,
+    width: Number.isInteger(width) ? width : null,
+    height: Number.isInteger(height) ? height : null,
+    hasUsableSrc: image?.hasUsableSrc === true,
+    isExplicitlyDecorative: image?.isExplicitlyDecorative === true,
+    isTrackingPixel: image?.isTrackingPixel === true,
+  };
+}
+
 export function deriveFacts(input) {
   const title = normalizeText(input.title);
   const metaDescription = normalizeText(input.metaDescription);
@@ -77,6 +107,12 @@ export function deriveFacts(input) {
     : [];
   const linkedImages = Array.isArray(input.linkedImages)
     ? input.linkedImages.map(normalizeLinkedImage)
+    : [];
+  const headingOutline = Array.isArray(input.headingOutline)
+    ? input.headingOutline.map(normalizeHeading).filter((heading) => heading.level !== null)
+    : [];
+  const bodyImages = Array.isArray(input.bodyImages)
+    ? input.bodyImages.map(normalizeBodyImage)
     : [];
   const structuredDataKinds = normalizeStructuredDataKinds(input.structuredDataKinds);
   const redirectChain = normalizeRedirectChain(input.redirectChain);
@@ -121,7 +157,9 @@ export function deriveFacts(input) {
   const linkDiscoveryControl = buildLinkDiscoveryControl(sourceAnchors);
   const titleControl = buildTitleControl(title);
   const metaDescriptionControl = buildMetaDescriptionControl(metaDescription);
-  const headingControl = buildHeadingControl(h1Count);
+  const headingControl = buildHeadingControl(h1Count, headingOutline);
+  const bodyImageAltControl = buildBodyImageAltControl(bodyImages);
+  const langControl = buildLangControl(lang);
   const structuredDataControl = buildStructuredDataControl(input.structuredDataJsonLdBlocks);
   const socialMetadataControl = buildSocialMetadataControl({
     openGraphTitle,
@@ -143,6 +181,13 @@ export function deriveFacts(input) {
     canonicalControl,
     pageFinalUrl: input.finalUrl ?? input.requestedUrl ?? null,
     canonicalTargetInspection: input.canonicalTargetInspection,
+  });
+  const canonicalSelfReferenceControl = buildCanonicalSelfReferenceControl({
+    canonicalControl,
+    finalUrl: input.finalUrl ?? input.requestedUrl ?? null,
+    isReachable: statusCode !== null && statusCode >= 200 && statusCode < 400,
+    isHtmlResponse: isHtmlContentType(contentType),
+    robotsControl,
   });
   const sameOriginCrawlableLinks = sourceAnchors.filter((anchor) => anchor.sameOrigin && anchor.crawlable);
   const nonCrawlableLinks = sourceAnchors.filter((anchor) => !anchor.crawlable);
@@ -174,6 +219,8 @@ export function deriveFacts(input) {
     xRobotsTag: xRobotsTagHeaders.join(", ") || null,
     xRobotsTagHeaders,
     h1Count,
+    headingOutline,
+    bodyImages,
     wordCount,
     statusCode,
     sourceAnchors,
@@ -188,11 +235,14 @@ export function deriveFacts(input) {
     robotsControl,
     canonicalControl,
     canonicalTargetControl,
+    canonicalSelfReferenceControl,
     alternateLanguageControl,
     linkDiscoveryControl,
     titleControl,
     metaDescriptionControl,
     headingControl,
+    bodyImageAltControl,
+    langControl,
     structuredDataControl,
     socialMetadataControl,
     robotsPreviewControl,
@@ -225,6 +275,12 @@ export function deriveFacts(input) {
     genericAnchorTextCount,
     linkedImageCount: linkedImages.length,
     linkedImageMissingAltCount: linkedImages.filter((image) => !image.alt).length,
+    headingOutlineCount: headingOutline.length,
+    headingHierarchySkipCount: headingControl.skippedTransitions.length,
+    bodyImageCount: bodyImages.length,
+    eligibleBodyImageCount: bodyImageAltControl.eligibleImageCount,
+    bodyImageMissingAltCount: bodyImageAltControl.missingAltCount,
+    hasValidLang: langControl.status === "valid",
     hasStructuredDataInSource: structuredDataKinds.length > 0,
     robotsTxtStatus: robotsTxt.status,
     robotsTxtAllowsCrawl: robotsTxt.allowsCrawl,
@@ -233,6 +289,6 @@ export function deriveFacts(input) {
     redirectFinalUrlChanged: redirectChain.finalUrlChanged,
     hasLongRedirectChain: redirectChain.totalRedirects > 2,
     canonicalConsistency: canonicalControl.consistency,
-    canonicalContradictsIndexing: canonicalControl.consistency === "contradicts",
+    canonicalContradictsIndexing: canonicalSelfReferenceControl.status === "contradicts",
   };
 }
