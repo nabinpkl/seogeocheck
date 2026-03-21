@@ -183,10 +183,69 @@ const bodyImageAlt = defineRule({
   },
 });
 
+const headingOutlineQuality = defineRule({
+  id: "heading-outline-quality",
+  label: "Heading Outline Quality",
+  packId: "contentVisibility",
+  priority: 5,
+  problemFamily: "heading_structure",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.headingQualityControl.status === "not_applicable") {
+      return passedCheck(
+        "heading-outline-quality",
+        "Heading outline quality will be evaluated after headings are added",
+        "The source HTML needs headings before outline quality can be evaluated.",
+        "body h1, body h2, body h3, body h4, body h5, body h6",
+        "heading-outline-quality",
+        facts.headingQualityControl
+      );
+    }
+
+    if (facts.headingQualityControl.status === "issues") {
+      const detailParts = [];
+      if (facts.headingQualityControl.firstHeadingNotH1) {
+        detailParts.push("The first heading in source HTML is not an H1.");
+      }
+      if (facts.headingQualityControl.emptyHeadingCount > 0) {
+        detailParts.push(
+          `Detected ${facts.headingQualityControl.emptyHeadingCount} empty heading${facts.headingQualityControl.emptyHeadingCount === 1 ? "" : "s"}.`
+        );
+      }
+      if (facts.headingQualityControl.repeatedHeadingCount > 0) {
+        detailParts.push(
+          `Detected ${facts.headingQualityControl.repeatedHeadingCount} repeated heading text pattern${facts.headingQualityControl.repeatedHeadingCount === 1 ? "" : "s"}.`
+        );
+      }
+
+      return issueCheck(
+        "heading-outline-quality",
+        "Clean up heading outline quality in source HTML",
+        "low",
+        "Keep headings non-empty, avoid repeating the same heading text unnecessarily, and start the outline with an H1 in source HTML.",
+        detailParts.join(" "),
+        "body h1, body h2, body h3, body h4, body h5, body h6",
+        "heading-outline-quality",
+        facts.headingQualityControl
+      );
+    }
+
+    return passedCheck(
+      "heading-outline-quality",
+      "Heading outline quality is clean",
+      "The source HTML heading outline starts correctly, uses non-empty text, and avoids repeated heading labels.",
+      "body h1, body h2, body h3, body h4, body h5, body h6",
+      "heading-outline-quality",
+      facts.headingQualityControl
+    );
+  },
+});
+
 export const contentRules = [
   primaryHeading,
   sourceVisibleText,
   headingStructure,
   contentDepth,
+  headingOutlineQuality,
   bodyImageAlt,
 ];

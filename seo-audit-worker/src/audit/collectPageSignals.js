@@ -32,6 +32,14 @@ function readNamedMetaValues($, name) {
     .filter(Boolean);
 }
 
+function collectMetaRefreshTags($) {
+  return $('meta[http-equiv]')
+    .toArray()
+    .filter((element) => normalizeText($(element).attr("http-equiv"))?.toLowerCase() === "refresh")
+    .map((element) => $(element).attr("content"))
+    .filter((value) => typeof value === "string");
+}
+
 function collectCanonicalLinks($) {
   return $('link[rel="canonical"]')
     .toArray()
@@ -228,6 +236,7 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
   const htmlCanonicalLinks = collectCanonicalLinks($);
   const htmlAlternateLinks = collectAlternateLinks($);
   const duplicateHeadCounts = collectDuplicateHeadCounts($);
+  const metaRefreshTags = collectMetaRefreshTags($);
 
   return {
     requestedUrl,
@@ -244,6 +253,7 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
     robotsContent: metaRobotsTags[0] ?? null,
     metaRobotsTags,
     googlebotRobotsTags,
+    metaRefreshTags,
     openGraphTitle: readPropertyMeta($, "og:title"),
     openGraphDescription: readPropertyMeta($, "og:description"),
     openGraphType: readPropertyMeta($, "og:type"),

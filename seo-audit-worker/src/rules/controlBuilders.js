@@ -19,6 +19,22 @@ const NON_USEFUL_LANGUAGE_TAGS = new Set([
   "unknown",
   "auto",
 ]);
+const TOKEN_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "at",
+  "by",
+  "for",
+  "from",
+  "in",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "with",
+]);
 const DIRECTIVE_PREFIXES = new Set([
   "index",
   "noindex",
@@ -87,6 +103,27 @@ function splitCommaDelimited(value) {
 
 function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function tokenizeComparableText(value) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return [];
+  }
+
+  return uniqueValues(
+    normalized
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length > 1 && !TOKEN_STOPWORDS.has(token))
+  );
+}
+
+function countSharedTokens(leftTokens, rightTokens) {
+  const rightSet = new Set(rightTokens);
+  return leftTokens.filter((token) => rightSet.has(token)).length;
 }
 
 function statusFromValues(values) {
@@ -906,6 +943,251 @@ export function buildCanonicalSelfReferenceControl({
     expectsSelfReference: true,
     finalUrl: finalUrl ?? null,
     resolvedCanonicalUrl: canonicalControl?.resolvedCanonicalUrl ?? null,
+  };
+}
+
+export function buildMetaRefreshControl(metaRefreshTags = [], baseUrl) {
+  const entries = (Array.isArray(metaRefreshTags) ? metaRefreshTags : []).map((rawValue) => {
+    const normalized = normalizeText(rawValue);
+    if (!normalized) {
+      return {
+        rawValue: typeof rawValue === "string" ? rawValue : null,
+        status: "malformed",
+        delaySeconds: null,
+        targetUrl: null,
+        resolvedTargetUrl: null,
+      };
+    }
+
+    const match = normalized.match(/^([0-9]+(?:\.[0-9]+)?)\s*(?:;(.*))?$/i);
+    if (!match) {
+      return {
+        rawValue: normalized,
+        status: "malformed",
+        delaySeconds: null,
+        targetUrl: null,
+        resolvedTargetUrl: null,
+      };
+    }
+
+    const delaySeconds = Number.parseFloat(match[1]);
+    const remainder = normalizeText(match[2]);
+    if (!remainder) {
+      return {
+        rawValue: normalized,
+        status: "refresh_only",
+        delaySeconds,
+        targetUrl: null,
+        resolvedTargetUrl: null,
+      };
+    }
+
+    const urlMatch = remainder.match(/\burl\s*=\s*(.+)$/i);
+    const targetUrl = normalizeText(urlMatch?.[1]);
+    if (!targetUrl) {
+      return {
+        rawValue: normalized,
+        status: "malformed",
+        delaySeconds,
+        targetUrl: null,
+        resolvedTargetUrl: null,
+      };
+    }
+
+    let resolvedTargetUrl = null;
+    try {
+      resolvedTargetUrl = new URL(targetUrl, baseUrl).toString();
+    } catch {
+      resolvedTargetUrl = null;
+    }
+
+    return {
+      rawValue: normalized,
+      status: delaySeconds === 0 ? "immediate_redirect" : "timed_redirect",
+      delaySeconds,
+      targetUrl,
+      resolvedTargetUrl,
+    };
+  });
+
+  const immediateRedirectCount = entries.filter((entry) => entry.status === "immediate_redirect").length;
+  const timedRedirectCount = entries.filter((entry) => entry.status === "timed_redirect").length;
+  const malformedCount = entries.filter((entry) => entry.status === "malformed").length;
+  const refreshOnlyCount = entries.filter((entry) => entry.status === "refresh_only").length;
+
+  return {
+    status:
+      entries.length === 0
+        ? "none"
+        : immediateRedirectCount > 0
+          ? "immediate_redirect"
+          : timedRedirectCount > 0
+            ? "timed_redirect"
+            : malformedCount > 0
+              ? "malformed"
+              : "refresh_only",
+    tagCount: entries.length,
+    immediateRedirectCount,
+    timedRedirectCount,
+    malformedCount,
+    refreshOnlyCount,
+    entries,
+  };
+}
+
+export function buildSocialUrlControl({ openGraphUrl, openGraphImage, twitterImage, baseUrl }) {
+  const fields = [
+    { field: "openGraphUrl", value: openGraphUrl },
+    { field: "openGraphImage", value: openGraphImage },
+    { field: "twitterImage", value: twitterImage },
+  ]
+    .map(({ field, value }) => {
+      const rawValue = normalizeText(value);
+      if (!rawValue) {
+        return null;
+      }
+
+      const resolution = resolveLinkStatus(rawValue, baseUrl);
+      const isAbsoluteHttpUrl = /^https?:\/\//i.test(rawValue);
+      let status = "valid";
+
+      if (rawValue.startsWith("#")) {
+        status = "fragment_only";
+      } else if (resolution.status === "non-http") {
+        status = "non_http";
+      } else if (resolution.status === "invalid" || resolution.status === "missing") {
+        status = "invalid";
+      } else if (!isAbsoluteHttpUrl) {
+        status = "relative";
+      }
+
+      return {
+        field,
+        rawValue,
+        status,
+        resolvedUrl: resolution.resolvedUrl,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    status:
+      fields.length === 0 ? "none" : fields.some((field) => field.status !== "valid") ? "issues" : "clear",
+    fieldCount: fields.length,
+    invalidFields: fields.filter((field) => field.status !== "valid"),
+    fields,
+  };
+}
+
+export function buildMetadataAlignmentControl({ title, metaDescription, headingOutline = [] }) {
+  const firstH1Text = normalizeText(
+    headingOutline.find((heading) => heading?.level === 1)?.text ?? null
+  );
+  const titleTokens = tokenizeComparableText(title);
+  const h1Tokens = tokenizeComparableText(firstH1Text);
+
+  if (!normalizeText(title) || !firstH1Text || titleTokens.length === 0 || h1Tokens.length === 0) {
+    return {
+      status: "not_applicable",
+      firstH1Text,
+      titleSharedTokenCount: 0,
+      metaDescriptionSharedTokenCount: 0,
+      titleH1Mismatch: false,
+      weakMetaDescriptionAlignment: false,
+    };
+  }
+
+  const topicTokens = uniqueValues([...titleTokens, ...h1Tokens]);
+  const metaDescriptionTokens = tokenizeComparableText(metaDescription);
+  const titleSharedTokenCount = countSharedTokens(titleTokens, h1Tokens);
+  const metaDescriptionSharedTokenCount =
+    metaDescriptionTokens.length > 0 ? countSharedTokens(metaDescriptionTokens, topicTokens) : 0;
+  const titleH1Mismatch = titleSharedTokenCount === 0;
+  const weakMetaDescriptionAlignment =
+    Boolean(normalizeText(metaDescription)) && metaDescriptionSharedTokenCount < 2;
+
+  return {
+    status:
+      titleH1Mismatch && weakMetaDescriptionAlignment
+        ? "title_h1_and_meta_description_mismatch"
+        : titleH1Mismatch
+          ? "title_h1_mismatch"
+          : weakMetaDescriptionAlignment
+            ? "meta_description_mismatch"
+            : "aligned",
+    firstH1Text,
+    titleSharedTokenCount,
+    metaDescriptionSharedTokenCount,
+    titleH1Mismatch,
+    weakMetaDescriptionAlignment,
+  };
+}
+
+export function buildInternalLinkCoverageControl({
+  isReachable,
+  isHtmlResponse,
+  sourceWordCount,
+  sameOriginCrawlableLinkCount,
+}) {
+  if (!isReachable || !isHtmlResponse || sourceWordCount < 100) {
+    return {
+      status: "not_applicable",
+      sameOriginCrawlableLinkCount,
+      minimumRecommendedCount: 3,
+    };
+  }
+
+  if (sameOriginCrawlableLinkCount === 0) {
+    return {
+      status: "handled_by_baseline",
+      sameOriginCrawlableLinkCount,
+      minimumRecommendedCount: 3,
+    };
+  }
+
+  return {
+    status: sameOriginCrawlableLinkCount >= 3 ? "good" : "low_coverage",
+    sameOriginCrawlableLinkCount,
+    minimumRecommendedCount: 3,
+  };
+}
+
+export function buildHeadingQualityControl(headingOutline = []) {
+  const normalizedOutline = Array.isArray(headingOutline)
+    ? headingOutline.filter((heading) => Number.isInteger(heading?.level) && heading.level >= 1 && heading.level <= 6)
+    : [];
+
+  if (normalizedOutline.length === 0) {
+    return {
+      status: "not_applicable",
+      emptyHeadingCount: 0,
+      repeatedHeadingCount: 0,
+      firstHeadingNotH1: false,
+      repeatedHeadings: [],
+    };
+  }
+
+  const emptyHeadingCount = normalizedOutline.filter((heading) => !normalizeText(heading.text)).length;
+  const repeatedHeadings = Object.entries(
+    Object.groupBy(
+      normalizedOutline.filter((heading) => normalizeText(heading.text)),
+      (heading) => tokenizeComparableText(heading.text).join(" ")
+    )
+  )
+    .filter(([key, group]) => key && group.length > 1)
+    .map(([, group]) => ({
+      text: normalizeText(group[0]?.text),
+      count: group.length,
+    }));
+  const firstHeadingNotH1 = normalizedOutline[0].level !== 1;
+
+  return {
+    status:
+      emptyHeadingCount > 0 || repeatedHeadings.length > 0 || firstHeadingNotH1 ? "issues" : "good",
+    emptyHeadingCount,
+    repeatedHeadingCount: repeatedHeadings.length,
+    firstHeadingNotH1,
+    repeatedHeadings,
   };
 }
 

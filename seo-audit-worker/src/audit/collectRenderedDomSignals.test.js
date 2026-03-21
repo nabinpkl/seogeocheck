@@ -14,6 +14,7 @@ test("collectRenderedDomSignals waits for settle time and returns rendered signa
       canonicalUrl: "/canonical",
       metaRobotsTags: ["index,follow"],
       googlebotRobotsTags: ["index,follow"],
+      metaRefreshTags: ["5; url=/pricing"],
       h1Count: 1,
       headingOutline: [
         { level: 1, text: "Rendered title" },
@@ -67,6 +68,7 @@ test("collectRenderedDomSignals waits for settle time and returns rendered signa
   assert.deepEqual(calls, [["waitForTimeout", 1500]]);
   assert.equal(result.title, "Rendered title");
   assert.equal(result.wordCount, 3);
+  assert.deepEqual(result.metaRefreshTags, ["5; url=/pricing"]);
   assert.deepEqual(result.headingOutline, [
     { level: 1, text: "Rendered title" },
     { level: 3, text: "Skipped subheading" },

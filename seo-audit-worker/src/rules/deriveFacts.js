@@ -7,12 +7,17 @@ import {
   buildCanonicalTargetControl,
   buildFaviconControl,
   buildHeadingControl,
+  buildHeadingQualityControl,
   buildHeadHygieneControl,
+  buildInternalLinkCoverageControl,
   buildLangControl,
   buildLinkDiscoveryControl,
+  buildMetadataAlignmentControl,
   buildMetaDescriptionControl,
+  buildMetaRefreshControl,
   buildRobotsPreviewControl,
   buildRobotsControl,
+  buildSocialUrlControl,
   buildSocialMetadataControl,
   buildStructuredDataControl,
   buildTitleControl,
@@ -117,6 +122,11 @@ export function deriveFacts(input) {
   const structuredDataKinds = normalizeStructuredDataKinds(input.structuredDataKinds);
   const redirectChain = normalizeRedirectChain(input.redirectChain);
   const robotsTxt = normalizeRobotsTxt(input.robotsTxt);
+  const metaRefreshTags = uniqueValues(
+    (Array.isArray(input.metaRefreshTags) ? input.metaRefreshTags : [])
+      .map((value) => (typeof value === "string" ? value : null))
+      .filter((value) => value !== null)
+  );
   const metaRobotsTags = uniqueValues(
     (Array.isArray(input.metaRobotsTags) ? input.metaRobotsTags : [input.robotsContent])
       .map((value) => normalizeText(value))
@@ -158,8 +168,13 @@ export function deriveFacts(input) {
   const titleControl = buildTitleControl(title);
   const metaDescriptionControl = buildMetaDescriptionControl(metaDescription);
   const headingControl = buildHeadingControl(h1Count, headingOutline);
+  const headingQualityControl = buildHeadingQualityControl(headingOutline);
   const bodyImageAltControl = buildBodyImageAltControl(bodyImages);
   const langControl = buildLangControl(lang);
+  const metaRefreshControl = buildMetaRefreshControl(
+    metaRefreshTags,
+    input.finalUrl ?? input.requestedUrl ?? "https://example.com"
+  );
   const structuredDataControl = buildStructuredDataControl(input.structuredDataJsonLdBlocks);
   const socialMetadataControl = buildSocialMetadataControl({
     openGraphTitle,
@@ -172,6 +187,17 @@ export function deriveFacts(input) {
     twitterDescription,
     twitterImage,
     duplicateHeadCounts: input.duplicateHeadCounts,
+  });
+  const socialUrlControl = buildSocialUrlControl({
+    openGraphUrl,
+    openGraphImage,
+    twitterImage,
+    baseUrl: input.finalUrl ?? input.requestedUrl ?? "https://example.com",
+  });
+  const metadataAlignmentControl = buildMetadataAlignmentControl({
+    title,
+    metaDescription,
+    headingOutline,
   });
   const robotsPreviewControl = buildRobotsPreviewControl(robotsControl);
   const viewportControl = buildViewportControl(viewportContent);
@@ -195,6 +221,12 @@ export function deriveFacts(input) {
   const genericAnchorTextCount = sourceAnchors.filter(
     (anchor) => anchor.crawlable && anchor.text && GENERIC_ANCHOR_TEXT.has(anchor.text.toLowerCase())
   ).length;
+  const internalLinkCoverageControl = buildInternalLinkCoverageControl({
+    isReachable: statusCode !== null && statusCode >= 200 && statusCode < 400,
+    isHtmlResponse: isHtmlContentType(contentType),
+    sourceWordCount: wordCount,
+    sameOriginCrawlableLinkCount: sameOriginCrawlableLinks.length,
+  });
 
   return {
     ...input,
@@ -205,6 +237,7 @@ export function deriveFacts(input) {
     robotsContent: metaRobotsTags[0] ?? null,
     metaRobotsTags,
     googlebotRobotsTags,
+    metaRefreshTags,
     openGraphTitle,
     openGraphDescription,
     openGraphType,
@@ -238,13 +271,18 @@ export function deriveFacts(input) {
     canonicalSelfReferenceControl,
     alternateLanguageControl,
     linkDiscoveryControl,
+    internalLinkCoverageControl,
     titleControl,
     metaDescriptionControl,
     headingControl,
+    headingQualityControl,
     bodyImageAltControl,
     langControl,
+    metaRefreshControl,
     structuredDataControl,
     socialMetadataControl,
+    socialUrlControl,
+    metadataAlignmentControl,
     robotsPreviewControl,
     viewportControl,
     faviconControl,
@@ -275,8 +313,11 @@ export function deriveFacts(input) {
     genericAnchorTextCount,
     linkedImageCount: linkedImages.length,
     linkedImageMissingAltCount: linkedImages.filter((image) => !image.alt).length,
+    metaRefreshTagCount: metaRefreshTags.length,
     headingOutlineCount: headingOutline.length,
     headingHierarchySkipCount: headingControl.skippedTransitions.length,
+    emptyHeadingCount: headingQualityControl.emptyHeadingCount,
+    repeatedHeadingCount: headingQualityControl.repeatedHeadingCount,
     bodyImageCount: bodyImages.length,
     eligibleBodyImageCount: bodyImageAltControl.eligibleImageCount,
     bodyImageMissingAltCount: bodyImageAltControl.missingAltCount,

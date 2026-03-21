@@ -304,6 +304,49 @@ const twitterPreviewCore = defineRule({
   },
 });
 
+const socialPreviewUrlHygiene = defineRule({
+  id: "social-preview-url-hygiene",
+  label: "Social Preview URL Hygiene",
+  packId: "metadata",
+  priority: 6,
+  problemFamily: "social_url_hygiene",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.socialUrlControl.status === "none") {
+      return passedCheck(
+        "social-preview-url-hygiene",
+        "No social preview URLs need validation yet",
+        "This check only validates social URL fields that are already present in source HTML.",
+        'head > meta[property="og:url"], head > meta[property="og:image"], head > meta[name="twitter:image"]',
+        "social-url-hygiene",
+        facts.socialUrlControl
+      );
+    }
+
+    if (facts.socialUrlControl.status === "issues") {
+      return issueCheck(
+        "social-preview-url-hygiene",
+        "Use absolute HTTP(S) social preview URLs in source HTML",
+        "low",
+        "Use absolute HTTP(S) URLs for og:url, og:image, and twitter:image in source HTML so shared previews rely on explicit, crawler-readable URL values.",
+        `Detected invalid social URL fields for ${facts.socialUrlControl.invalidFields.map((field) => `${field.field} (${field.status})`).join(", ")}.`,
+        'head > meta[property="og:url"], head > meta[property="og:image"], head > meta[name="twitter:image"]',
+        "social-url-hygiene",
+        facts.socialUrlControl
+      );
+    }
+
+    return passedCheck(
+      "social-preview-url-hygiene",
+      "Social preview URLs are explicit and usable",
+      "Present social preview URL fields use absolute HTTP(S) URLs in source HTML.",
+      'head > meta[property="og:url"], head > meta[property="og:image"], head > meta[name="twitter:image"]',
+      "social-url-hygiene",
+      facts.socialUrlControl
+    );
+  },
+});
+
 const robotsPreviewDirectives = defineRule({
   id: "robots-preview-directives",
   label: "Robots Preview Directives",
@@ -345,6 +388,57 @@ const robotsPreviewDirectives = defineRule({
       'head > meta[name="robots"], head > meta[name="googlebot"], document',
       "robots-preview",
       facts.robotsPreviewControl
+    );
+  },
+});
+
+const coreMetadataAlignment = defineRule({
+  id: "core-metadata-alignment",
+  label: "Core Metadata Alignment",
+  packId: "metadata",
+  priority: 7,
+  problemFamily: "metadata_alignment",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.metadataAlignmentControl.status === "not_applicable") {
+      return passedCheck(
+        "core-metadata-alignment",
+        "Core metadata alignment will be evaluated after title and H1 are available",
+        "This check needs both a source title and a source H1 before alignment can be evaluated.",
+        "head > title, body h1, head > meta[name=\"description\"]",
+        "metadata-alignment",
+        facts.metadataAlignmentControl
+      );
+    }
+
+    if (facts.metadataAlignmentControl.status !== "aligned") {
+      const detailParts = [];
+      if (facts.metadataAlignmentControl.titleH1Mismatch) {
+        detailParts.push("The source title and first source H1 do not share meaningful topic terms.");
+      }
+      if (facts.metadataAlignmentControl.weakMetaDescriptionAlignment) {
+        detailParts.push("The source meta description overlaps weakly with the title/H1 topic terms.");
+      }
+
+      return issueCheck(
+        "core-metadata-alignment",
+        "Align the source title, H1, and meta description more closely",
+        facts.metadataAlignmentControl.titleH1Mismatch ? "medium" : "low",
+        "Keep the source title, first H1, and meta description focused on the same primary topic so crawlers receive one coherent page summary.",
+        detailParts.join(" "),
+        "head > title, body h1, head > meta[name=\"description\"]",
+        "metadata-alignment",
+        facts.metadataAlignmentControl
+      );
+    }
+
+    return passedCheck(
+      "core-metadata-alignment",
+      "Core metadata is topically aligned",
+      "The source title, first H1, and meta description appear to reinforce the same topic.",
+      "head > title, body h1, head > meta[name=\"description\"]",
+      "metadata-alignment",
+      facts.metadataAlignmentControl
     );
   },
 });
@@ -534,7 +628,9 @@ export const metadataRules = [
   socialPreviewCore,
   metaDescriptionQuality,
   twitterPreviewCore,
+  socialPreviewUrlHygiene,
   robotsPreviewDirectives,
+  coreMetadataAlignment,
   metaViewport,
   structuredDataPresence,
   structuredDataValidity,

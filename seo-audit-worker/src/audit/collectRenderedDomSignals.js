@@ -55,6 +55,13 @@ export async function collectRenderedDomSignals({
       robotsContent: attr('meta[name="robots"]', "content"),
       metaRobotsTags: attrs('meta[name="robots"]', "content"),
       googlebotRobotsTags: attrs('meta[name="googlebot"]', "content"),
+      metaRefreshTags: Array.from(document.querySelectorAll("meta[http-equiv]"))
+        .filter(
+          (element) =>
+            (element.getAttribute("http-equiv") ?? "").trim().toLowerCase() === "refresh"
+        )
+        .map((element) => element.getAttribute("content"))
+        .filter((value) => typeof value === "string"),
       openGraphTitle: attr('meta[property="og:title"]', "content"),
       openGraphDescription: attr('meta[property="og:description"]', "content"),
       bodyText: document.body?.innerText ?? document.body?.textContent ?? "",
@@ -101,6 +108,7 @@ export async function collectRenderedDomSignals({
     robotsContent: snapshot.robotsContent,
     metaRobotsTags: snapshot.metaRobotsTags,
     googlebotRobotsTags: snapshot.googlebotRobotsTags,
+    metaRefreshTags: snapshot.metaRefreshTags,
     openGraphTitle: snapshot.openGraphTitle,
     openGraphDescription: snapshot.openGraphDescription,
     wordCount: countWords(snapshot.bodyText),

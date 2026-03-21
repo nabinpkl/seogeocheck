@@ -47,6 +47,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
     lang: "en",
     metaRobotsTags: ["index,follow,noarchive"],
     googlebotRobotsTags: ["noindex"],
+    metaRefreshTags: ["0; url=/next", "broken refresh"],
     openGraphTitle: "",
     openGraphDescription: "Social summary",
     openGraphType: "website",
@@ -215,8 +216,11 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.genericAnchorTextCount, 1);
   assert.equal(facts.linkedImageCount, 1);
   assert.equal(facts.linkedImageMissingAltCount, 1);
+  assert.equal(facts.metaRefreshTagCount, 2);
   assert.equal(facts.headingOutlineCount, 2);
   assert.equal(facts.headingHierarchySkipCount, 1);
+  assert.equal(facts.emptyHeadingCount, 0);
+  assert.equal(facts.repeatedHeadingCount, 0);
   assert.equal(facts.bodyImageCount, 2);
   assert.equal(facts.eligibleBodyImageCount, 1);
   assert.equal(facts.bodyImageMissingAltCount, 1);
@@ -232,10 +236,14 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.titleControl.status, "too_short");
   assert.equal(facts.metaDescriptionControl.status, "missing");
   assert.equal(facts.headingControl.status, "multiple_and_skipped");
+  assert.equal(facts.headingQualityControl.status, "good");
   assert.equal(facts.bodyImageAltControl.status, "missing_alt");
+  assert.equal(facts.metaRefreshControl.status, "immediate_redirect");
   assert.equal(facts.langControl.status, "valid");
   assert.equal(facts.structuredDataControl.status, "valid");
   assert.equal(facts.socialMetadataControl.status, "incomplete");
+  assert.equal(facts.socialUrlControl.status, "clear");
+  assert.equal(facts.metadataAlignmentControl.status, "aligned");
   assert.equal(facts.robotsPreviewControl.status, "clear");
   assert.equal(facts.viewportControl.status, "valid");
   assert.equal(facts.faviconControl.status, "present");
@@ -244,6 +252,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.alternateLanguageControl.status, "present");
   assert.equal(facts.linkDiscoveryControl.internalNofollowCount, 1);
   assert.equal(facts.linkDiscoveryControl.blockedByRelCount, 1);
+  assert.equal(facts.internalLinkCoverageControl.status, "not_applicable");
   assert.equal(facts.robotsControl.hasNoarchiveDirective, true);
   assert.equal(facts.canonicalSelfReferenceControl.status, "not_applicable");
 });

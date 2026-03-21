@@ -73,6 +73,11 @@ function createCheerioStub(document) {
             .map((content) => createElement("meta", { attrs: { content } })),
           document
         );
+      case 'meta[http-equiv]':
+        return createCollection(
+          (document.httpEquivMetas ?? []).map((meta) => createElement("meta", { attrs: meta })),
+          document
+        );
       case 'meta[property="og:title"]':
         return createCollection(
           (document.openGraphTitleValues ?? [document.openGraphTitle])
@@ -272,6 +277,7 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
       lang: "en",
       robotsContent: "index,follow",
       metaRobotsTags: ["index,follow"],
+      httpEquivMetas: [{ "http-equiv": "refresh", content: "10; url=/next" }],
       openGraphTitle: "Hello",
       openGraphDescription: "World",
       openGraphType: "website",
@@ -342,6 +348,7 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
     robotsContent: "index,follow",
     metaRobotsTags: ["index,follow"],
     googlebotRobotsTags: [],
+    metaRefreshTags: ["10; url=/next"],
     openGraphTitle: "Hello",
     openGraphDescription: "World",
     openGraphType: "website",
@@ -432,6 +439,10 @@ test("collectPageSignals inventories source anchors, linked images, structured d
       robotsContent: "index,follow",
       metaRobotsTags: ["index,follow"],
       googlebotRobotsTags: ["index,follow"],
+      httpEquivMetas: [
+        { "http-equiv": "refresh", content: "0; url=/redirected" },
+        { "http-equiv": "refresh", content: "broken refresh" },
+      ],
       openGraphTitle: "Example",
       openGraphDescription: "Useful summary",
       openGraphType: "article",
@@ -615,6 +626,7 @@ test("collectPageSignals inventories source anchors, linked images, structured d
       alt: null,
     },
   ]);
+  assert.deepEqual(result.metaRefreshTags, ["0; url=/redirected", "broken refresh"]);
   assert.deepEqual(result.headingOutline, [
     { level: 1, text: "Products" },
     { level: 2, text: "Overview" },

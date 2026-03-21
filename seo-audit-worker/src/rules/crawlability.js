@@ -212,6 +212,76 @@ const robotsNotranslate = defineRule({
   },
 });
 
+const metaRefreshRedirect = defineRule({
+  id: "meta-refresh-redirect",
+  label: "Meta Refresh Redirect",
+  packId: "indexability",
+  priority: 7,
+  problemFamily: "meta_refresh",
+  check: (facts) => {
+    if (facts.metaRefreshControl.status === "none") {
+      return passedCheck(
+        "meta-refresh-redirect",
+        "No source meta refresh redirect was detected",
+        "The source HTML did not expose meta refresh tags that redirect or auto-refresh the page.",
+        'head > meta[http-equiv="refresh"]',
+        "meta-refresh",
+        facts.metaRefreshControl
+      );
+    }
+
+    if (facts.metaRefreshControl.status === "immediate_redirect") {
+      return issueCheck(
+        "meta-refresh-redirect",
+        "Remove immediate meta refresh redirects from source HTML",
+        "high",
+        "Replace immediate meta refresh redirects with server-side HTTP redirects so crawlers receive a clearer canonical navigation path.",
+        `Detected ${facts.metaRefreshControl.immediateRedirectCount} immediate meta refresh redirect${facts.metaRefreshControl.immediateRedirectCount === 1 ? "" : "s"}.`,
+        'head > meta[http-equiv="refresh"]',
+        "meta-refresh",
+        facts.metaRefreshControl
+      );
+    }
+
+    if (facts.metaRefreshControl.status === "timed_redirect") {
+      return issueCheck(
+        "meta-refresh-redirect",
+        "Remove timed meta refresh redirects from source HTML",
+        "medium",
+        "Prefer HTTP redirects over timed meta refresh redirects so crawlers and users receive a cleaner source-level navigation signal.",
+        `Detected ${facts.metaRefreshControl.timedRedirectCount} timed meta refresh redirect${facts.metaRefreshControl.timedRedirectCount === 1 ? "" : "s"}.`,
+        'head > meta[http-equiv="refresh"]',
+        "meta-refresh",
+        facts.metaRefreshControl
+      );
+    }
+
+    if (facts.metaRefreshControl.status === "malformed") {
+      return issueCheck(
+        "meta-refresh-redirect",
+        "Fix malformed meta refresh tags in source HTML",
+        "low",
+        "Remove or repair malformed meta refresh tags so source head controls remain explicit and predictable.",
+        `Detected ${facts.metaRefreshControl.malformedCount} malformed meta refresh tag${facts.metaRefreshControl.malformedCount === 1 ? "" : "s"}.`,
+        'head > meta[http-equiv="refresh"]',
+        "meta-refresh",
+        facts.metaRefreshControl
+      );
+    }
+
+    return issueCheck(
+      "meta-refresh-redirect",
+      "Remove source meta refresh auto-refresh tags",
+      "low",
+      "Avoid meta refresh auto-refresh behavior in source HTML unless the page has a deliberate, crawler-safe reason to do so.",
+      `Detected ${facts.metaRefreshControl.refreshOnlyCount} meta refresh tag${facts.metaRefreshControl.refreshOnlyCount === 1 ? "" : "s"} without a redirect target.`,
+      'head > meta[http-equiv="refresh"]',
+      "meta-refresh",
+      facts.metaRefreshControl
+    );
+  },
+});
+
 const canonicalSignals = defineRule({
   id: "canonical-signals",
   label: "Canonical Signals",
@@ -716,6 +786,59 @@ const internalLinkRelDiscovery = defineRule({
   },
 });
 
+const internalLinkCoverage = defineRule({
+  id: "internal-link-coverage",
+  label: "Internal Link Coverage",
+  packId: "crawlability",
+  priority: 14,
+  problemFamily: "internal_link_discovery",
+  check: (facts) => {
+    if (facts.internalLinkCoverageControl.status === "not_applicable") {
+      return passedCheck(
+        "internal-link-coverage",
+        "Internal link coverage is not evaluated for this page shape",
+        "This check only applies to reachable HTML pages with enough source text to evaluate broader internal-link coverage.",
+        "a[href]",
+        "internal-link-coverage",
+        facts.internalLinkCoverageControl
+      );
+    }
+
+    if (facts.internalLinkCoverageControl.status === "handled_by_baseline") {
+      return passedCheck(
+        "internal-link-coverage",
+        "Baseline crawlable-link coverage issue is handled elsewhere",
+        "The essential crawlable-link rule already covers pages that expose zero same-origin crawlable links in source HTML.",
+        "a[href]",
+        "internal-link-coverage",
+        facts.internalLinkCoverageControl
+      );
+    }
+
+    if (facts.internalLinkCoverageControl.status === "low_coverage") {
+      return issueCheck(
+        "internal-link-coverage",
+        "Expose more crawlable internal links in source HTML",
+        "low",
+        "Add a few more same-origin crawlable links in the HTML response before rendering so important discovery paths are better represented in source HTML.",
+        `Detected ${facts.internalLinkCoverageControl.sameOriginCrawlableLinkCount} same-origin crawlable link${facts.internalLinkCoverageControl.sameOriginCrawlableLinkCount === 1 ? "" : "s"}; this check prefers at least ${facts.internalLinkCoverageControl.minimumRecommendedCount}.`,
+        "a[href]",
+        "internal-link-coverage",
+        facts.internalLinkCoverageControl
+      );
+    }
+
+    return passedCheck(
+      "internal-link-coverage",
+      "Internal link coverage is sufficient",
+      "The source HTML exposes a healthy number of same-origin crawlable links for this page length.",
+      "a[href]",
+      "internal-link-coverage",
+      facts.internalLinkCoverageControl
+    );
+  },
+});
+
 const anchorTextQuality = defineRule({
   id: "anchor-text-quality",
   label: "Anchor Text Quality",
@@ -807,6 +930,7 @@ export const crawlabilityRules = [
   robotsDirectiveHygiene,
   robotsNoarchive,
   robotsNotranslate,
+  metaRefreshRedirect,
   canonicalSignals,
   canonicalIndexabilityConsistency,
   canonicalTargetHealth,
@@ -816,6 +940,7 @@ export const crawlabilityRules = [
   htmlLang,
   sourceCrawlableLinks,
   internalLinkRelDiscovery,
+  internalLinkCoverage,
   anchorTextQuality,
   fragmentRouteHygiene,
 ];

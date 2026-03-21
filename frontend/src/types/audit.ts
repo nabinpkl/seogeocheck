@@ -73,8 +73,11 @@ export type AuditReport = {
       nonCrawlableLinkCount?: number;
       emptyAnchorTextCount?: number;
       genericAnchorTextCount?: number;
+      metaRefreshTagCount?: number;
       headingOutlineCount?: number;
       headingHierarchySkipCount?: number;
+      emptyHeadingCount?: number;
+      repeatedHeadingCount?: number;
       linkedImageCount?: number;
       linkedImageMissingAltCount?: number;
       bodyImageCount?: number;
@@ -89,8 +92,11 @@ export type AuditReport = {
       nonCrawlableLinkCount?: number;
       emptyAnchorTextCount?: number;
       genericAnchorTextCount?: number;
+      metaRefreshTagCount?: number;
       headingOutlineCount?: number;
       headingHierarchySkipCount?: number;
+      emptyHeadingCount?: number;
+      repeatedHeadingCount?: number;
       linkedImageCount?: number;
       linkedImageMissingAltCount?: number;
       bodyImageCount?: number;
@@ -151,6 +157,16 @@ export type AuditReport = {
       resolvedCanonicalUrl?: string | null;
       [key: string]: unknown;
     };
+    metaRefreshControl?: {
+      status?: string;
+      tagCount?: number;
+      immediateRedirectCount?: number;
+      timedRedirectCount?: number;
+      malformedCount?: number;
+      refreshOnlyCount?: number;
+      entries?: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    };
     alternateLanguageControl?: {
       status?: string;
       annotations?: Array<Record<string, unknown>>;
@@ -168,6 +184,20 @@ export type AuditReport = {
       affectedLinks?: Array<Record<string, unknown>>;
       [key: string]: unknown;
     };
+    internalLinkCoverageControl?: {
+      status?: string;
+      sameOriginCrawlableLinkCount?: number;
+      minimumRecommendedCount?: number;
+      [key: string]: unknown;
+    };
+    headingQualityControl?: {
+      status?: string;
+      emptyHeadingCount?: number;
+      repeatedHeadingCount?: number;
+      firstHeadingNotH1?: boolean;
+      repeatedHeadings?: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    };
     bodyImageAltControl?: {
       status?: string;
       totalImageCount?: number;
@@ -183,6 +213,22 @@ export type AuditReport = {
       status?: string;
       value?: string | null;
       canonicalValue?: string | null;
+      [key: string]: unknown;
+    };
+    socialUrlControl?: {
+      status?: string;
+      fieldCount?: number;
+      invalidFields?: Array<Record<string, unknown>>;
+      fields?: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    };
+    metadataAlignmentControl?: {
+      status?: string;
+      firstH1Text?: string | null;
+      titleSharedTokenCount?: number;
+      metaDescriptionSharedTokenCount?: number;
+      titleH1Mismatch?: boolean;
+      weakMetaDescriptionAlignment?: boolean;
       [key: string]: unknown;
     };
     robotsTxt?: {
