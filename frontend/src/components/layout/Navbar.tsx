@@ -101,9 +101,9 @@ export function Navbar() {
         </Link>
         <div className="hidden items-center gap-8 md:flex">
           <div className="flex items-center gap-8">
-            <a href="/#features" className={`text-sm font-medium transition-colors hover:text-primary ${
+            <Link href="/#features" className={`text-sm font-medium transition-colors hover:text-primary ${
               isLightStyle ? "text-slate-600" : "text-white"
-            }`}>Features</a>
+            }`}>Features</Link>
             <Link href={UNDER_CONSTRUCTION_PATH} className={`text-sm font-medium transition-colors hover:text-primary ${
               isLightStyle ? "text-slate-600" : "text-white"
             }`}>How it works</Link>
@@ -152,7 +152,7 @@ export function Navbar() {
             }`}
           >
             <div className="mx-auto flex max-w-7xl flex-col gap-3">
-              <a
+              <Link
                 href="/#features"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-all hover:bg-white/5 hover:text-primary ${
@@ -160,7 +160,7 @@ export function Navbar() {
                 }`}
               >
                 Features
-              </a>
+              </Link>
               <Link
                 href={UNDER_CONSTRUCTION_PATH}
                 onClick={() => setIsMobileMenuOpen(false)}

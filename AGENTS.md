@@ -90,9 +90,18 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 ### Frontend Requirements
 - **Runtime:** Next.js 16+ (React 19)
 - **Styling:** Tailwind CSS 4+
+- **Design System Foundation:** shadcn/ui registry primitives in `frontend/src/components/ui` + SEOGEO compositions in `frontend/src/components/system`
 - **Package Manager:** pnpm
 - **Data Fetching:** TanStack Query v5+ (Server State)
 - **State Management:** Zustand v5+ (Client State)
+
+### Frontend Design System Rules
+- `frontend/src/components/ui` is the source-owned primitive layer. Keep it generic and product-agnostic.
+- `frontend/src/components/system` is the SEOGEO composition layer for repeated product framing such as page shells, status badges, metric cards, empty states, and audit callouts.
+- For new or intentionally rewritten screens, do **not** introduce fresh ad hoc button, input, textarea, badge, card, separator, skeleton, progress, dialog, sheet, tab, tooltip, or accordion patterns when an existing system component fits.
+- Existing legacy marketing and audit surfaces may remain unchanged until an intentional migration slice touches them.
+- Use the hidden dev-only gallery route at `/internal/design-system` during local development for visual QA of primitives and system components.
+- Magic UI is deferred until the core design system is stable; when introduced later, keep it additive and decorative rather than foundational for core product UI.
 
 ### Data Ownership Rules
 - **TanStack Query:** Exclusively owns data synchronized from the server.
