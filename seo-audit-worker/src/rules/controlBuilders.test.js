@@ -3,10 +3,16 @@ import assert from "node:assert/strict";
 import {
   buildCanonicalControl,
   buildCanonicalTargetControl,
+  buildFaviconControl,
   buildHeadingControl,
+  buildHeadHygieneControl,
   buildMetaDescriptionControl,
+  buildRobotsControl,
+  buildRobotsPreviewControl,
+  buildSocialMetadataControl,
   buildStructuredDataControl,
   buildTitleControl,
+  buildViewportControl,
 } from "./controlBuilders.js";
 
 test("title and meta controls enforce shared threshold boundaries", () => {
@@ -132,4 +138,87 @@ test("canonical target control classifies reachable, redirected, and blocked can
     },
   });
   assert.equal(blocked.status, "blocked_by_robots_directives");
+});
+
+test("social metadata control inventories complete and incomplete Open Graph and Twitter sets", () => {
+  const incomplete = buildSocialMetadataControl({
+    openGraphTitle: "Example",
+    openGraphDescription: "Description",
+    openGraphType: "website",
+    openGraphUrl: null,
+    openGraphImage: null,
+    twitterCard: "summary_large_image",
+    twitterTitle: "Example",
+    twitterDescription: "Description",
+    twitterImage: null,
+    duplicateHeadCounts: {
+      openGraphTitle: 2,
+      twitterTitle: 1,
+    },
+  });
+
+  assert.equal(incomplete.status, "incomplete");
+  assert.deepEqual(incomplete.openGraph.missingFields, ["url", "image"]);
+  assert.deepEqual(incomplete.twitter.missingFields, ["image"]);
+  assert.deepEqual(incomplete.openGraph.duplicateFields, [{ field: "title", count: 2 }]);
+
+  const complete = buildSocialMetadataControl({
+    openGraphTitle: "Example",
+    openGraphDescription: "Description",
+    openGraphType: "website",
+    openGraphUrl: "https://example.com",
+    openGraphImage: "https://example.com/og.jpg",
+    twitterCard: "summary_large_image",
+    twitterTitle: "Example",
+    twitterDescription: "Description",
+    twitterImage: "https://example.com/twitter.jpg",
+    duplicateHeadCounts: {},
+  });
+  assert.equal(complete.status, "complete");
+});
+
+test("robots preview control summarizes restrictive and conflicting preview directives", () => {
+  const restrictive = buildRobotsPreviewControl(
+    buildRobotsControl(["max-snippet: 120, max-image-preview: standard"], [], [])
+  );
+  assert.equal(restrictive.status, "restrictive");
+  assert.deepEqual(restrictive.restrictiveSignals, [
+    "max-snippet:120",
+    "max-image-preview:standard",
+  ]);
+
+  const conflict = buildRobotsPreviewControl(buildRobotsControl(["snippet, nosnippet"], [], []));
+  assert.equal(conflict.status, "conflict");
+});
+
+test("viewport, favicon, and head hygiene controls classify basic source-head quality states", () => {
+  assert.equal(buildViewportControl(null).status, "missing");
+  assert.equal(
+    buildViewportControl("width=device-width, initial-scale=1").status,
+    "valid"
+  );
+  assert.equal(
+    buildViewportControl("initial-scale=1, user-scalable=no").status,
+    "invalid_or_unfriendly"
+  );
+
+  assert.equal(buildFaviconControl([]).status, "missing");
+  assert.equal(
+    buildFaviconControl([{ href: "/favicon.ico", rel: "icon", type: "image/x-icon" }]).status,
+    "present"
+  );
+
+  const headHygiene = buildHeadHygieneControl({
+    title: 2,
+    metaDescription: 1,
+    viewport: 2,
+    openGraphTitle: 1,
+    twitterCard: 3,
+  });
+  assert.equal(headHygiene.status, "duplicates_present");
+  assert.deepEqual(headHygiene.problematicFields, [
+    { field: "title", count: 2 },
+    { field: "viewport", count: 2 },
+    { field: "twitterCard", count: 3 },
+  ]);
 });

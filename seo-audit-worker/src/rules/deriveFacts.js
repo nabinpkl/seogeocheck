@@ -3,12 +3,17 @@ import {
   buildAlternateLanguageControl,
   buildCanonicalControl,
   buildCanonicalTargetControl,
+  buildFaviconControl,
   buildHeadingControl,
+  buildHeadHygieneControl,
   buildLinkDiscoveryControl,
   buildMetaDescriptionControl,
+  buildRobotsPreviewControl,
   buildRobotsControl,
+  buildSocialMetadataControl,
   buildStructuredDataControl,
   buildTitleControl,
+  buildViewportControl,
   isHtmlContentType,
   normalizeLinkAnnotations,
   normalizeRedirectChain,
@@ -55,6 +60,14 @@ export function deriveFacts(input) {
   const lang = normalizeText(input.lang);
   const openGraphTitle = normalizeText(input.openGraphTitle);
   const openGraphDescription = normalizeText(input.openGraphDescription);
+  const openGraphType = normalizeText(input.openGraphType);
+  const openGraphUrl = normalizeText(input.openGraphUrl);
+  const openGraphImage = normalizeText(input.openGraphImage);
+  const twitterCard = normalizeText(input.twitterCard);
+  const twitterTitle = normalizeText(input.twitterTitle);
+  const twitterDescription = normalizeText(input.twitterDescription);
+  const twitterImage = normalizeText(input.twitterImage);
+  const viewportContent = normalizeText(input.viewportContent);
   const contentType = normalizeText(input.contentType);
   const h1Count = Number.isFinite(input.h1Count) ? Math.max(0, Math.round(input.h1Count)) : 0;
   const wordCount = Number.isFinite(input.wordCount) ? Math.max(0, Math.round(input.wordCount)) : 0;
@@ -110,6 +123,22 @@ export function deriveFacts(input) {
   const metaDescriptionControl = buildMetaDescriptionControl(metaDescription);
   const headingControl = buildHeadingControl(h1Count);
   const structuredDataControl = buildStructuredDataControl(input.structuredDataJsonLdBlocks);
+  const socialMetadataControl = buildSocialMetadataControl({
+    openGraphTitle,
+    openGraphDescription,
+    openGraphType,
+    openGraphUrl,
+    openGraphImage,
+    twitterCard,
+    twitterTitle,
+    twitterDescription,
+    twitterImage,
+    duplicateHeadCounts: input.duplicateHeadCounts,
+  });
+  const robotsPreviewControl = buildRobotsPreviewControl(robotsControl);
+  const viewportControl = buildViewportControl(viewportContent);
+  const faviconControl = buildFaviconControl(input.iconLinks);
+  const headHygieneControl = buildHeadHygieneControl(input.duplicateHeadCounts);
   const canonicalTargetControl = buildCanonicalTargetControl({
     canonicalControl,
     pageFinalUrl: input.finalUrl ?? input.requestedUrl ?? null,
@@ -133,6 +162,14 @@ export function deriveFacts(input) {
     googlebotRobotsTags,
     openGraphTitle,
     openGraphDescription,
+    openGraphType,
+    openGraphUrl,
+    openGraphImage,
+    twitterCard,
+    twitterTitle,
+    twitterDescription,
+    twitterImage,
+    viewportContent,
     contentType,
     xRobotsTag: xRobotsTagHeaders.join(", ") || null,
     xRobotsTagHeaders,
@@ -157,6 +194,11 @@ export function deriveFacts(input) {
     metaDescriptionControl,
     headingControl,
     structuredDataControl,
+    socialMetadataControl,
+    robotsPreviewControl,
+    viewportControl,
+    faviconControl,
+    headHygieneControl,
     hasTitle: Boolean(title),
     titleLength: title ? title.length : 0,
     hasPlaceholderTitle: title ? PLACEHOLDER_TITLES.has(title.toLowerCase()) : false,
@@ -168,7 +210,7 @@ export function deriveFacts(input) {
     resolvedCanonicalUrl: canonicalControl.resolvedCanonicalUrl,
     hasPrimaryHeading: h1Count > 0,
     hasSingleH1: h1Count === 1,
-    hasSocialPreview: Boolean(openGraphTitle || openGraphDescription),
+    hasSocialPreview: socialMetadataControl.openGraph.presentFields.length > 0,
     blocksIndexing: robotsControl.hasBlockingNoindex,
     blocksIndexingViaHeader:
       robotsControl.entries.some(

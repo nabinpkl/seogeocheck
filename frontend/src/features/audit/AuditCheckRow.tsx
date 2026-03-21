@@ -64,7 +64,7 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
             {model.title}
           </div>
           {model.evidenceSourceLabel ? (
-            <EvidenceTag>Audited from {model.evidenceSourceLabel}</EvidenceTag>
+            <EvidenceTag>{model.evidenceSourceLabel}</EvidenceTag>
           ) : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">

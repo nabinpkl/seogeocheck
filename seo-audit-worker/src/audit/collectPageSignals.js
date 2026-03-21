@@ -16,6 +16,13 @@ function readPropertyMeta($, property) {
   return normalizeText(value);
 }
 
+function readPropertyMetaValues($, property) {
+  return $(`meta[property="${property}"]`)
+    .toArray()
+    .map((element) => normalizeText($(element).attr("content")))
+    .filter(Boolean);
+}
+
 function readNamedMetaValues($, name) {
   return $(`meta[name="${name}"]`)
     .toArray()
@@ -47,6 +54,63 @@ function collectAlternateLinks($) {
       type: normalizeText($(linkNode).attr("type")),
     }))
     .filter((link) => link.href || link.hreflang || link.media || link.type);
+}
+
+function collectIconLinks($) {
+  return [
+    ...$('link[rel~="icon"]')
+      .toArray()
+      .map((linkNode) => ({
+        href: normalizeHref($(linkNode).attr("href")),
+        rel: normalizeText($(linkNode).attr("rel")),
+        sizes: normalizeText($(linkNode).attr("sizes")),
+        type: normalizeText($(linkNode).attr("type")),
+      })),
+    ...$('link[rel="shortcut icon"]')
+      .toArray()
+      .map((linkNode) => ({
+        href: normalizeHref($(linkNode).attr("href")),
+        rel: normalizeText($(linkNode).attr("rel")),
+        sizes: normalizeText($(linkNode).attr("sizes")),
+        type: normalizeText($(linkNode).attr("type")),
+      })),
+    ...$('link[rel="apple-touch-icon"]')
+      .toArray()
+      .map((linkNode) => ({
+        href: normalizeHref($(linkNode).attr("href")),
+        rel: normalizeText($(linkNode).attr("rel")),
+        sizes: normalizeText($(linkNode).attr("sizes")),
+        type: normalizeText($(linkNode).attr("type")),
+      })),
+  ]
+    .filter((link) => link.href || link.rel || link.sizes || link.type)
+    .filter(
+      (link, index, links) =>
+        links.findIndex(
+          (candidate) =>
+            candidate.href === link.href &&
+            candidate.rel === link.rel &&
+            candidate.sizes === link.sizes &&
+            candidate.type === link.type
+        ) === index
+    );
+}
+
+function collectDuplicateHeadCounts($) {
+  return {
+    title: $("title").length,
+    metaDescription: $('meta[name="description"]').length,
+    viewport: $('meta[name="viewport"]').length,
+    openGraphTitle: $('meta[property="og:title"]').length,
+    openGraphDescription: $('meta[property="og:description"]').length,
+    openGraphType: $('meta[property="og:type"]').length,
+    openGraphUrl: $('meta[property="og:url"]').length,
+    openGraphImage: $('meta[property="og:image"]').length,
+    twitterCard: $('meta[name="twitter:card"]').length,
+    twitterTitle: $('meta[name="twitter:title"]').length,
+    twitterDescription: $('meta[name="twitter:description"]').length,
+    twitterImage: $('meta[name="twitter:image"]').length,
+  };
 }
 
 function hasFragmentTarget($, fragmentId) {
@@ -131,6 +195,7 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
   const googlebotRobotsTags = readNamedMetaValues($, "googlebot");
   const htmlCanonicalLinks = collectCanonicalLinks($);
   const htmlAlternateLinks = collectAlternateLinks($);
+  const duplicateHeadCounts = collectDuplicateHeadCounts($);
 
   return {
     requestedUrl,
@@ -147,11 +212,30 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
     googlebotRobotsTags,
     openGraphTitle: readPropertyMeta($, "og:title"),
     openGraphDescription: readPropertyMeta($, "og:description"),
+    openGraphType: readPropertyMeta($, "og:type"),
+    openGraphUrl: readPropertyMeta($, "og:url"),
+    openGraphImage: readPropertyMeta($, "og:image"),
+    twitterCard: readNamedMeta($, "twitter:card"),
+    twitterTitle: readNamedMeta($, "twitter:title"),
+    twitterDescription: readNamedMeta($, "twitter:description"),
+    twitterImage: readNamedMeta($, "twitter:image"),
+    viewportContent: readNamedMeta($, "viewport"),
     wordCount: countWords($("body").text()),
     sourceAnchors: collectSourceAnchors($, finalUrl),
     linkedImages: collectLinkedImages($, finalUrl),
     structuredDataKinds: collectStructuredDataKinds($),
     structuredDataJsonLdBlocks: collectStructuredDataJsonLdBlocks($),
+    iconLinks: collectIconLinks($),
+    duplicateHeadCounts,
+    openGraphTitleValues: readPropertyMetaValues($, "og:title"),
+    openGraphDescriptionValues: readPropertyMetaValues($, "og:description"),
+    openGraphTypeValues: readPropertyMetaValues($, "og:type"),
+    openGraphUrlValues: readPropertyMetaValues($, "og:url"),
+    openGraphImageValues: readPropertyMetaValues($, "og:image"),
+    twitterCardValues: readNamedMetaValues($, "twitter:card"),
+    twitterTitleValues: readNamedMetaValues($, "twitter:title"),
+    twitterDescriptionValues: readNamedMetaValues($, "twitter:description"),
+    twitterImageValues: readNamedMetaValues($, "twitter:image"),
     htmlCanonicalLinks,
     htmlAlternateLinks,
     xRobotsTag: preflight.xRobotsTag ?? null,

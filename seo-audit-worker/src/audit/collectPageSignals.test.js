@@ -73,12 +73,72 @@ function createCheerioStub(document) {
         );
       case 'meta[property="og:title"]':
         return createCollection(
-          [createElement("meta", { attrs: { content: document.openGraphTitle ?? undefined } })],
+          (document.openGraphTitleValues ?? [document.openGraphTitle])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
           document
         );
       case 'meta[property="og:description"]':
         return createCollection(
-          [createElement("meta", { attrs: { content: document.openGraphDescription ?? undefined } })],
+          (document.openGraphDescriptionValues ?? [document.openGraphDescription])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[property="og:type"]':
+        return createCollection(
+          (document.openGraphTypeValues ?? [document.openGraphType])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[property="og:url"]':
+        return createCollection(
+          (document.openGraphUrlValues ?? [document.openGraphUrl])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[property="og:image"]':
+        return createCollection(
+          (document.openGraphImageValues ?? [document.openGraphImage])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[name="twitter:card"]':
+        return createCollection(
+          (document.twitterCardValues ?? [document.twitterCard])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[name="twitter:title"]':
+        return createCollection(
+          (document.twitterTitleValues ?? [document.twitterTitle])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[name="twitter:description"]':
+        return createCollection(
+          (document.twitterDescriptionValues ?? [document.twitterDescription])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[name="twitter:image"]':
+        return createCollection(
+          (document.twitterImageValues ?? [document.twitterImage])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[name="viewport"]':
+        return createCollection(
+          (document.viewportValues ?? [document.viewportContent])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
           document
         );
       case 'link[rel="canonical"]':
@@ -86,6 +146,27 @@ function createCheerioStub(document) {
           (document.htmlCanonicalLinks ?? [{ href: document.canonicalUrl }])
             .filter((link) => link?.href)
             .map((link) => createElement("link", { attrs: { ...link, rel: "canonical" } })),
+          document
+        );
+      case 'link[rel~="icon"]':
+        return createCollection(
+          (document.iconLinks ?? [])
+            .filter((link) => link.rel?.split(/\s+/).includes("icon"))
+            .map((link) => createElement("link", { attrs: link })),
+          document
+        );
+      case 'link[rel="shortcut icon"]':
+        return createCollection(
+          (document.iconLinks ?? [])
+            .filter((link) => link.rel === "shortcut icon")
+            .map((link) => createElement("link", { attrs: link })),
+          document
+        );
+      case 'link[rel="apple-touch-icon"]':
+        return createCollection(
+          (document.iconLinks ?? [])
+            .filter((link) => link.rel === "apple-touch-icon")
+            .map((link) => createElement("link", { attrs: link })),
           document
         );
       case 'link[rel~="alternate"]':
@@ -187,10 +268,19 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
       metaRobotsTags: ["index,follow"],
       openGraphTitle: "Hello",
       openGraphDescription: "World",
+      openGraphType: "website",
+      openGraphUrl: "https://example.com/",
+      openGraphImage: "https://example.com/og.jpg",
+      twitterCard: "summary_large_image",
+      twitterTitle: "Hello",
+      twitterDescription: "World",
+      twitterImage: "https://example.com/twitter.jpg",
+      viewportContent: "width=device-width, initial-scale=1",
       bodyText: "One two three four",
       anchors: [],
       structuredDataKinds: [],
       structuredDataJsonLdBlocks: [],
+      iconLinks: [{ href: "/favicon.ico", rel: "icon", type: "image/x-icon" }],
       fragmentTargets: [],
     }),
   });
@@ -210,11 +300,50 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
     googlebotRobotsTags: [],
     openGraphTitle: "Hello",
     openGraphDescription: "World",
+    openGraphType: "website",
+    openGraphUrl: "https://example.com/",
+    openGraphImage: "https://example.com/og.jpg",
+    twitterCard: "summary_large_image",
+    twitterTitle: "Hello",
+    twitterDescription: "World",
+    twitterImage: "https://example.com/twitter.jpg",
+    viewportContent: "width=device-width, initial-scale=1",
     wordCount: 4,
     sourceAnchors: [],
     linkedImages: [],
     structuredDataKinds: [],
     structuredDataJsonLdBlocks: [],
+    iconLinks: [
+      {
+        href: "/favicon.ico",
+        rel: "icon",
+        sizes: null,
+        type: "image/x-icon",
+      },
+    ],
+    duplicateHeadCounts: {
+      title: 1,
+      metaDescription: 1,
+      viewport: 1,
+      openGraphTitle: 1,
+      openGraphDescription: 1,
+      openGraphType: 1,
+      openGraphUrl: 1,
+      openGraphImage: 1,
+      twitterCard: 1,
+      twitterTitle: 1,
+      twitterDescription: 1,
+      twitterImage: 1,
+    },
+    openGraphTitleValues: ["Hello"],
+    openGraphDescriptionValues: ["World"],
+    openGraphTypeValues: ["website"],
+    openGraphUrlValues: ["https://example.com/"],
+    openGraphImageValues: ["https://example.com/og.jpg"],
+    twitterCardValues: ["summary_large_image"],
+    twitterTitleValues: ["Hello"],
+    twitterDescriptionValues: ["World"],
+    twitterImageValues: ["https://example.com/twitter.jpg"],
     htmlCanonicalLinks: [
       {
         href: "https://example.com/",
@@ -261,10 +390,22 @@ test("collectPageSignals inventories source anchors, linked images, structured d
       googlebotRobotsTags: ["index,follow"],
       openGraphTitle: "Example",
       openGraphDescription: "Useful summary",
+      openGraphType: "article",
+      openGraphUrl: "https://example.com/final",
+      openGraphImage: "https://example.com/preview.jpg",
+      twitterCard: "summary_large_image",
+      twitterTitle: "Example social",
+      twitterDescription: "Useful summary",
+      twitterImage: "https://example.com/twitter-preview.jpg",
+      viewportContent: "width=device-width, initial-scale=1",
       bodyText: "Body copy lives here",
       fragmentTargets: ["details"],
       structuredDataKinds: ["json-ld", "microdata"],
       structuredDataJsonLdBlocks: ['{"@context":"https://schema.org","@type":"WebPage"}'],
+      iconLinks: [
+        { href: "/favicon.ico", rel: "icon", type: "image/x-icon" },
+        { href: "/apple-touch-icon.png", rel: "apple-touch-icon", sizes: "180x180" },
+      ],
       anchors: [
         createElement("a", {
           attrs: { href: "/products", rel: "nofollow" },
@@ -405,6 +546,42 @@ test("collectPageSignals inventories source anchors, linked images, structured d
   assert.deepEqual(result.structuredDataJsonLdBlocks, [
     '{"@context":"https://schema.org","@type":"WebPage"}',
   ]);
+  assert.equal(result.openGraphType, "article");
+  assert.equal(result.openGraphUrl, "https://example.com/final");
+  assert.equal(result.openGraphImage, "https://example.com/preview.jpg");
+  assert.equal(result.twitterCard, "summary_large_image");
+  assert.equal(result.twitterTitle, "Example social");
+  assert.equal(result.twitterDescription, "Useful summary");
+  assert.equal(result.twitterImage, "https://example.com/twitter-preview.jpg");
+  assert.equal(result.viewportContent, "width=device-width, initial-scale=1");
+  assert.deepEqual(result.iconLinks, [
+    {
+      href: "/favicon.ico",
+      rel: "icon",
+      sizes: null,
+      type: "image/x-icon",
+    },
+    {
+      href: "/apple-touch-icon.png",
+      rel: "apple-touch-icon",
+      sizes: "180x180",
+      type: null,
+    },
+  ]);
+  assert.deepEqual(result.duplicateHeadCounts, {
+    title: 1,
+    metaDescription: 1,
+    viewport: 1,
+    openGraphTitle: 1,
+    openGraphDescription: 1,
+    openGraphType: 1,
+    openGraphUrl: 1,
+    openGraphImage: 1,
+    twitterCard: 1,
+    twitterTitle: 1,
+    twitterDescription: 1,
+    twitterImage: 1,
+  });
   assert.equal(result.xRobotsTag, "all");
   assert.deepEqual(result.xRobotsTagHeaders, ["all"]);
   assert.deepEqual(result.googlebotRobotsTags, ["index,follow"]);

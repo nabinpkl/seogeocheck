@@ -196,7 +196,7 @@ export function formatEvidenceSource(evidenceSource?: string) {
   }
 
   if (evidenceSource === "surface_comparison") {
-    return "Surface Comparison";
+    return "Rendered Comparison";
   }
 
   if (!evidenceSource) {

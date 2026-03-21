@@ -74,38 +74,48 @@ const metaDescription = defineRule({
   },
 });
 
-const socialPreview = defineRule({
-  id: "social-preview",
-  label: "Social Preview",
+const socialPreviewCore = defineRule({
+  id: "social-preview-core",
+  label: "Open Graph Preview",
   packId: "metadata",
   priority: 3,
+  problemFamily: "social_open_graph",
   relatedPacks: [],
   check: (facts) => {
-    return facts.hasSocialPreview
-      ? passedCheck(
-          "social-preview",
-          "Social preview metadata is present",
-          "The source HTML before rendering exposes at least one Open Graph field for richer link previews.",
-          'head > meta[property^="og:"]',
-          null,
-          {
-            openGraphTitlePresent: Boolean(facts.openGraphTitle),
-            openGraphDescriptionPresent: Boolean(facts.openGraphDescription),
-          }
-        )
-      : issueCheck(
-          "social-preview",
-          "Add Open Graph preview metadata in the HTML response before rendering",
-          "medium",
-          "Add Open Graph title or description tags in the HTML response before rendering so shared links render with clearer context without relying on JavaScript.",
-          null,
-          'head > meta[property^="og:"]',
-          null,
-          {
-            openGraphTitlePresent: false,
-            openGraphDescriptionPresent: false,
-          }
-        );
+    if (facts.socialMetadataControl.openGraph.status === "missing") {
+      return issueCheck(
+        "social-preview-core",
+        "Add core Open Graph tags in source HTML",
+        "medium",
+        "Add the core Open Graph tags in the HTML response before rendering so shared links have reliable preview metadata without relying on JavaScript.",
+        "Missing og:title, og:description, og:type, og:url, and og:image in source HTML.",
+        'head > meta[property^="og:"]',
+        "social-open-graph",
+        facts.socialMetadataControl.openGraph
+      );
+    }
+
+    if (facts.socialMetadataControl.openGraph.status === "incomplete") {
+      return issueCheck(
+        "social-preview-core",
+        "Complete the Open Graph sharing fields in source HTML",
+        "low",
+        "Fill in the missing Open Graph fields in the HTML response before rendering so link previews have a more complete source of truth.",
+        `Missing ${facts.socialMetadataControl.openGraph.missingFields.join(", ")} in source HTML.`,
+        'head > meta[property^="og:"]',
+        "social-open-graph",
+        facts.socialMetadataControl.openGraph
+      );
+    }
+
+    return passedCheck(
+      "social-preview-core",
+      "Core Open Graph metadata is present",
+      "The source HTML exposes the core Open Graph fields used for link sharing.",
+      'head > meta[property^="og:"]',
+      "social-open-graph",
+      facts.socialMetadataControl.openGraph
+    );
   },
 });
 
@@ -249,6 +259,141 @@ const metaDescriptionQuality = defineRule({
   },
 });
 
+const twitterPreviewCore = defineRule({
+  id: "twitter-preview-core",
+  label: "Twitter Preview",
+  packId: "metadata",
+  priority: 5,
+  problemFamily: "social_twitter",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.socialMetadataControl.twitter.status === "missing") {
+      return issueCheck(
+        "twitter-preview-core",
+        "Add core Twitter card tags in source HTML",
+        "medium",
+        "Add the core Twitter card tags in the HTML response before rendering so Twitter-compatible previews have reliable metadata in source HTML.",
+        "Missing twitter:card, twitter:title, twitter:description, and twitter:image in source HTML.",
+        'head > meta[name^="twitter:"]',
+        "social-twitter",
+        facts.socialMetadataControl.twitter
+      );
+    }
+
+    if (facts.socialMetadataControl.twitter.status === "incomplete") {
+      return issueCheck(
+        "twitter-preview-core",
+        "Complete the Twitter card fields in source HTML",
+        "low",
+        "Fill in the missing Twitter card fields in the HTML response before rendering so shared previews stay complete and predictable.",
+        `Missing ${facts.socialMetadataControl.twitter.missingFields.join(", ")} in source HTML.`,
+        'head > meta[name^="twitter:"]',
+        "social-twitter",
+        facts.socialMetadataControl.twitter
+      );
+    }
+
+    return passedCheck(
+      "twitter-preview-core",
+      "Core Twitter card metadata is present",
+      "The source HTML exposes the core Twitter card fields used for social sharing.",
+      'head > meta[name^="twitter:"]',
+      "social-twitter",
+      facts.socialMetadataControl.twitter
+    );
+  },
+});
+
+const robotsPreviewDirectives = defineRule({
+  id: "robots-preview-directives",
+  label: "Robots Preview Directives",
+  packId: "metadata",
+  priority: 6,
+  problemFamily: "robots_preview",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.robotsPreviewControl.status === "conflict") {
+      return issueCheck(
+        "robots-preview-directives",
+        "Resolve conflicting robots preview directives",
+        "low",
+        "Make the preview-related robots directives consistent so snippet and preview behavior stays predictable.",
+        `Conflicts were detected for ${facts.robotsPreviewControl.conflicts.map((conflict) => conflict.field).join(", ")}.`,
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-preview",
+        facts.robotsPreviewControl
+      );
+    }
+
+    if (facts.robotsPreviewControl.status === "restrictive") {
+      return issueCheck(
+        "robots-preview-directives",
+        "Relax restrictive preview directives if richer snippets are desired",
+        "low",
+        "Remove restrictive preview directives in source HTML or headers if this page should be eligible for richer snippet and preview treatment.",
+        `Detected restrictive preview directives: ${facts.robotsPreviewControl.restrictiveSignals.join(", ")}.`,
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-preview",
+        facts.robotsPreviewControl
+      );
+    }
+
+    return passedCheck(
+      "robots-preview-directives",
+      "Preview directives are not restrictive",
+      "The effective robots preview directives do not restrict snippet or image/video preview behavior in this pass.",
+      'head > meta[name="robots"], head > meta[name="googlebot"], document',
+      "robots-preview",
+      facts.robotsPreviewControl
+    );
+  },
+});
+
+const metaViewport = defineRule({
+  id: "meta-viewport",
+  label: "Meta Viewport",
+  packId: "metadata",
+  priority: 7,
+  problemFamily: "meta_viewport",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.viewportControl.status === "missing") {
+      return issueCheck(
+        "meta-viewport",
+        "Add a viewport meta tag in source HTML",
+        "medium",
+        "Add a mobile-friendly viewport meta tag in the HTML response before rendering so the page declares responsive intent in source HTML.",
+        null,
+        'head > meta[name="viewport"]',
+        "meta-viewport",
+        facts.viewportControl
+      );
+    }
+
+    if (facts.viewportControl.status === "invalid_or_unfriendly") {
+      return issueCheck(
+        "meta-viewport",
+        "Use a mobile-friendly viewport configuration",
+        "low",
+        "Update the viewport meta tag so it supports mobile-friendly rendering without disabling zoom or omitting width=device-width.",
+        `Current viewport content: "${facts.viewportControl.content}".`,
+        'head > meta[name="viewport"]',
+        "meta-viewport",
+        facts.viewportControl
+      );
+    }
+
+    return passedCheck(
+      "meta-viewport",
+      "Viewport meta tag is mobile-friendly",
+      "The source HTML declares a mobile-friendly viewport configuration.",
+      'head > meta[name="viewport"]',
+      "meta-viewport",
+      facts.viewportControl
+    );
+  },
+});
+
 const structuredDataValidity = defineRule({
   id: "structured-data-validity",
   label: "Structured Data Validity",
@@ -318,12 +463,81 @@ const structuredDataValidity = defineRule({
   },
 });
 
+const faviconPresence = defineRule({
+  id: "favicon-presence",
+  label: "Favicon Presence",
+  packId: "metadata",
+  priority: 10,
+  problemFamily: "favicon",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.faviconControl.status === "missing") {
+      return issueCheck(
+        "favicon-presence",
+        "Add a favicon or app icon in source HTML",
+        "low",
+        "Add a favicon or app icon link in the HTML response before rendering so the page has a basic browser and sharing presentation asset.",
+        null,
+        'head > link[rel~="icon"], head > link[rel="apple-touch-icon"]',
+        "favicon",
+        facts.faviconControl
+      );
+    }
+
+    return passedCheck(
+      "favicon-presence",
+      "A favicon or app icon is declared",
+      "The source HTML declares at least one favicon or app icon link.",
+      'head > link[rel~="icon"], head > link[rel="apple-touch-icon"]',
+      "favicon",
+      facts.faviconControl
+    );
+  },
+});
+
+const headDuplicateHygiene = defineRule({
+  id: "head-duplicate-hygiene",
+  label: "Head Duplicate Hygiene",
+  packId: "metadata",
+  priority: 11,
+  problemFamily: "head_hygiene",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.headHygieneControl.status === "duplicates_present") {
+      return issueCheck(
+        "head-duplicate-hygiene",
+        "Remove duplicate head metadata in source HTML",
+        "low",
+        "Reduce duplicate title, meta, or social tags in the HTML response before rendering so crawlers receive one clear signal per field.",
+        `Detected duplicates for ${facts.headHygieneControl.problematicFields.map((field) => `${field.field} (${field.count})`).join(", ")}.`,
+        "head",
+        "head-duplicates",
+        facts.headHygieneControl
+      );
+    }
+
+    return passedCheck(
+      "head-duplicate-hygiene",
+      "Head metadata does not contain harmful duplicates",
+      "The source head did not expose duplicate title, meta description, viewport, or social tags that this audit tracks.",
+      "head",
+      "head-duplicates",
+      facts.headHygieneControl
+    );
+  },
+});
+
 export const metadataRules = [
   documentTitle,
   metaDescription,
   documentTitleQuality,
-  socialPreview,
+  socialPreviewCore,
   metaDescriptionQuality,
+  twitterPreviewCore,
+  robotsPreviewDirectives,
+  metaViewport,
   structuredDataPresence,
   structuredDataValidity,
+  faviconPresence,
+  headDuplicateHygiene,
 ];

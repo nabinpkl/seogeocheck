@@ -29,6 +29,20 @@ export const TITLE_TOO_SHORT_LENGTH = 15;
 export const TITLE_TOO_LONG_LENGTH = 60;
 export const META_DESCRIPTION_TOO_SHORT_LENGTH = 50;
 export const META_DESCRIPTION_TOO_LONG_LENGTH = 160;
+const DUPLICATE_HEAD_FIELDS = [
+  "title",
+  "metaDescription",
+  "viewport",
+  "openGraphTitle",
+  "openGraphDescription",
+  "openGraphType",
+  "openGraphUrl",
+  "openGraphImage",
+  "twitterCard",
+  "twitterTitle",
+  "twitterDescription",
+  "twitterImage",
+];
 
 function splitCommaDelimited(value) {
   if (!value) {
@@ -287,6 +301,30 @@ export function normalizeStructuredDataKinds(value) {
   }
 
   return [...new Set(value.map((kind) => normalizeText(kind)).filter(Boolean))];
+}
+
+function normalizeIconLinks(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((link) => ({
+      href: normalizeText(link?.href),
+      rel: normalizeText(link?.rel)?.toLowerCase() ?? null,
+      sizes: normalizeText(link?.sizes),
+      type: normalizeText(link?.type),
+    }))
+    .filter((link) => link.href || link.rel || link.sizes || link.type);
+}
+
+function normalizeDuplicateHeadCounts(value) {
+  return Object.fromEntries(
+    DUPLICATE_HEAD_FIELDS.map((field) => [
+      field,
+      Number.isFinite(value?.[field]) ? Math.max(0, Math.round(value[field])) : 0,
+    ])
+  );
 }
 
 function normalizeStructuredDataJsonLdBlocks(value) {
@@ -610,6 +648,186 @@ export function buildHeadingControl(h1Count) {
   return {
     status: h1Count === 0 ? "missing" : h1Count === 1 ? "single" : "multiple",
     h1Count,
+  };
+}
+
+function summarizeSocialFields(values, duplicateHeadCounts, fieldMap) {
+  const fields = Object.entries(fieldMap).map(([key, duplicateKey]) => ({
+    key,
+    value: normalizeText(values?.[key]),
+    duplicateCount: duplicateHeadCounts[duplicateKey] ?? 0,
+  }));
+  const presentFields = fields.filter((field) => field.value).map((field) => field.key);
+  const missingFields = fields.filter((field) => !field.value).map((field) => field.key);
+  const duplicateFields = fields
+    .filter((field) => field.duplicateCount > 1)
+    .map((field) => ({
+      field: field.key,
+      count: field.duplicateCount,
+    }));
+
+  return {
+    status:
+      presentFields.length === 0
+        ? "missing"
+        : missingFields.length > 0
+          ? "incomplete"
+          : "complete",
+    presentFields,
+    missingFields,
+    duplicateFields,
+    fieldValues: Object.fromEntries(fields.map((field) => [field.key, field.value])),
+  };
+}
+
+export function buildSocialMetadataControl(input = {}) {
+  const duplicateHeadCounts = normalizeDuplicateHeadCounts(input.duplicateHeadCounts);
+  const openGraph = summarizeSocialFields(
+    {
+      title: input.openGraphTitle,
+      description: input.openGraphDescription,
+      type: input.openGraphType,
+      url: input.openGraphUrl,
+      image: input.openGraphImage,
+    },
+    duplicateHeadCounts,
+    {
+      title: "openGraphTitle",
+      description: "openGraphDescription",
+      type: "openGraphType",
+      url: "openGraphUrl",
+      image: "openGraphImage",
+    }
+  );
+  const twitter = summarizeSocialFields(
+    {
+      card: input.twitterCard,
+      title: input.twitterTitle,
+      description: input.twitterDescription,
+      image: input.twitterImage,
+    },
+    duplicateHeadCounts,
+    {
+      card: "twitterCard",
+      title: "twitterTitle",
+      description: "twitterDescription",
+      image: "twitterImage",
+    }
+  );
+
+  return {
+    status:
+      openGraph.status === "complete" && twitter.status === "complete"
+        ? "complete"
+        : openGraph.status === "missing" && twitter.status === "missing"
+          ? "missing"
+          : "incomplete",
+    openGraph,
+    twitter,
+  };
+}
+
+export function buildRobotsPreviewControl(robotsControl) {
+  const conflicts = (robotsControl?.sameTargetConflicts ?? []).filter((conflict) =>
+    ["snippet", "maxSnippet", "maxImagePreview", "maxVideoPreview"].includes(conflict.field)
+  );
+  const effectiveSnippet = robotsControl?.effectiveSnippet ?? null;
+  const effectiveMaxSnippet =
+    Array.isArray(robotsControl?.targets?.[robotsControl?.effectiveTarget]?.maxSnippetValues)
+      ? robotsControl.targets[robotsControl.effectiveTarget].maxSnippetValues[0] ?? null
+      : null;
+  const effectiveMaxImagePreview =
+    Array.isArray(robotsControl?.targets?.[robotsControl?.effectiveTarget]?.maxImagePreviewValues)
+      ? robotsControl.targets[robotsControl.effectiveTarget].maxImagePreviewValues[0] ?? null
+      : null;
+  const effectiveMaxVideoPreview =
+    Array.isArray(robotsControl?.targets?.[robotsControl?.effectiveTarget]?.maxVideoPreviewValues)
+      ? robotsControl.targets[robotsControl.effectiveTarget].maxVideoPreviewValues[0] ?? null
+      : null;
+
+  const restrictiveSignals = [];
+  if (effectiveSnippet === "nosnippet") {
+    restrictiveSignals.push("nosnippet");
+  }
+  if (effectiveMaxSnippet && effectiveMaxSnippet !== "-1") {
+    restrictiveSignals.push(`max-snippet:${effectiveMaxSnippet}`);
+  }
+  if (
+    effectiveMaxImagePreview &&
+    effectiveMaxImagePreview !== "large"
+  ) {
+    restrictiveSignals.push(`max-image-preview:${effectiveMaxImagePreview}`);
+  }
+  if (effectiveMaxVideoPreview && effectiveMaxVideoPreview !== "-1") {
+    restrictiveSignals.push(`max-video-preview:${effectiveMaxVideoPreview}`);
+  }
+
+  return {
+    status:
+      conflicts.length > 0
+        ? "conflict"
+        : restrictiveSignals.length > 0
+          ? "restrictive"
+          : "clear",
+    effectiveSnippet,
+    effectiveMaxSnippet,
+    effectiveMaxImagePreview,
+    effectiveMaxVideoPreview,
+    restrictiveSignals,
+    conflicts,
+  };
+}
+
+export function buildViewportControl(viewportContent) {
+  const content = normalizeText(viewportContent);
+  if (!content) {
+    return {
+      status: "missing",
+      content: null,
+      hasDeviceWidth: false,
+      hasInitialScale: false,
+      disablesZoom: false,
+    };
+  }
+
+  const normalized = content.toLowerCase();
+  const hasDeviceWidth = /(^|,)\s*width\s*=\s*device-width(\s*,|$)/.test(normalized);
+  const hasInitialScale = /(^|,)\s*initial-scale\s*=\s*([0-9.]+)(\s*,|$)/.test(normalized);
+  const disablesZoom =
+    /(^|,)\s*user-scalable\s*=\s*no(\s*,|$)/.test(normalized) ||
+    /(^|,)\s*maximum-scale\s*=\s*1(?:\.0+)?(\s*,|$)/.test(normalized);
+
+  return {
+    status: hasDeviceWidth && !disablesZoom ? "valid" : "invalid_or_unfriendly",
+    content,
+    hasDeviceWidth,
+    hasInitialScale,
+    disablesZoom,
+  };
+}
+
+export function buildFaviconControl(iconLinks) {
+  const normalizedLinks = normalizeIconLinks(iconLinks);
+  const linksWithHref = normalizedLinks.filter((link) => link.href);
+
+  return {
+    status: linksWithHref.length > 0 ? "present" : "missing",
+    iconCount: linksWithHref.length,
+    rels: [...new Set(linksWithHref.map((link) => link.rel).filter(Boolean))],
+    links: linksWithHref,
+  };
+}
+
+export function buildHeadHygieneControl(duplicateHeadCounts) {
+  const normalizedCounts = normalizeDuplicateHeadCounts(duplicateHeadCounts);
+  const problematicFields = Object.entries(normalizedCounts)
+    .filter(([, count]) => count > 1)
+    .map(([field, count]) => ({ field, count }));
+
+  return {
+    status: problematicFields.length > 0 ? "duplicates_present" : "clear",
+    duplicateHeadCounts: normalizedCounts,
+    problematicFields,
   };
 }
 

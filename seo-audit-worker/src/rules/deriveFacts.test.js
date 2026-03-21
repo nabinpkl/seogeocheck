@@ -19,6 +19,14 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
     googlebotRobotsTags: ["noindex"],
     openGraphTitle: "",
     openGraphDescription: "Social summary",
+    openGraphType: "website",
+    openGraphUrl: "https://example.com/",
+    openGraphImage: "https://example.com/preview.jpg",
+    twitterCard: "summary_large_image",
+    twitterTitle: "Hello World",
+    twitterDescription: "Twitter summary",
+    twitterImage: "https://example.com/twitter.jpg",
+    viewportContent: "width=device-width, initial-scale=1",
     wordCount: 42,
     sourceAnchors: [
       {
@@ -77,6 +85,21 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
     headerAlternateLinks: [{ href: "https://example.com/fr", rel: "alternate", hreflang: "fr" }],
     structuredDataKinds: ["json-ld", "microdata"],
     structuredDataJsonLdBlocks: ['{"@context":"https://schema.org","@type":"WebPage"}'],
+    iconLinks: [{ href: "/favicon.ico", rel: "icon", type: "image/x-icon" }],
+    duplicateHeadCounts: {
+      title: 2,
+      metaDescription: 0,
+      viewport: 1,
+      openGraphTitle: 1,
+      openGraphDescription: 1,
+      openGraphType: 1,
+      openGraphUrl: 1,
+      openGraphImage: 1,
+      twitterCard: 1,
+      twitterTitle: 1,
+      twitterDescription: 1,
+      twitterImage: 1,
+    },
     redirectChain: {
       status: "ok",
       totalRedirects: 1,
@@ -175,6 +198,11 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.metaDescriptionControl.status, "missing");
   assert.equal(facts.headingControl.status, "multiple");
   assert.equal(facts.structuredDataControl.status, "valid");
+  assert.equal(facts.socialMetadataControl.status, "incomplete");
+  assert.equal(facts.robotsPreviewControl.status, "clear");
+  assert.equal(facts.viewportControl.status, "valid");
+  assert.equal(facts.faviconControl.status, "present");
+  assert.equal(facts.headHygieneControl.status, "duplicates_present");
   assert.equal(facts.canonicalTargetControl.status, "self");
   assert.equal(facts.alternateLanguageControl.status, "present");
   assert.equal(facts.linkDiscoveryControl.internalNofollowCount, 1);

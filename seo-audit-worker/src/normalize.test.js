@@ -85,11 +85,21 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
   assert.equal(result.rawSummary.titleControl.status, "too_short");
   assert.equal(result.rawSummary.metaDescriptionControl.status, "missing");
   assert.equal(result.rawSummary.headingControl.status, "multiple");
+  assert.equal(result.rawSummary.socialMetadataControl.status, "incomplete");
+  assert.equal(result.rawSummary.robotsPreviewControl.status, "clear");
+  assert.equal(result.rawSummary.viewportControl.status, "missing");
+  assert.equal(result.rawSummary.faviconControl.status, "missing");
+  assert.equal(result.rawSummary.headHygieneControl.status, "clear");
   assert.equal(result.rawSummary.structuredDataControl.status, "none");
   assert.equal(result.rawSummary.robotsControl.status, "clear");
   assert.equal(result.checks.some((check) => check.id === "document-title-quality"), true);
   assert.equal(result.checks.some((check) => check.id === "heading-structure"), true);
   assert.equal(result.checks.some((check) => check.id === "canonical-target-health"), true);
+  assert.equal(result.checks.some((check) => check.id === "social-preview-core"), true);
+  assert.equal(result.checks.some((check) => check.id === "twitter-preview-core"), true);
+  assert.equal(result.checks.some((check) => check.id === "meta-viewport"), true);
+  assert.equal(result.checks.some((check) => check.id === "favicon-presence"), true);
+  assert.equal(result.checks.some((check) => check.id === "head-duplicate-hygiene"), true);
   assert.equal(result.checks.at(-1).id, "url-reachable");
   assert.equal(result.checks.at(-1).status, "passed");
 });
@@ -107,6 +117,14 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
     robotsContent: "index,follow",
     openGraphTitle: "Example Home",
     openGraphDescription: "Source summary",
+    openGraphType: "website",
+    openGraphUrl: "https://example.com/",
+    openGraphImage: "https://example.com/source.jpg",
+    twitterCard: "summary_large_image",
+    twitterTitle: "Example Home",
+    twitterDescription: "Source summary",
+    twitterImage: "https://example.com/twitter-source.jpg",
+    viewportContent: "width=device-width, initial-scale=1",
     wordCount: 120,
     contentType: "text/html; charset=utf-8",
     xRobotsTag: null,
@@ -125,6 +143,21 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
     linkedImages: [],
     structuredDataKinds: [],
     structuredDataJsonLdBlocks: [],
+    iconLinks: [{ href: "/favicon.ico", rel: "icon", type: "image/x-icon" }],
+    duplicateHeadCounts: {
+      title: 1,
+      metaDescription: 1,
+      viewport: 1,
+      openGraphTitle: 1,
+      openGraphDescription: 1,
+      openGraphType: 1,
+      openGraphUrl: 1,
+      openGraphImage: 1,
+      twitterCard: 1,
+      twitterTitle: 1,
+      twitterDescription: 1,
+      twitterImage: 1,
+    },
     redirectChain: {
       status: "ok",
       totalRedirects: 1,
@@ -169,6 +202,14 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
       robotsContent: "index,follow",
       openGraphTitle: "Example Home",
       openGraphDescription: "Rendered summary",
+      openGraphType: "website",
+      openGraphUrl: "https://example.com/",
+      openGraphImage: "https://example.com/rendered.jpg",
+      twitterCard: "summary_large_image",
+      twitterTitle: "Example Home",
+      twitterDescription: "Rendered summary",
+      twitterImage: "https://example.com/twitter-rendered.jpg",
+      viewportContent: "width=device-width, initial-scale=1",
       wordCount: 150,
       sourceAnchors: [
         {
@@ -185,6 +226,21 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
       linkedImages: [],
       structuredDataKinds: ["json-ld"],
       structuredDataJsonLdBlocks: ['{"@context":"https://schema.org","@type":"WebPage"}'],
+      iconLinks: [{ href: "/favicon.ico", rel: "icon", type: "image/x-icon" }],
+      duplicateHeadCounts: {
+        title: 1,
+        metaDescription: 1,
+        viewport: 1,
+        openGraphTitle: 1,
+        openGraphDescription: 1,
+        openGraphType: 1,
+        openGraphUrl: 1,
+        openGraphImage: 1,
+        twitterCard: 1,
+        twitterTitle: 1,
+        twitterDescription: 1,
+        twitterImage: 1,
+      },
     },
   });
 
@@ -222,6 +278,9 @@ test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from index
     linkedImages: [],
     structuredDataKinds: [],
     structuredDataJsonLdBlocks: [],
+    viewportContent: "width=device-width, initial-scale=1",
+    iconLinks: [{ href: "/favicon.ico", rel: "icon", type: "image/x-icon" }],
+    duplicateHeadCounts: {},
     redirectChain: {
       status: "ok",
       totalRedirects: 0,
@@ -266,6 +325,9 @@ test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from index
     linkedImages: [],
     structuredDataKinds: [],
     structuredDataJsonLdBlocks: [],
+    viewportContent: "width=device-width, initial-scale=1",
+    iconLinks: [{ href: "/favicon.ico", rel: "icon", type: "image/x-icon" }],
+    duplicateHeadCounts: {},
     redirectChain: {
       status: "ok",
       totalRedirects: 4,
@@ -339,6 +401,20 @@ test("normalizeSeoAuditResult groups presence and quality checks into shared sco
     linkedImages: [],
     structuredDataKinds: [],
     structuredDataJsonLdBlocks: [],
+    duplicateHeadCounts: {
+      title: 2,
+      metaDescription: 1,
+      viewport: 1,
+      openGraphTitle: 1,
+      openGraphDescription: 1,
+      openGraphType: 1,
+      openGraphUrl: 1,
+      openGraphImage: 1,
+      twitterCard: 1,
+      twitterTitle: 1,
+      twitterDescription: 1,
+      twitterImage: 1,
+    },
     redirectChain: {
       status: "ok",
       totalRedirects: 0,
@@ -365,4 +441,60 @@ test("normalizeSeoAuditResult groups presence and quality checks into shared sco
   );
   assert.equal(titleChecks.length, 2);
   assert.equal(titleChecks.every((check) => check.metadata?.problemFamily === "document_title"), true);
+});
+
+test("normalizeSeoAuditResult keeps new metadata coverage advisory-only", () => {
+  const result = normalizeSeoAuditResult({
+    requestedUrl: "https://example.com",
+    finalUrl: "https://example.com/",
+    statusCode: 200,
+    contentType: "text/html; charset=utf-8",
+    title: "Example title that is descriptive enough",
+    metaDescription: "This description is long enough to avoid the short metadata threshold in the audit.",
+    canonicalUrl: "https://example.com/",
+    h1Count: 1,
+    robotsContent: "index,follow",
+    wordCount: 120,
+    sourceAnchors: [],
+    linkedImages: [],
+    structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
+    duplicateHeadCounts: {
+      title: 1,
+      metaDescription: 1,
+      viewport: 2,
+      openGraphTitle: 2,
+      openGraphDescription: 1,
+      openGraphType: 1,
+      openGraphUrl: 1,
+      openGraphImage: 1,
+      twitterCard: 1,
+      twitterTitle: 1,
+      twitterDescription: 1,
+      twitterImage: 1,
+    },
+    redirectChain: {
+      status: "ok",
+      totalRedirects: 0,
+      finalUrlChanged: false,
+      finalUrl: "https://example.com/",
+      chain: [],
+      error: null,
+    },
+    robotsTxt: {
+      status: "allowed",
+      allowsCrawl: true,
+      evaluatedUserAgent: "Googlebot",
+      matchedDirective: "allow",
+      matchedPattern: "/",
+      fetchStatusCode: 200,
+      url: "https://example.com/robots.txt",
+      finalUrl: "https://example.com/robots.txt",
+      error: null,
+    },
+  });
+
+  assert.equal(result.indexabilityVerdict, "Indexable");
+  assert.equal(result.checks.some((check) => check.id === "head-duplicate-hygiene"), true);
+  assert.equal(result.checks.some((check) => check.id === "meta-viewport"), true);
 });
