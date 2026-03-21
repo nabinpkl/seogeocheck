@@ -8,13 +8,15 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
     finalUrl: "https://example.com/",
     statusCode: 200,
     contentType: "text/html; charset=utf-8",
-    xRobotsTag: "googlebot: noindex",
+    xRobotsTagHeaders: ["googlebot: noindex"],
     title: "  Hello World  ",
     metaDescription: "",
-    canonicalUrl: "https://example.com/",
+    htmlCanonicalLinks: [{ href: "https://example.com/", rel: "canonical" }],
+    headerCanonicalLinks: [{ href: "https://example.com/", rel: "canonical" }],
     h1Count: 2,
     lang: "en",
-    robotsContent: "noindex,follow",
+    metaRobotsTags: ["index,follow"],
+    googlebotRobotsTags: ["noindex"],
     openGraphTitle: "",
     openGraphDescription: "Social summary",
     wordCount: 42,
@@ -25,6 +27,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
         sameOrigin: true,
         crawlable: true,
         text: "Products",
+        relTokens: ["nofollow"],
         usesJavascriptHref: false,
         isFragmentOnly: false,
         hasMatchingFragmentTarget: false,
@@ -35,6 +38,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
         sameOrigin: false,
         crawlable: false,
         text: "",
+        relTokens: [],
         usesJavascriptHref: true,
         isFragmentOnly: false,
         hasMatchingFragmentTarget: false,
@@ -45,6 +49,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
         sameOrigin: true,
         crawlable: true,
         text: "Read more",
+        relTokens: [],
         usesJavascriptHref: false,
         isFragmentOnly: false,
         hasMatchingFragmentTarget: false,
@@ -55,6 +60,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
         sameOrigin: true,
         crawlable: false,
         text: "Jump to details",
+        relTokens: [],
         usesJavascriptHref: false,
         isFragmentOnly: true,
         hasMatchingFragmentTarget: true,
@@ -67,6 +73,8 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
         alt: null,
       },
     ],
+    htmlAlternateLinks: [{ href: "https://example.com/fr", rel: "alternate", hreflang: "fr" }],
+    headerAlternateLinks: [{ href: "https://example.com/fr", rel: "alternate", hreflang: "fr" }],
     structuredDataKinds: ["json-ld", "microdata"],
     redirectChain: {
       status: "ok",
@@ -120,4 +128,11 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.robotsTxtAllowsCrawl, false);
   assert.equal(facts.redirectCount, 1);
   assert.equal(facts.canonicalConsistency, "self");
+  assert.equal(facts.robotsControl.status, "targeted");
+  assert.equal(facts.robotsControl.effectiveIndexing, "noindex");
+  assert.equal(facts.robotsControl.targetedOverrides.length, 1);
+  assert.equal(facts.canonicalControl.status, "clear");
+  assert.equal(facts.alternateLanguageControl.status, "present");
+  assert.equal(facts.linkDiscoveryControl.internalNofollowCount, 1);
+  assert.equal(facts.linkDiscoveryControl.blockedByRelCount, 1);
 });

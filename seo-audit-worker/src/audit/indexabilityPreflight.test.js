@@ -52,6 +52,7 @@ test("collectIndexabilityPreflight captures redirects, x-robots-tag, and robots.
     if (url === "https://example.com/final") {
       return createResponse(url, 200, {
         "x-robots-tag": "all",
+        link: '</final>; rel="canonical", </fr>; rel="alternate"; hreflang="fr"',
       });
     }
 
@@ -80,6 +81,25 @@ test("collectIndexabilityPreflight captures redirects, x-robots-tag, and robots.
 
   assert.equal(fetchCalls.length, 3);
   assert.equal(result.xRobotsTag, "all");
+  assert.deepEqual(result.xRobotsTagHeaders, ["all"]);
+  assert.deepEqual(result.headerCanonicalLinks, [
+    {
+      href: "/final",
+      rel: "canonical",
+      hreflang: null,
+      media: null,
+      type: null,
+    },
+  ]);
+  assert.deepEqual(result.headerAlternateLinks, [
+    {
+      href: "/fr",
+      rel: "alternate",
+      hreflang: "fr",
+      media: null,
+      type: null,
+    },
+  ]);
   assert.deepEqual(result.redirectChain, {
     status: "ok",
     totalRedirects: 1,

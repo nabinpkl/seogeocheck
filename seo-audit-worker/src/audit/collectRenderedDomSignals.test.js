@@ -12,16 +12,21 @@ test("collectRenderedDomSignals waits for settle time and returns rendered signa
       title: "Rendered title",
       metaDescription: "Rendered summary",
       canonicalUrl: "/canonical",
+      metaRobotsTags: ["index,follow"],
+      googlebotRobotsTags: ["index,follow"],
       h1Count: 1,
       lang: "en",
       robotsContent: "index,follow",
       openGraphTitle: "Rendered title",
       openGraphDescription: "Rendered summary",
       bodyText: "Rendered content block",
+      htmlCanonicalLinks: [{ href: "/canonical", rel: "canonical", hreflang: null, media: null, type: null }],
+      htmlAlternateLinks: [{ href: "/fr", rel: "alternate", hreflang: "fr", media: null, type: null }],
       sourceAnchors: [
         {
           href: "/pricing",
           text: "Pricing",
+          rel: "nofollow",
         },
       ],
       linkedImages: [
@@ -48,6 +53,8 @@ test("collectRenderedDomSignals waits for settle time and returns rendered signa
   assert.deepEqual(calls, [["waitForTimeout", 1500]]);
   assert.equal(result.title, "Rendered title");
   assert.equal(result.wordCount, 3);
+  assert.deepEqual(result.metaRobotsTags, ["index,follow"]);
+  assert.deepEqual(result.googlebotRobotsTags, ["index,follow"]);
   assert.deepEqual(result.sourceAnchors, [
     {
       href: "/pricing",
@@ -55,6 +62,7 @@ test("collectRenderedDomSignals waits for settle time and returns rendered signa
       sameOrigin: true,
       crawlable: true,
       text: "Pricing",
+      relTokens: ["nofollow"],
       usesJavascriptHref: false,
       isFragmentOnly: false,
       hasMatchingFragmentTarget: false,
@@ -65,6 +73,15 @@ test("collectRenderedDomSignals waits for settle time and returns rendered signa
       href: "/pricing",
       resolvedHref: "https://example.com/pricing",
       alt: "Pricing diagram",
+    },
+  ]);
+  assert.deepEqual(result.htmlAlternateLinks, [
+    {
+      href: "/fr",
+      rel: "alternate",
+      hreflang: "fr",
+      media: null,
+      type: null,
     },
   ]);
 });

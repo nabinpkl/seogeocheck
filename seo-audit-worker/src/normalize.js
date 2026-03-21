@@ -15,6 +15,18 @@ function averageScore(scores) {
   return clampScore(total / scores.length);
 }
 
+function averageFamilyScore(checks) {
+  if (checks.length === 0) {
+    return 0;
+  }
+
+  const familyScores = Object.values(
+    Object.groupBy(checks, (check) => check.metadata?.problemFamily ?? check.id)
+  ).map((familyChecks) => familyChecks.some((check) => check.status === "issue") ? 0 : 100);
+
+  return averageScore(familyScores);
+}
+
 function toSeverityRank(severity) {
   switch (severity) {
     case "high":
@@ -35,14 +47,6 @@ function deriveIndexabilityVerdict(facts) {
     unknownSignals.push("page_fetch_unconfirmed");
   }
 
-  if (facts.blocksIndexing) {
-    blockingSignals.push("meta_robots_blocks_indexing");
-  }
-
-  if (facts.blocksIndexingViaHeader) {
-    blockingSignals.push("x_robots_tag_blocks_indexing");
-  }
-
   if (facts.robotsTxtAllowsCrawl === false) {
     blockingSignals.push("robots_txt_blocks_crawling");
   }
@@ -53,6 +57,14 @@ function deriveIndexabilityVerdict(facts) {
 
   if (facts.redirectChainStatus === "unavailable") {
     unknownSignals.push("redirect_chain_unconfirmed");
+  }
+
+  if (
+    facts.robotsControl.sameTargetConflicts.some((conflict) => conflict.field === "indexing")
+  ) {
+    unknownSignals.push("robots_directives_conflict");
+  } else if (facts.robotsControl.hasBlockingNoindex) {
+    blockingSignals.push("robots_directives_block_indexing");
   }
 
   if (blockingSignals.length > 0) {
@@ -73,12 +85,26 @@ function deriveIndexabilityVerdict(facts) {
     };
   }
 
-  if (facts.canonicalContradictsIndexing) {
+  if (
+    facts.canonicalControl.status !== "clear" ||
+    facts.canonicalControl.consistency === "contradicts"
+  ) {
     riskSignals.push("canonical_points_to_different_url");
   }
 
   if (facts.hasLongRedirectChain || facts.redirectChainStatus === "too_many_redirects") {
     riskSignals.push("redirect_chain_is_long");
+  }
+
+  if (
+    facts.alternateLanguageControl.status !== "none" &&
+    facts.alternateLanguageControl.status !== "present"
+  ) {
+    riskSignals.push("alternate_language_annotations_need_attention");
+  }
+
+  if (facts.linkDiscoveryControl.blockedByRelCount > 0) {
+    riskSignals.push("internal_link_discovery_is_limited");
   }
 
   if (facts.sourceWordCount < 20) {
@@ -109,6 +135,7 @@ export function normalizeSeoAuditResult(input) {
       metadata: {
         ...(result.metadata ?? {}),
         evidenceSource: "source_html",
+        problemFamily: rule.problemFamily,
       },
       category: rule.packId,
       priority: rule.priority,
@@ -130,11 +157,7 @@ export function normalizeSeoAuditResult(input) {
   const categoryScores = Object.fromEntries(
     [...categoryIds].map((categoryId) => [
       categoryId,
-      averageScore(
-        checks
-          .filter((check) => check.category === categoryId)
-          .map((check) => (check.status === "passed" ? 100 : 0))
-      ),
+      averageFamilyScore(checks.filter((check) => check.category === categoryId)),
     ])
   );
 
@@ -187,6 +210,10 @@ export function normalizeSeoAuditResult(input) {
         value: sourceFacts.xRobotsTag,
         blocksIndexing: sourceFacts.blocksIndexingViaHeader,
       },
+      robotsControl: sourceFacts.robotsControl,
+      canonicalControl: sourceFacts.canonicalControl,
+      alternateLanguageControl: sourceFacts.alternateLanguageControl,
+      linkDiscoveryControl: sourceFacts.linkDiscoveryControl,
       robotsTxt: sourceFacts.robotsTxt,
       redirectChain: sourceFacts.redirectChain,
       indexabilityVerdict,

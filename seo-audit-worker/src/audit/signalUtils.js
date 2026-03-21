@@ -25,9 +25,23 @@ export function resolveHref(href, baseUrl) {
   }
 }
 
+export function normalizeRelTokens(value) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((token) => normalizeText(token)?.toLowerCase()).filter(Boolean))];
+  }
+
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return [];
+  }
+
+  return [...new Set(normalized.split(/\s+/).map((token) => token.toLowerCase()).filter(Boolean))];
+}
+
 export function buildAnchorRecord(anchor, baseUrl, fragmentTargets = []) {
   const href = normalizeHref(anchor?.href);
   const text = normalizeText(anchor?.text);
+  const relTokens = normalizeRelTokens(anchor?.rel ?? anchor?.relTokens);
   const usesJavascriptHref = href ? /^javascript:/i.test(href) : false;
   const isFragmentOnly = href ? href.startsWith("#") : false;
   const hasMatchingFragmentTarget = isFragmentOnly ? fragmentTargets.includes(href.slice(1)) : false;
@@ -58,6 +72,7 @@ export function buildAnchorRecord(anchor, baseUrl, fragmentTargets = []) {
     sameOrigin,
     crawlable,
     text,
+    relTokens,
     usesJavascriptHref,
     isFragmentOnly,
     hasMatchingFragmentTarget,

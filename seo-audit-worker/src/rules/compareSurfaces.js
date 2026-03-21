@@ -9,6 +9,7 @@ function comparisonCheck(id, label, severity, instruction, detail, selector, met
     metadata: {
       ...(metadata ?? {}),
       evidenceSource: "surface_comparison",
+      problemFamily: "render_dependency",
     },
   };
 }

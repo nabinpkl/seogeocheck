@@ -14,6 +14,111 @@ function getHeader(headers, name) {
   return headers.get(name) ?? headers.get(name.toLowerCase()) ?? headers.get(name.toUpperCase()) ?? null;
 }
 
+function getHeaderValues(headers, name) {
+  if (!headers) {
+    return [];
+  }
+
+  const normalizedName = name.toLowerCase();
+
+  if (typeof headers.entries === "function") {
+    const matches = [];
+    for (const [headerName, value] of headers.entries()) {
+      if (headerName.toLowerCase() === normalizedName && typeof value === "string" && value.trim() !== "") {
+        matches.push(value);
+      }
+    }
+
+    if (matches.length > 0) {
+      return matches;
+    }
+  }
+
+  const fallback = getHeader(headers, name);
+  return typeof fallback === "string" && fallback.trim() !== "" ? [fallback] : [];
+}
+
+function splitHeaderValues(value) {
+  const parts = [];
+  let current = "";
+  let inQuotes = false;
+  let angleDepth = 0;
+
+  for (const character of value) {
+    if (character === '"') {
+      inQuotes = !inQuotes;
+    } else if (!inQuotes && character === "<") {
+      angleDepth += 1;
+    } else if (!inQuotes && character === ">" && angleDepth > 0) {
+      angleDepth -= 1;
+    }
+
+    if (!inQuotes && angleDepth === 0 && character === ",") {
+      if (current.trim() !== "") {
+        parts.push(current.trim());
+      }
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.trim() !== "") {
+    parts.push(current.trim());
+  }
+
+  return parts;
+}
+
+function parseLinkHeaderValues(headerValues) {
+  const annotations = [];
+
+  for (const headerValue of headerValues) {
+    for (const segment of splitHeaderValues(headerValue)) {
+      const match = segment.match(/^<([^>]+)>(.*)$/);
+      if (!match) {
+        continue;
+      }
+
+      const [, href, parameterBlock] = match;
+      const annotation = {
+        href,
+        rel: null,
+        hreflang: null,
+        media: null,
+        type: null,
+      };
+
+      for (const rawParameter of parameterBlock.split(";")) {
+        const parameter = rawParameter.trim();
+        if (!parameter) {
+          continue;
+        }
+
+        const [rawName, ...rawValueParts] = parameter.split("=");
+        const name = rawName?.trim().toLowerCase();
+        const rawValue = rawValueParts.join("=").trim();
+        const value = rawValue.replace(/^"|"$/g, "") || null;
+
+        if (name === "rel") {
+          annotation.rel = value?.toLowerCase() ?? null;
+        } else if (name === "hreflang") {
+          annotation.hreflang = value?.toLowerCase() ?? null;
+        } else if (name === "media") {
+          annotation.media = value ?? null;
+        } else if (name === "type") {
+          annotation.type = value ?? null;
+        }
+      }
+
+      annotations.push(annotation);
+    }
+  }
+
+  return annotations;
+}
+
 function normalizeRobotsPath(pathname, search) {
   return `${pathname || "/"}${search || ""}`;
 }
@@ -308,9 +413,18 @@ export async function collectIndexabilityPreflight(
 
   const effectiveFinalUrl = finalUrl ?? redirectInspection.finalUrl ?? requestedUrl;
   const robotsTxt = await fetchRobotsTxt(effectiveFinalUrl, fetchImpl);
+  const xRobotsTagHeaders = getHeaderValues(redirectInspection.finalHeaders, "x-robots-tag");
+  const linkHeaderAnnotations = parseLinkHeaderValues(
+    getHeaderValues(redirectInspection.finalHeaders, "link")
+  );
 
   return {
-    xRobotsTag: getHeader(redirectInspection.finalHeaders, "x-robots-tag"),
+    xRobotsTag: xRobotsTagHeaders.join(", ") || null,
+    xRobotsTagHeaders,
+    headerCanonicalLinks: linkHeaderAnnotations.filter((annotation) => annotation.rel === "canonical"),
+    headerAlternateLinks: linkHeaderAnnotations.filter(
+      (annotation) => annotation.rel?.split(/\s+/).includes("alternate")
+    ),
     redirectChain: {
       status: redirectInspection.status,
       totalRedirects: Math.max(0, redirectInspection.chain.length - 1),

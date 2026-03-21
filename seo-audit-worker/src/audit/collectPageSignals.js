@@ -16,6 +16,39 @@ function readPropertyMeta($, property) {
   return normalizeText(value);
 }
 
+function readNamedMetaValues($, name) {
+  return $(`meta[name="${name}"]`)
+    .toArray()
+    .map((element) => normalizeText($(element).attr("content")))
+    .filter(Boolean);
+}
+
+function collectCanonicalLinks($) {
+  return $('link[rel="canonical"]')
+    .toArray()
+    .map((linkNode) => ({
+      href: normalizeHref($(linkNode).attr("href")),
+      rel: normalizeText($(linkNode).attr("rel")),
+      hreflang: normalizeText($(linkNode).attr("hreflang")),
+      media: normalizeText($(linkNode).attr("media")),
+      type: normalizeText($(linkNode).attr("type")),
+    }))
+    .filter((link) => link.href || link.hreflang || link.media || link.type);
+}
+
+function collectAlternateLinks($) {
+  return $('link[rel~="alternate"]')
+    .toArray()
+    .map((linkNode) => ({
+      href: normalizeHref($(linkNode).attr("href")),
+      rel: normalizeText($(linkNode).attr("rel")),
+      hreflang: normalizeText($(linkNode).attr("hreflang")),
+      media: normalizeText($(linkNode).attr("media")),
+      type: normalizeText($(linkNode).attr("type")),
+    }))
+    .filter((link) => link.href || link.hreflang || link.media || link.type);
+}
+
 function hasFragmentTarget($, fragmentId) {
   if (!fragmentId) {
     return false;
@@ -39,6 +72,7 @@ function collectSourceAnchors($, baseUrl) {
         {
           href,
           text: $(anchorNode).text(),
+          rel: $(anchorNode).attr("rel"),
         },
         baseUrl,
         fragmentTargets
@@ -86,6 +120,10 @@ function collectStructuredDataKinds($) {
 
 export function collectSourceHtmlSignals({ requestedUrl, request, response, $, preflight = {} }) {
   const finalUrl = request.loadedUrl ?? request.url;
+  const metaRobotsTags = readNamedMetaValues($, "robots");
+  const googlebotRobotsTags = readNamedMetaValues($, "googlebot");
+  const htmlCanonicalLinks = collectCanonicalLinks($);
+  const htmlAlternateLinks = collectAlternateLinks($);
 
   return {
     requestedUrl,
@@ -94,17 +132,24 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
     contentType: response?.headers?.["content-type"] ?? null,
     title: $("title").first().text(),
     metaDescription: readNamedMeta($, "description"),
-    canonicalUrl: $('link[rel="canonical"]').attr("href") ?? null,
+    canonicalUrl: htmlCanonicalLinks[0]?.href ?? null,
     h1Count: $("h1").length,
     lang: $("html").attr("lang") ?? null,
-    robotsContent: readNamedMeta($, "robots"),
+    robotsContent: metaRobotsTags[0] ?? null,
+    metaRobotsTags,
+    googlebotRobotsTags,
     openGraphTitle: readPropertyMeta($, "og:title"),
     openGraphDescription: readPropertyMeta($, "og:description"),
     wordCount: countWords($("body").text()),
     sourceAnchors: collectSourceAnchors($, finalUrl),
     linkedImages: collectLinkedImages($, finalUrl),
     structuredDataKinds: collectStructuredDataKinds($),
+    htmlCanonicalLinks,
+    htmlAlternateLinks,
     xRobotsTag: preflight.xRobotsTag ?? null,
+    xRobotsTagHeaders: preflight.xRobotsTagHeaders ?? [],
+    headerCanonicalLinks: preflight.headerCanonicalLinks ?? [],
+    headerAlternateLinks: preflight.headerAlternateLinks ?? [],
     redirectChain: preflight.redirectChain ?? null,
     robotsTxt: preflight.robotsTxt ?? null,
   };

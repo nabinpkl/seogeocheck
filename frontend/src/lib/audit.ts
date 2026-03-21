@@ -37,6 +37,7 @@ export type AuditReportCheck = {
   metric?: string;
   metadata?: {
     evidenceSource?: string;
+    problemFamily?: string;
     [key: string]: unknown;
   };
   [key: string]: unknown;
@@ -99,6 +100,49 @@ export type AuditReport = {
     xRobotsTag?: {
       value?: string | null;
       blocksIndexing?: boolean;
+      [key: string]: unknown;
+    };
+    robotsControl?: {
+      status?: string;
+      effectiveIndexing?: string | null;
+      effectiveFollowing?: string | null;
+      effectiveSnippet?: string | null;
+      effectiveTarget?: string | null;
+      hasBlockingNoindex?: boolean;
+      entries?: Array<Record<string, unknown>>;
+      sameTargetConflicts?: Array<Record<string, unknown>>;
+      targetedOverrides?: Array<Record<string, unknown>>;
+      unsupportedTokens?: string[];
+      malformedTokens?: string[];
+      [key: string]: unknown;
+    };
+    canonicalControl?: {
+      status?: string;
+      uniqueTargetCount?: number;
+      uniqueTargets?: string[];
+      htmlCount?: number;
+      headerCount?: number;
+      resolvedCanonicalUrl?: string | null;
+      consistency?: string;
+      candidates?: Array<Record<string, unknown>>;
+      invalidCandidates?: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    };
+    alternateLanguageControl?: {
+      status?: string;
+      annotations?: Array<Record<string, unknown>>;
+      validAnnotations?: Array<Record<string, unknown>>;
+      invalidAnnotations?: Array<Record<string, unknown>>;
+      conflicts?: Array<Record<string, unknown>>;
+      groupedByLanguage?: Record<string, unknown>;
+      [key: string]: unknown;
+    };
+    linkDiscoveryControl?: {
+      status?: string;
+      internalCrawlableLinkCount?: number;
+      internalNofollowCount?: number;
+      blockedByRelCount?: number;
+      affectedLinks?: Array<Record<string, unknown>>;
       [key: string]: unknown;
     };
     robotsTxt?: {

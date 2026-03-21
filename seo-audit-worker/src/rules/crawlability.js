@@ -1,40 +1,207 @@
 import { defineRule } from "./defineRule.js";
 import { issueCheck, passedCheck } from "./utils.js";
 
-const canonicalUrl = defineRule({
-  id: "canonical-url",
-  label: "Canonical URL",
+function formatConflictDetail(conflict) {
+  return `${conflict.target} has conflicting ${conflict.field} directives: ${conflict.values.join(", ")}.`;
+}
+
+const robotsDirectiveConflicts = defineRule({
+  id: "robots-directive-conflicts",
+  label: "Robots Directive Conflicts",
   packId: "indexability",
-  priority: 5,
-  relatedPacks: [],
+  priority: 4,
+  problemFamily: "robots_controls",
   check: (facts) => {
-    if (facts.canonicalStatus === "valid") {
+    if (facts.robotsControl.sameTargetConflicts.length === 0) {
       return passedCheck(
-        "canonical-url",
-        "Canonical URL is present",
-        "The page declares a canonical URL in the HTML response before rendering.",
-        'head > link[rel="canonical"]',
-        null,
-        { canonicalUrl: facts.resolvedCanonicalUrl ?? facts.canonicalUrl }
+        "robots-directive-conflicts",
+        "Robots directives are internally consistent",
+        "No same-target robots directive conflicts were detected across HTML and HTTP surfaces.",
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-conflicts",
+        { conflicts: [] }
       );
     }
 
-    const detailByStatus = {
-      missing: null,
-      invalid: "The canonical href could not be resolved as a valid URL.",
-      "fragment-only": "The canonical href points to a fragment instead of a crawlable URL.",
-      "non-http": "The canonical href resolved to a non-HTTP(S) URL.",
-    };
+    return issueCheck(
+      "robots-directive-conflicts",
+      "Conflicting robots directives were detected",
+      facts.robotsControl.sameTargetConflicts.some((conflict) => conflict.field === "indexing")
+        ? "high"
+        : "medium",
+      "Remove contradictory robots directives so Googlebot receives one clear instruction for indexing and crawling behavior.",
+      facts.robotsControl.sameTargetConflicts.map(formatConflictDetail).join(" "),
+      'head > meta[name="robots"], head > meta[name="googlebot"], document',
+      "robots-conflicts",
+      { conflicts: facts.robotsControl.sameTargetConflicts }
+    );
+  },
+});
+
+const robotsIndexing = defineRule({
+  id: "robots-indexing",
+  label: "Robots Indexing",
+  packId: "indexability",
+  priority: 5,
+  problemFamily: "robots_controls",
+  check: (facts) => {
+    if (facts.robotsControl.sameTargetConflicts.some((conflict) => conflict.field === "indexing")) {
+      return issueCheck(
+        "robots-indexing",
+        "Resolve indexing conflicts before relying on robots directives",
+        "high",
+        "Clear the conflicting indexing directives before relying on robots metadata or headers to control indexing.",
+        "The audit found contradictory indexing directives for the same crawler target.",
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-effective-indexing",
+        {
+          effectiveIndexing: facts.robotsControl.effectiveIndexing,
+          effectiveTarget: facts.robotsControl.effectiveTarget,
+        }
+      );
+    }
+
+    if (facts.robotsControl.hasBlockingNoindex) {
+      const targetedOverride = facts.robotsControl.targetedOverrides.find(
+        (override) => override.field === "indexing"
+      );
+      const detail = targetedOverride
+        ? `A crawler-specific indexing override is active: general indexing is ${targetedOverride.generalValue}, but Googlebot is ${targetedOverride.targetedValue}.`
+        : `The effective indexing directive for ${facts.robotsControl.effectiveTarget ?? "the evaluated crawler"} is noindex.`;
+
+      return issueCheck(
+        "robots-indexing",
+        "Robots directives block indexing",
+        "high",
+        "Remove the blocking noindex directive if this page is meant to appear in Google Search.",
+        detail,
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-effective-indexing",
+        {
+          effectiveIndexing: facts.robotsControl.effectiveIndexing,
+          effectiveTarget: facts.robotsControl.effectiveTarget,
+          targetedOverrides: facts.robotsControl.targetedOverrides,
+        }
+      );
+    }
+
+    return passedCheck(
+      "robots-indexing",
+      "Robots directives allow indexing",
+      "The effective robots directives do not block indexing for the evaluated crawler.",
+      'head > meta[name="robots"], head > meta[name="googlebot"], document',
+      "robots-effective-indexing",
+      {
+        effectiveIndexing: facts.robotsControl.effectiveIndexing,
+        effectiveTarget: facts.robotsControl.effectiveTarget,
+        targetedOverrides: facts.robotsControl.targetedOverrides,
+      }
+    );
+  },
+});
+
+const robotsDirectiveHygiene = defineRule({
+  id: "robots-directive-hygiene",
+  label: "Robots Directive Hygiene",
+  packId: "indexability",
+  priority: 6,
+  problemFamily: "robots_controls",
+  check: (facts) => {
+    const problematicTokens = [
+      ...facts.robotsControl.unsupportedTokens.map((token) => ({ type: "unsupported", token })),
+      ...facts.robotsControl.malformedTokens.map((token) => ({ type: "malformed", token })),
+    ];
+
+    if (problematicTokens.length === 0) {
+      return passedCheck(
+        "robots-directive-hygiene",
+        "Robots directives use supported tokens",
+        "The audit did not detect unsupported or malformed robots directive tokens.",
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-unsupported-tokens",
+        { problematicTokens: [] }
+      );
+    }
 
     return issueCheck(
-      "canonical-url",
-      "Add a sane canonical URL in the HTML response before rendering",
-      "medium",
-      "Add a canonical link element in the HTML response before rendering so search engines can understand the preferred version of this page without relying on rendered JavaScript.",
-      detailByStatus[facts.canonicalStatus] ?? null,
+      "robots-directive-hygiene",
+      "Clean up unsupported robots directive tokens",
+      "low",
+      "Remove unsupported or malformed robots directive tokens so indexing controls stay explicit and predictable.",
+      `Detected ${problematicTokens.length} problematic robots token${problematicTokens.length === 1 ? "" : "s"}.`,
+      'head > meta[name="robots"], head > meta[name="googlebot"], document',
+      "robots-unsupported-tokens",
+      { problematicTokens }
+    );
+  },
+});
+
+const canonicalSignals = defineRule({
+  id: "canonical-signals",
+  label: "Canonical Signals",
+  packId: "indexability",
+  priority: 7,
+  problemFamily: "canonical_controls",
+  check: (facts) => {
+    if (facts.canonicalControl.status === "missing") {
+      return issueCheck(
+        "canonical-signals",
+        "Add a canonical target for this page",
+        "medium",
+        "Expose one canonical target for this page so crawlers receive a clear preferred URL.",
+        null,
+        'head > link[rel="canonical"]',
+        "canonical-status",
+        { canonicalControl: facts.canonicalControl }
+      );
+    }
+
+    if (facts.canonicalControl.status === "invalid") {
+      return issueCheck(
+        "canonical-signals",
+        "Fix invalid canonical targets",
+        "medium",
+        "Replace invalid canonical targets with one valid HTTP(S) canonical URL.",
+        "All detected canonical targets were invalid, fragment-only, or non-HTTP.",
+        'head > link[rel="canonical"]',
+        "canonical-status",
+        { canonicalControl: facts.canonicalControl }
+      );
+    }
+
+    if (facts.canonicalControl.status === "multiple") {
+      return issueCheck(
+        "canonical-signals",
+        "Keep one canonical target per surface",
+        "medium",
+        "Reduce duplicate canonical declarations so each surface exposes one canonical target.",
+        `Detected ${facts.canonicalControl.htmlCount} HTML canonical declaration${facts.canonicalControl.htmlCount === 1 ? "" : "s"} and ${facts.canonicalControl.headerCount} HTTP header canonical declaration${facts.canonicalControl.headerCount === 1 ? "" : "s"}.`,
+        'head > link[rel="canonical"]',
+        "canonical-status",
+        { canonicalControl: facts.canonicalControl }
+      );
+    }
+
+    if (facts.canonicalControl.status === "conflict") {
+      return issueCheck(
+        "canonical-signals",
+        "Canonical targets conflict across surfaces",
+        "high",
+        "Keep one canonical target across HTML and HTTP headers so crawlers receive a single preferred URL.",
+        `Detected ${facts.canonicalControl.uniqueTargetCount} unique canonical targets.`,
+        'head > link[rel="canonical"]',
+        "canonical-status",
+        { canonicalControl: facts.canonicalControl }
+      );
+    }
+
+    return passedCheck(
+      "canonical-signals",
+      "Canonical signals are clear",
+      "The page exposes one usable canonical target without cross-surface conflicts.",
       'head > link[rel="canonical"]',
-      null,
-      { canonicalUrl: facts.canonicalUrl, canonicalStatus: facts.canonicalStatus }
+      "canonical-status",
+      { canonicalControl: facts.canonicalControl }
     );
   },
 });
@@ -43,81 +210,41 @@ const canonicalIndexabilityConsistency = defineRule({
   id: "canonical-indexability-consistency",
   label: "Canonical Indexability Consistency",
   packId: "indexability",
-  priority: 6,
-  relatedPacks: [],
+  priority: 8,
+  problemFamily: "canonical_controls",
   check: (facts) => {
-    if (facts.canonicalConsistency === "self") {
+    if (!facts.canonicalControl.resolvedCanonicalUrl) {
       return passedCheck(
         "canonical-indexability-consistency",
-        "Canonical aligns with the final URL",
-        "The canonical URL matches the final crawlable page URL.",
+        "Canonical consistency is not applicable yet",
+        "A valid canonical target is not available yet, so self-consistency cannot be evaluated.",
         'head > link[rel="canonical"]',
         "canonical-final-url",
-        {
-          canonicalUrl: facts.resolvedCanonicalUrl,
-          finalUrl: facts.finalUrl,
-        }
+        { canonicalControl: facts.canonicalControl, finalUrl: facts.finalUrl }
       );
     }
 
-    if (facts.canonicalConsistency === "contradicts") {
+    if (facts.canonicalControl.consistency === "contradicts") {
       return issueCheck(
         "canonical-indexability-consistency",
-        "Point the canonical URL at the page you want indexed",
+        "Canonical target differs from the final page URL",
         "high",
-        "Update the canonical URL so it points at the final page URL if this page is meant to be indexed.",
-        `The canonical URL resolves to ${facts.resolvedCanonicalUrl}, while the final page URL is ${facts.finalUrl}.`,
+        "Point the canonical target at the final page URL if this page is the version you want indexed.",
+        `The canonical target resolves to ${facts.canonicalControl.resolvedCanonicalUrl}, while the final page URL is ${facts.finalUrl}.`,
         'head > link[rel="canonical"]',
         "canonical-final-url",
-        {
-          canonicalUrl: facts.resolvedCanonicalUrl,
-          finalUrl: facts.finalUrl,
-        }
+        { canonicalControl: facts.canonicalControl, finalUrl: facts.finalUrl }
       );
     }
 
-    return issueCheck(
+    return passedCheck(
       "canonical-indexability-consistency",
-      "Add a valid canonical URL before relying on canonical self-consistency",
-      "low",
-      "Expose a valid canonical URL in the HTML response before rendering so the preferred indexable URL is explicit.",
-      "Canonical self-consistency could not be confirmed because the canonical URL is missing or invalid.",
+      "Canonical target aligns with the final page URL",
+      "The canonical target resolves to the final page URL.",
       'head > link[rel="canonical"]',
       "canonical-final-url",
-      {
-        canonicalStatus: facts.canonicalStatus,
-        finalUrl: facts.finalUrl,
-      }
+      { canonicalControl: facts.canonicalControl, finalUrl: facts.finalUrl }
     );
-  },
-});
-
-const xRobotsIndexing = defineRule({
-  id: "x-robots-indexing",
-  label: "X-Robots-Tag Indexing",
-  packId: "indexability",
-  priority: 7,
-  relatedPacks: [],
-  check: (facts) => {
-    return facts.blocksIndexingViaHeader
-      ? issueCheck(
-          "x-robots-indexing",
-          "Remove blocking X-Robots-Tag directives from the final response",
-          "high",
-          "Remove noindex-style X-Robots-Tag directives from the final HTTP response if this page is meant to appear in search results.",
-          `The final response includes X-Robots-Tag: ${facts.xRobotsTag}.`,
-          "document",
-          "x-robots-tag",
-          { xRobotsTag: facts.xRobotsTag }
-        )
-      : passedCheck(
-          "x-robots-indexing",
-          "X-Robots-Tag does not block indexing",
-          "The final HTTP response does not include an X-Robots-Tag that blocks indexing.",
-          "document",
-          "x-robots-tag",
-          { xRobotsTag: facts.xRobotsTag }
-        );
   },
 });
 
@@ -125,8 +252,8 @@ const robotsTxtCrawlability = defineRule({
   id: "robots-txt-crawlability",
   label: "robots.txt Crawlability",
   packId: "indexability",
-  priority: 8,
-  relatedPacks: [],
+  priority: 9,
+  problemFamily: "robots_txt",
   check: (facts) => {
     if (facts.robotsTxtAllowsCrawl === false) {
       return issueCheck(
@@ -175,8 +302,8 @@ const redirectChainClarity = defineRule({
   id: "redirect-chain-clarity",
   label: "Redirect Chain Clarity",
   packId: "indexability",
-  priority: 9,
-  relatedPacks: [],
+  priority: 10,
+  problemFamily: "redirect_chain",
   check: (facts) => {
     if (facts.redirectChainStatus === "unavailable") {
       return issueCheck(
@@ -217,12 +344,70 @@ const redirectChainClarity = defineRule({
   },
 });
 
+const alternateLanguageSignals = defineRule({
+  id: "alternate-language-signals",
+  label: "Alternate Language Signals",
+  packId: "metadata",
+  priority: 11,
+  problemFamily: "alternate_language_controls",
+  check: (facts) => {
+    if (facts.alternateLanguageControl.status === "none") {
+      return passedCheck(
+        "alternate-language-signals",
+        "No alternate language annotations are required here",
+        "No hreflang-based alternate language annotations were detected, which is acceptable for pages without localized variants.",
+        'head > link[rel="alternate"]',
+        "alternate-language-status",
+        { alternateLanguageControl: facts.alternateLanguageControl }
+      );
+    }
+
+    if (facts.alternateLanguageControl.status === "conflict") {
+      return issueCheck(
+        "alternate-language-signals",
+        "Alternate language targets conflict",
+        "medium",
+        "Keep each hreflang value mapped to one clear target URL across HTML and HTTP headers.",
+        `Detected conflicting targets for ${facts.alternateLanguageControl.conflicts.length} hreflang annotation${facts.alternateLanguageControl.conflicts.length === 1 ? "" : "s"}.`,
+        'head > link[rel="alternate"]',
+        "alternate-language-status",
+        { alternateLanguageControl: facts.alternateLanguageControl }
+      );
+    }
+
+    if (
+      facts.alternateLanguageControl.status === "invalid" ||
+      facts.alternateLanguageControl.status === "incomplete"
+    ) {
+      return issueCheck(
+        "alternate-language-signals",
+        "Fix invalid alternate language annotations",
+        "medium",
+        "Repair invalid hreflang annotations so each alternate language link points to a valid target.",
+        `Detected ${facts.alternateLanguageControl.invalidAnnotations.length} invalid or incomplete hreflang annotation${facts.alternateLanguageControl.invalidAnnotations.length === 1 ? "" : "s"}.`,
+        'head > link[rel="alternate"]',
+        "alternate-language-status",
+        { alternateLanguageControl: facts.alternateLanguageControl }
+      );
+    }
+
+    return passedCheck(
+      "alternate-language-signals",
+      "Alternate language annotations are consistent",
+      "Detected hreflang annotations without invalid targets or cross-surface conflicts.",
+      'head > link[rel="alternate"]',
+      "alternate-language-status",
+      { alternateLanguageControl: facts.alternateLanguageControl }
+    );
+  },
+});
+
 const htmlLang = defineRule({
   id: "html-lang",
   label: "HTML Language",
   packId: "crawlability",
   priority: 25,
-  relatedPacks: [],
+  problemFamily: "html_lang",
   check: (facts) => {
     return facts.lang
       ? passedCheck(
@@ -250,8 +435,8 @@ const sourceCrawlableLinks = defineRule({
   id: "source-crawlable-links",
   label: "Source Crawlable Links",
   packId: "crawlability",
-  priority: 11,
-  relatedPacks: [],
+  priority: 12,
+  problemFamily: "source_link_presence",
   check: (facts) => {
     return facts.sameOriginCrawlableLinkCount > 0
       ? passedCheck(
@@ -278,12 +463,45 @@ const sourceCrawlableLinks = defineRule({
   },
 });
 
+const internalLinkRelDiscovery = defineRule({
+  id: "internal-link-rel-discovery",
+  label: "Internal Link Discovery",
+  packId: "crawlability",
+  priority: 13,
+  problemFamily: "internal_link_discovery",
+  check: (facts) => {
+    if (facts.linkDiscoveryControl.blockedByRelCount === 0) {
+      return passedCheck(
+        "internal-link-rel-discovery",
+        "Internal discovery links are not blocked by rel attributes",
+        "Internal crawlable links are not marked with rel values that can suppress discovery.",
+        "a[href]",
+        "internal-link-rel-blockers",
+        { linkDiscoveryControl: facts.linkDiscoveryControl }
+      );
+    }
+
+    const severity = facts.linkDiscoveryControl.status === "systemic" ? "medium" : "low";
+
+    return issueCheck(
+      "internal-link-rel-discovery",
+      "Internal discovery links are blocked by rel attributes",
+      severity,
+      "Remove nofollow-style rel attributes from internal discovery links that should help Google discover important pages.",
+      `Detected ${facts.linkDiscoveryControl.blockedByRelCount} internal crawlable link${facts.linkDiscoveryControl.blockedByRelCount === 1 ? "" : "s"} with discovery-limiting rel values.`,
+      "a[href]",
+      "internal-link-rel-blockers",
+      { linkDiscoveryControl: facts.linkDiscoveryControl }
+    );
+  },
+});
+
 const anchorTextQuality = defineRule({
   id: "anchor-text-quality",
   label: "Anchor Text Quality",
   packId: "crawlability",
   priority: 18,
-  relatedPacks: [],
+  problemFamily: "anchor_text_quality",
   check: (facts) => {
     if (facts.emptyAnchorTextCount > 0) {
       return issueCheck(
@@ -334,7 +552,7 @@ const fragmentRouteHygiene = defineRule({
   label: "Fragment Route Hygiene",
   packId: "crawlability",
   priority: 22,
-  relatedPacks: [],
+  problemFamily: "fragment_routes",
   check: (facts) => {
     const problematicLinks = facts.sourceAnchors.filter(
       (anchor) =>
@@ -363,44 +581,18 @@ const fragmentRouteHygiene = defineRule({
   },
 });
 
-const robotsIndexing = defineRule({
-  id: "robots-indexing",
-  label: "Robots Indexing",
-  packId: "indexability",
-  priority: 10,
-  relatedPacks: [],
-  check: (facts) => {
-    return facts.blocksIndexing
-      ? issueCheck(
-          "robots-indexing",
-          "Allow indexing in the HTML response before rendering",
-          "high",
-          "Remove noindex directives from the HTML response before rendering if this page is meant to appear in search results.",
-          `Robots directives currently include: ${facts.robotsContent}.`,
-          'head > meta[name="robots"]',
-          null,
-          { robotsContent: facts.robotsContent }
-        )
-      : passedCheck(
-          "robots-indexing",
-          "Robots directives allow indexing",
-          "The source HTML before rendering does not block indexing.",
-          'head > meta[name="robots"]',
-          null,
-          { robotsContent: facts.robotsContent }
-        );
-  },
-});
-
 export const crawlabilityRules = [
-  canonicalUrl,
+  robotsDirectiveConflicts,
+  robotsIndexing,
+  robotsDirectiveHygiene,
+  canonicalSignals,
   canonicalIndexabilityConsistency,
-  xRobotsIndexing,
   robotsTxtCrawlability,
   redirectChainClarity,
+  alternateLanguageSignals,
   htmlLang,
   sourceCrawlableLinks,
+  internalLinkRelDiscovery,
   anchorTextQuality,
   fragmentRouteHygiene,
-  robotsIndexing,
 ];

@@ -55,7 +55,16 @@ function createCheerioStub(document) {
         );
       case 'meta[name="robots"]':
         return createCollection(
-          [createElement("meta", { attrs: { content: document.robotsContent ?? undefined } })],
+          (document.metaRobotsTags ?? [document.robotsContent])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
+          document
+        );
+      case 'meta[name="googlebot"]':
+        return createCollection(
+          (document.googlebotRobotsTags ?? [])
+            .filter(Boolean)
+            .map((content) => createElement("meta", { attrs: { content } })),
           document
         );
       case 'meta[property="og:title"]':
@@ -70,7 +79,16 @@ function createCheerioStub(document) {
         );
       case 'link[rel="canonical"]':
         return createCollection(
-          [createElement("link", { attrs: { href: document.canonicalUrl ?? undefined } })],
+          (document.htmlCanonicalLinks ?? [{ href: document.canonicalUrl }])
+            .filter((link) => link?.href)
+            .map((link) => createElement("link", { attrs: { ...link, rel: "canonical" } })),
+          document
+        );
+      case 'link[rel~="alternate"]':
+        return createCollection(
+          (document.htmlAlternateLinks ?? []).map((link) =>
+            createElement("link", { attrs: { ...link, rel: link.rel ?? "alternate" } })
+          ),
           document
         );
       case "h1":
@@ -156,9 +174,11 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
       title: "  Hello   World  ",
       metaDescription: " Useful summary ",
       canonicalUrl: "https://example.com/",
+      htmlCanonicalLinks: [{ href: "https://example.com/" }],
       h1Count: 2,
       lang: "en",
       robotsContent: "index,follow",
+      metaRobotsTags: ["index,follow"],
       openGraphTitle: "Hello",
       openGraphDescription: "World",
       bodyText: "One two three four",
@@ -179,13 +199,28 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
     h1Count: 2,
     lang: "en",
     robotsContent: "index,follow",
+    metaRobotsTags: ["index,follow"],
+    googlebotRobotsTags: [],
     openGraphTitle: "Hello",
     openGraphDescription: "World",
     wordCount: 4,
     sourceAnchors: [],
     linkedImages: [],
     structuredDataKinds: [],
+    htmlCanonicalLinks: [
+      {
+        href: "https://example.com/",
+        rel: "canonical",
+        hreflang: null,
+        media: null,
+        type: null,
+      },
+    ],
+    htmlAlternateLinks: [],
     xRobotsTag: null,
+    xRobotsTagHeaders: [],
+    headerCanonicalLinks: [],
+    headerAlternateLinks: [],
     redirectChain: null,
     robotsTxt: null,
   });
@@ -208,9 +243,13 @@ test("collectPageSignals inventories source anchors, linked images, structured d
       title: "Example",
       metaDescription: "Useful summary",
       canonicalUrl: "/canonical",
+      htmlCanonicalLinks: [{ href: "/canonical" }],
+      htmlAlternateLinks: [{ href: "/fr", hreflang: "fr", rel: "alternate" }],
       h1Count: 1,
       lang: "en",
       robotsContent: "index,follow",
+      metaRobotsTags: ["index,follow"],
+      googlebotRobotsTags: ["index,follow"],
       openGraphTitle: "Example",
       openGraphDescription: "Useful summary",
       bodyText: "Body copy lives here",
@@ -218,7 +257,7 @@ test("collectPageSignals inventories source anchors, linked images, structured d
       structuredDataKinds: ["json-ld", "microdata"],
       anchors: [
         createElement("a", {
-          attrs: { href: "/products" },
+          attrs: { href: "/products", rel: "nofollow" },
           textValue: "Products",
         }),
         createElement("a", {
@@ -241,6 +280,9 @@ test("collectPageSignals inventories source anchors, linked images, structured d
     }),
     preflight: {
       xRobotsTag: "all",
+      xRobotsTagHeaders: ["all"],
+      headerCanonicalLinks: [{ href: "https://example.com/final", rel: "canonical" }],
+      headerAlternateLinks: [{ href: "https://example.com/fr", rel: "alternate", hreflang: "fr" }],
       redirectChain: {
         status: "ok",
         totalRedirects: 1,
@@ -279,6 +321,7 @@ test("collectPageSignals inventories source anchors, linked images, structured d
     sameOrigin: true,
     crawlable: true,
     text: "Products",
+    relTokens: ["nofollow"],
     usesJavascriptHref: false,
     isFragmentOnly: false,
     hasMatchingFragmentTarget: false,
@@ -289,6 +332,7 @@ test("collectPageSignals inventories source anchors, linked images, structured d
     sameOrigin: false,
     crawlable: false,
     text: "Open menu",
+    relTokens: [],
     usesJavascriptHref: true,
     isFragmentOnly: false,
     hasMatchingFragmentTarget: false,
@@ -299,6 +343,7 @@ test("collectPageSignals inventories source anchors, linked images, structured d
     sameOrigin: true,
     crawlable: false,
     text: "Jump to details",
+    relTokens: [],
     usesJavascriptHref: false,
     isFragmentOnly: true,
     hasMatchingFragmentTarget: true,
@@ -312,6 +357,30 @@ test("collectPageSignals inventories source anchors, linked images, structured d
   ]);
   assert.deepEqual(result.structuredDataKinds, ["json-ld", "microdata"]);
   assert.equal(result.xRobotsTag, "all");
+  assert.deepEqual(result.xRobotsTagHeaders, ["all"]);
+  assert.deepEqual(result.googlebotRobotsTags, ["index,follow"]);
+  assert.deepEqual(result.htmlAlternateLinks, [
+    {
+      href: "/fr",
+      rel: "alternate",
+      hreflang: "fr",
+      media: null,
+      type: null,
+    },
+  ]);
+  assert.deepEqual(result.headerCanonicalLinks, [
+    {
+      href: "https://example.com/final",
+      rel: "canonical",
+    },
+  ]);
+  assert.deepEqual(result.headerAlternateLinks, [
+    {
+      href: "https://example.com/fr",
+      rel: "alternate",
+      hreflang: "fr",
+    },
+  ]);
   assert.equal(result.redirectChain.totalRedirects, 1);
   assert.equal(result.robotsTxt.evaluatedUserAgent, "Googlebot");
 });

@@ -71,22 +71,25 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
 
   assert.equal(result.finalUrl, "https://example.com/");
   assert.equal(result.indexabilityVerdict, "Unknown");
-  assert.equal(result.checks.length, 19);
+  assert.equal(result.checks.length, 22);
   assert.deepEqual(result.categoryScores, {
     reachability: 100,
-    crawlability: 25,
-    indexability: 33,
+    crawlability: 40,
+    indexability: 25,
     contentVisibility: 25,
-    metadata: 50,
+    metadata: 60,
   });
-  assert.equal(result.score, 47);
+  assert.equal(result.score, 50);
   assert.equal(result.checks[0].status, "issue");
   assert.equal(result.checks[0].id, "source-visible-text");
   assert.match(result.checks[0].instruction, /HTML response before rendering/i);
   assert.equal(result.checks[0].metadata?.evidenceSource, "source_html");
+  assert.equal(result.checks[0].metadata?.problemFamily, "source-visible-text");
   assert.deepEqual(result.rawSummary.capturePasses, ["source_html"]);
   assert.equal(result.rawSummary.sourceHtml.sameOriginCrawlableLinkCount, 0);
   assert.equal(result.rawSummary.indexabilityVerdict.verdict, "Unknown");
+  assert.equal(result.rawSummary.canonicalControl.status, "invalid");
+  assert.equal(result.rawSummary.robotsControl.status, "clear");
   assert.equal(result.checks.at(-1).id, "url-reachable");
   assert.equal(result.checks.at(-1).status, "passed");
 });
@@ -193,6 +196,10 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
     result.checks.some((check) => check.metadata?.evidenceSource === "surface_comparison"),
     true
   );
+  assert.equal(
+    result.checks.some((check) => check.metadata?.problemFamily === "render_dependency"),
+    true
+  );
 });
 
 test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from indexability signals", () => {
@@ -207,7 +214,7 @@ test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from index
     h1Count: 1,
     lang: "en",
     robotsContent: "index,follow",
-    xRobotsTag: "noindex",
+    googlebotRobotsTags: ["noindex"],
     wordCount: 120,
     sourceAnchors: [],
     linkedImages: [],
@@ -304,7 +311,7 @@ test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from index
 
   assert.equal(blocked.indexabilityVerdict, "Blocked");
   assert.deepEqual(blocked.rawSummary.indexabilityVerdict.blockingSignals, [
-    "x_robots_tag_blocks_indexing",
+    "robots_directives_block_indexing",
   ]);
   assert.equal(atRisk.indexabilityVerdict, "At Risk");
   assert.deepEqual(atRisk.rawSummary.indexabilityVerdict.riskSignals, [
