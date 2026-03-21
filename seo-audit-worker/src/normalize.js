@@ -92,6 +92,16 @@ function deriveIndexabilityVerdict(facts) {
     riskSignals.push("canonical_points_to_different_url");
   }
 
+  if (
+    facts.canonicalTargetControl.status === "unknown"
+  ) {
+    unknownSignals.push("canonical_target_unconfirmed");
+  } else if (
+    !["not_applicable", "self", "healthy"].includes(facts.canonicalTargetControl.status)
+  ) {
+    riskSignals.push("canonical_target_needs_attention");
+  }
+
   if (facts.hasLongRedirectChain || facts.redirectChainStatus === "too_many_redirects") {
     riskSignals.push("redirect_chain_is_long");
   }
@@ -212,8 +222,13 @@ export function normalizeSeoAuditResult(input) {
       },
       robotsControl: sourceFacts.robotsControl,
       canonicalControl: sourceFacts.canonicalControl,
+      canonicalTargetControl: sourceFacts.canonicalTargetControl,
       alternateLanguageControl: sourceFacts.alternateLanguageControl,
       linkDiscoveryControl: sourceFacts.linkDiscoveryControl,
+      titleControl: sourceFacts.titleControl,
+      metaDescriptionControl: sourceFacts.metaDescriptionControl,
+      headingControl: sourceFacts.headingControl,
+      structuredDataControl: sourceFacts.structuredDataControl,
       robotsTxt: sourceFacts.robotsTxt,
       redirectChain: sourceFacts.redirectChain,
       indexabilityVerdict,

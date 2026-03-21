@@ -248,11 +248,133 @@ const canonicalIndexabilityConsistency = defineRule({
   },
 });
 
+const canonicalTargetHealth = defineRule({
+  id: "canonical-target-health",
+  label: "Canonical Target Health",
+  packId: "indexability",
+  priority: 9,
+  problemFamily: "canonical_controls",
+  check: (facts) => {
+    if (facts.canonicalTargetControl.status === "not_applicable") {
+      return passedCheck(
+        "canonical-target-health",
+        "Canonical target health is not applicable yet",
+        "A single valid canonical target is not available yet, so target health cannot be evaluated.",
+        'head > link[rel="canonical"]',
+        "canonical-target-health",
+        facts.canonicalTargetControl
+      );
+    }
+
+    if (facts.canonicalTargetControl.status === "self") {
+      return passedCheck(
+        "canonical-target-health",
+        "Canonical target resolves to this page",
+        "The canonical target resolves to the current final page URL, so no separate target health issue was detected here.",
+        'head > link[rel="canonical"]',
+        "canonical-target-health",
+        facts.canonicalTargetControl
+      );
+    }
+
+    if (facts.canonicalTargetControl.status === "unknown") {
+      return issueCheck(
+        "canonical-target-health",
+        "Confirm the canonical target can be inspected reliably",
+        "low",
+        "Make the canonical target reliably reachable so its indexability can be confirmed during the audit.",
+        facts.canonicalTargetControl.targetUrl
+          ? `The audit could not confidently verify the canonical target ${facts.canonicalTargetControl.targetUrl}.`
+          : "The audit could not confidently verify the canonical target.",
+        'head > link[rel="canonical"]',
+        "canonical-target-health",
+        facts.canonicalTargetControl
+      );
+    }
+
+    if (facts.canonicalTargetControl.status === "redirected") {
+      return issueCheck(
+        "canonical-target-health",
+        "Point the canonical at the final target URL directly",
+        "medium",
+        "Update the canonical so it points directly at the final canonical destination instead of a redirecting URL.",
+        `The declared canonical target redirects to ${facts.canonicalTargetControl.finalUrl}.`,
+        'head > link[rel="canonical"]',
+        "canonical-target-health",
+        facts.canonicalTargetControl
+      );
+    }
+
+    if (facts.canonicalTargetControl.status === "non_html") {
+      return issueCheck(
+        "canonical-target-health",
+        "Use an HTML canonical target",
+        "high",
+        "Point the canonical at an HTML page that search engines can index instead of a non-HTML resource.",
+        `The canonical target responded with content type ${facts.canonicalTargetControl.inspection?.contentType ?? "unknown"}.`,
+        'head > link[rel="canonical"]',
+        "canonical-target-health",
+        facts.canonicalTargetControl
+      );
+    }
+
+    if (facts.canonicalTargetControl.status === "unreachable") {
+      return issueCheck(
+        "canonical-target-health",
+        "Fix the canonical target response",
+        "high",
+        "Point the canonical at a reachable page that responds successfully for crawlers.",
+        `The canonical target responded with HTTP ${facts.canonicalTargetControl.inspection?.statusCode ?? "unknown"}.`,
+        'head > link[rel="canonical"]',
+        "canonical-target-health",
+        facts.canonicalTargetControl
+      );
+    }
+
+    if (facts.canonicalTargetControl.status === "blocked_by_robots_txt") {
+      return issueCheck(
+        "canonical-target-health",
+        "Allow the canonical target in robots.txt",
+        "high",
+        "Update robots.txt so crawlers can access the canonical target that this page points to.",
+        facts.canonicalTargetControl.inspection?.robotsTxt?.matchedPattern
+          ? `robots.txt blocks the canonical target with ${facts.canonicalTargetControl.inspection.robotsTxt.matchedDirective}: ${facts.canonicalTargetControl.inspection.robotsTxt.matchedPattern}.`
+          : "robots.txt blocks the canonical target.",
+        'head > link[rel="canonical"]',
+        "canonical-target-health",
+        facts.canonicalTargetControl
+      );
+    }
+
+    if (facts.canonicalTargetControl.status === "blocked_by_robots_directives") {
+      return issueCheck(
+        "canonical-target-health",
+        "Remove blocking noindex directives from the canonical target",
+        "high",
+        "Remove the effective noindex directive from the canonical target or point this page at a different canonical destination.",
+        `The canonical target currently resolves with effective indexing "${facts.canonicalTargetControl.robotsControl?.effectiveIndexing ?? "unknown"}".`,
+        'head > link[rel="canonical"]',
+        "canonical-target-health",
+        facts.canonicalTargetControl
+      );
+    }
+
+    return passedCheck(
+      "canonical-target-health",
+      "Canonical target is reachable and indexable",
+      "The canonical target was reachable, HTML, and did not expose blocking crawl or indexing signals in this pass.",
+      'head > link[rel="canonical"]',
+      "canonical-target-health",
+      facts.canonicalTargetControl
+    );
+  },
+});
+
 const robotsTxtCrawlability = defineRule({
   id: "robots-txt-crawlability",
   label: "robots.txt Crawlability",
   packId: "indexability",
-  priority: 9,
+  priority: 10,
   problemFamily: "robots_txt",
   check: (facts) => {
     if (facts.robotsTxtAllowsCrawl === false) {
@@ -302,7 +424,7 @@ const redirectChainClarity = defineRule({
   id: "redirect-chain-clarity",
   label: "Redirect Chain Clarity",
   packId: "indexability",
-  priority: 10,
+  priority: 11,
   problemFamily: "redirect_chain",
   check: (facts) => {
     if (facts.redirectChainStatus === "unavailable") {
@@ -587,6 +709,7 @@ export const crawlabilityRules = [
   robotsDirectiveHygiene,
   canonicalSignals,
   canonicalIndexabilityConsistency,
+  canonicalTargetHealth,
   robotsTxtCrawlability,
   redirectChainClarity,
   alternateLanguageSignals,

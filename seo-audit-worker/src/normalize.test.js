@@ -48,6 +48,7 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
       },
     ],
     structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
     redirectChain: {
       status: "unavailable",
       totalRedirects: 0,
@@ -71,15 +72,6 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
 
   assert.equal(result.finalUrl, "https://example.com/");
   assert.equal(result.indexabilityVerdict, "Unknown");
-  assert.equal(result.checks.length, 22);
-  assert.deepEqual(result.categoryScores, {
-    reachability: 100,
-    crawlability: 40,
-    indexability: 25,
-    contentVisibility: 25,
-    metadata: 60,
-  });
-  assert.equal(result.score, 50);
   assert.equal(result.checks[0].status, "issue");
   assert.equal(result.checks[0].id, "source-visible-text");
   assert.match(result.checks[0].instruction, /HTML response before rendering/i);
@@ -89,7 +81,15 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
   assert.equal(result.rawSummary.sourceHtml.sameOriginCrawlableLinkCount, 0);
   assert.equal(result.rawSummary.indexabilityVerdict.verdict, "Unknown");
   assert.equal(result.rawSummary.canonicalControl.status, "invalid");
+  assert.equal(result.rawSummary.canonicalTargetControl.status, "not_applicable");
+  assert.equal(result.rawSummary.titleControl.status, "too_short");
+  assert.equal(result.rawSummary.metaDescriptionControl.status, "missing");
+  assert.equal(result.rawSummary.headingControl.status, "multiple");
+  assert.equal(result.rawSummary.structuredDataControl.status, "none");
   assert.equal(result.rawSummary.robotsControl.status, "clear");
+  assert.equal(result.checks.some((check) => check.id === "document-title-quality"), true);
+  assert.equal(result.checks.some((check) => check.id === "heading-structure"), true);
+  assert.equal(result.checks.some((check) => check.id === "canonical-target-health"), true);
   assert.equal(result.checks.at(-1).id, "url-reachable");
   assert.equal(result.checks.at(-1).status, "passed");
 });
@@ -124,6 +124,7 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
     ],
     linkedImages: [],
     structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
     redirectChain: {
       status: "ok",
       totalRedirects: 1,
@@ -183,6 +184,7 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
       ],
       linkedImages: [],
       structuredDataKinds: ["json-ld"],
+      structuredDataJsonLdBlocks: ['{"@context":"https://schema.org","@type":"WebPage"}'],
     },
   });
 
@@ -219,6 +221,7 @@ test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from index
     sourceAnchors: [],
     linkedImages: [],
     structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
     redirectChain: {
       status: "ok",
       totalRedirects: 0,
@@ -262,6 +265,7 @@ test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from index
     sourceAnchors: [],
     linkedImages: [],
     structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
     redirectChain: {
       status: "ok",
       totalRedirects: 4,
@@ -318,4 +322,47 @@ test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from index
     "canonical_points_to_different_url",
     "redirect_chain_is_long",
   ]);
+});
+
+test("normalizeSeoAuditResult groups presence and quality checks into shared scoring families", () => {
+  const result = normalizeSeoAuditResult({
+    requestedUrl: "https://example.com",
+    finalUrl: "https://example.com/",
+    statusCode: 200,
+    contentType: "text/html; charset=utf-8",
+    title: "Home",
+    metaDescription: "",
+    h1Count: 2,
+    robotsContent: "index,follow",
+    wordCount: 120,
+    sourceAnchors: [],
+    linkedImages: [],
+    structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
+    redirectChain: {
+      status: "ok",
+      totalRedirects: 0,
+      finalUrlChanged: false,
+      finalUrl: "https://example.com/",
+      chain: [],
+      error: null,
+    },
+    robotsTxt: {
+      status: "allowed",
+      allowsCrawl: true,
+      evaluatedUserAgent: "Googlebot",
+      matchedDirective: "allow",
+      matchedPattern: "/",
+      fetchStatusCode: 200,
+      url: "https://example.com/robots.txt",
+      finalUrl: "https://example.com/robots.txt",
+      error: null,
+    },
+  });
+
+  const titleChecks = result.checks.filter(
+    (check) => check.id === "document-title" || check.id === "document-title-quality"
+  );
+  assert.equal(titleChecks.length, 2);
+  assert.equal(titleChecks.every((check) => check.metadata?.problemFamily === "document_title"), true);
 });

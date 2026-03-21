@@ -6,6 +6,7 @@ const primaryHeading = defineRule({
   label: "Primary Heading",
   packId: "contentVisibility",
   priority: 2,
+  problemFamily: "heading_structure",
   relatedPacks: [],
   check: (facts) => {
     return facts.hasPrimaryHeading
@@ -88,6 +89,49 @@ const contentDepth = defineRule({
   },
 });
 
+const headingStructure = defineRule({
+  id: "heading-structure",
+  label: "Heading Structure",
+  packId: "contentVisibility",
+  priority: 3,
+  problemFamily: "heading_structure",
+  relatedPacks: [],
+  check: (facts) => {
+    if (facts.headingControl.status === "missing") {
+      return passedCheck(
+        "heading-structure",
+        "Heading structure will be evaluated after a primary heading is added",
+        "The source HTML needs a primary heading before H1 structure can be evaluated.",
+        "body h1",
+        "h1-count",
+        facts.headingControl
+      );
+    }
+
+    if (facts.headingControl.status === "multiple") {
+      return issueCheck(
+        "heading-structure",
+        "Reduce multiple H1 elements in source HTML",
+        "low",
+        "Prefer one primary H1 in the source HTML so the main topic stays unambiguous before rendering.",
+        `Detected ${facts.headingControl.h1Count} H1 elements in source HTML.`,
+        "body h1",
+        "h1-count",
+        facts.headingControl
+      );
+    }
+
+    return passedCheck(
+      "heading-structure",
+      "Heading structure uses a single H1",
+      "The source HTML exposes one primary H1.",
+      "body h1",
+      "h1-count",
+      facts.headingControl
+    );
+  },
+});
+
 const linkedImageAlt = defineRule({
   id: "linked-image-alt",
   label: "Linked Image Alt",
@@ -123,4 +167,10 @@ const linkedImageAlt = defineRule({
   },
 });
 
-export const contentRules = [primaryHeading, sourceVisibleText, contentDepth, linkedImageAlt];
+export const contentRules = [
+  primaryHeading,
+  sourceVisibleText,
+  headingStructure,
+  contentDepth,
+  linkedImageAlt,
+];

@@ -3,12 +3,14 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { PageShell } from "@/components/ui/PageShell";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UNDER_CONSTRUCTION_PATH } from "@/lib/routes";
 
 export function Footer() {
   return (
-    <footer className="relative z-10 border-t border-border bg-secondary/10 px-6 py-20 pb-12">
-      <div className="mx-auto max-w-7xl">
+    <footer className="relative z-10 border-t border-border bg-secondary/10">
+      <PageShell className="py-20 pb-12">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand Column */}
           <div className="lg:col-span-2">
@@ -62,12 +64,12 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-20 flex flex-col items-center justify-between border-t border-border pt-8 text-sm text-foreground/40 md:flex-row">
           <p>© {new Date().getFullYear()} SEOGEO Platform. All rights reserved.</p>
-          <div className="mt-4 flex gap-8 md:mt-0 text-foreground/60">
-            <span>Security Verified</span>
-            <span>Made with ❤️ for Search Evolution</span>
+          <div className="mt-4 flex flex-wrap items-center gap-3 md:mt-0">
+            <StatusBadge tone="success">Security Verified</StatusBadge>
+            <StatusBadge tone="info">Made with love for Search Evolution</StatusBadge>
           </div>
         </div>
-      </div>
+      </PageShell>
     </footer>
   );
 }

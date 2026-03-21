@@ -6,14 +6,13 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useAuditStore } from "@/store/use-audit-store";
+import { Button } from "@/components/ui/button";
 import { UNDER_CONSTRUCTION_PATH } from "@/lib/routes";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const pathname = usePathname();
-  const reset = useAuditStore((state) => state.reset);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -36,9 +35,7 @@ export function Navbar() {
 
   const handleLogoClick = () => {
     if (pathname === "/") {
-      // If already on home, scroll to top and reset audit state
       window.scrollTo(0, 0);
-      reset();
     }
   };
 
@@ -114,23 +111,34 @@ export function Navbar() {
           }`} /> {/* Vertical Separator */}
 
           <div className="flex items-center gap-3">
-            <Link href={UNDER_CONSTRUCTION_PATH} className={`rounded-xl border px-5 py-2 text-sm font-semibold transition-all hover:border-primary/50 hover:text-primary ${
-              isLightStyle ? "border-slate-200 text-slate-700" : "border-white/30 text-white"
-            }`}>
-              Sign In
-            </Link>
-            <Link href={UNDER_CONSTRUCTION_PATH} className="rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]">
-              Try For Free
-            </Link>
+            <Button
+              asChild
+              variant="outline"
+              className={
+                isLightStyle
+                  ? "h-10 rounded-xl border-slate-200 bg-transparent px-5 text-sm font-semibold text-slate-700 hover:border-primary/50 hover:text-primary"
+                  : "h-10 rounded-xl border-white/30 bg-transparent px-5 text-sm font-semibold text-white hover:border-primary/50 hover:bg-white/5 hover:text-primary"
+              }
+            >
+              <Link href={UNDER_CONSTRUCTION_PATH}>Sign In</Link>
+            </Button>
+            <Button
+              asChild
+              className="h-10 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Link href={UNDER_CONSTRUCTION_PATH}>Try For Free</Link>
+            </Button>
           </div>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           aria-expanded={isMobileMenuOpen}
           aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           onClick={() => setIsMobileMenuOpen((open) => !open)}
-          className={`flex h-11 w-11 items-center justify-center transition-colors hover:text-primary md:hidden ${
-            isLightStyle ? "text-slate-600" : "text-white"
+          className={`h-11 w-11 md:hidden ${
+            isLightStyle ? "text-slate-600 hover:text-primary" : "text-white hover:bg-white/5 hover:text-primary"
           }`}
         >
           {isMobileMenuOpen ? (
@@ -138,7 +146,7 @@ export function Navbar() {
           ) : (
             <Menu className="h-5 w-5" />
           )}
-        </button>
+        </Button>
       </nav>
       <AnimatePresence>
         {isMobileMenuOpen && (
@@ -170,22 +178,33 @@ export function Navbar() {
               >
                 How it works
               </Link>
-              <Link
-                href={UNDER_CONSTRUCTION_PATH}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`rounded-xl border px-5 py-3 text-sm font-semibold transition-all hover:border-primary/50 hover:text-primary ${
-                  isLightStyle ? "border-slate-200 text-slate-700" : "border-white/30 text-white"
-                }`}
+              <Button
+                asChild
+                variant="outline"
+                className={
+                  isLightStyle
+                    ? "h-12 rounded-xl border-slate-200 bg-transparent px-5 text-sm font-semibold text-slate-700 hover:border-primary/50 hover:text-primary"
+                    : "h-12 rounded-xl border-white/30 bg-transparent px-5 text-sm font-semibold text-white hover:border-primary/50 hover:bg-white/5 hover:text-primary"
+                }
               >
-                Sign In
-              </Link>
-              <Link
-                href={UNDER_CONSTRUCTION_PATH}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
+                <Link
+                  href={UNDER_CONSTRUCTION_PATH}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+              </Button>
+              <Button
+                asChild
+                className="h-12 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
               >
-                Try For Free
-              </Link>
+                <Link
+                  href={UNDER_CONSTRUCTION_PATH}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Try For Free
+                </Link>
+              </Button>
             </div>
           </motion.div>
         )}

@@ -76,6 +76,7 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
     htmlAlternateLinks: [{ href: "https://example.com/fr", rel: "alternate", hreflang: "fr" }],
     headerAlternateLinks: [{ href: "https://example.com/fr", rel: "alternate", hreflang: "fr" }],
     structuredDataKinds: ["json-ld", "microdata"],
+    structuredDataJsonLdBlocks: ['{"@context":"https://schema.org","@type":"WebPage"}'],
     redirectChain: {
       status: "ok",
       totalRedirects: 1,
@@ -103,6 +104,44 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
       fetchStatusCode: 200,
       url: "https://example.com/robots.txt",
       finalUrl: "https://example.com/robots.txt",
+    },
+    canonicalTargetInspection: {
+      inspectedUrl: "https://example.com/target",
+      status: "ok",
+      finalUrl: "https://example.com/target-final",
+      statusCode: 200,
+      contentType: "text/html; charset=utf-8",
+      metaRobotsTags: ["index,follow"],
+      googlebotRobotsTags: [],
+      xRobotsTagHeaders: [],
+      redirectChain: {
+        status: "ok",
+        totalRedirects: 1,
+        finalUrlChanged: true,
+        finalUrl: "https://example.com/target-final",
+        chain: [
+          {
+            url: "https://example.com/target",
+            statusCode: 301,
+            location: "https://example.com/target-final",
+          },
+          {
+            url: "https://example.com/target-final",
+            statusCode: 200,
+            location: null,
+          },
+        ],
+      },
+      robotsTxt: {
+        status: "allowed",
+        allowsCrawl: true,
+        evaluatedUserAgent: "Googlebot",
+        matchedDirective: "allow",
+        matchedPattern: "/",
+        fetchStatusCode: 200,
+        url: "https://example.com/robots.txt",
+        finalUrl: "https://example.com/robots.txt",
+      },
     },
   });
 
@@ -132,6 +171,11 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.robotsControl.effectiveIndexing, "noindex");
   assert.equal(facts.robotsControl.targetedOverrides.length, 1);
   assert.equal(facts.canonicalControl.status, "clear");
+  assert.equal(facts.titleControl.status, "too_short");
+  assert.equal(facts.metaDescriptionControl.status, "missing");
+  assert.equal(facts.headingControl.status, "multiple");
+  assert.equal(facts.structuredDataControl.status, "valid");
+  assert.equal(facts.canonicalTargetControl.status, "self");
   assert.equal(facts.alternateLanguageControl.status, "present");
   assert.equal(facts.linkDiscoveryControl.internalNofollowCount, 1);
   assert.equal(facts.linkDiscoveryControl.blockedByRelCount, 1);

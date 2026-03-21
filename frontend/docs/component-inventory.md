@@ -25,6 +25,7 @@
 
 ## Ownership Rules
 - If new UI needs a button, card, badge, input, textarea, label, separator, skeleton, progress bar, tooltip, dialog, sheet, tab set, or accordion, start with `ui/*`.
+- If an existing screen is being actively refactored and a matching `ui/*` primitive exists, migrate to the shared primitive instead of preserving the raw ad hoc version.
 - If a pattern is specific to one business capability or one page family, keep it in the owning `features/*` folder.
 - Do not create fresh ad hoc utility-only clones of primitive families once a shared `ui/*` component exists.
 

@@ -118,6 +118,13 @@ function collectStructuredDataKinds($) {
   return kinds;
 }
 
+function collectStructuredDataJsonLdBlocks($) {
+  return $('script[type="application/ld+json"]')
+    .toArray()
+    .map((scriptNode) => $(scriptNode).html() ?? $(scriptNode).text() ?? "")
+    .filter((rawBlock) => typeof rawBlock === "string");
+}
+
 export function collectSourceHtmlSignals({ requestedUrl, request, response, $, preflight = {} }) {
   const finalUrl = request.loadedUrl ?? request.url;
   const metaRobotsTags = readNamedMetaValues($, "robots");
@@ -144,6 +151,7 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
     sourceAnchors: collectSourceAnchors($, finalUrl),
     linkedImages: collectLinkedImages($, finalUrl),
     structuredDataKinds: collectStructuredDataKinds($),
+    structuredDataJsonLdBlocks: collectStructuredDataJsonLdBlocks($),
     htmlCanonicalLinks,
     htmlAlternateLinks,
     xRobotsTag: preflight.xRobotsTag ?? null,
@@ -152,6 +160,7 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
     headerAlternateLinks: preflight.headerAlternateLinks ?? [],
     redirectChain: preflight.redirectChain ?? null,
     robotsTxt: preflight.robotsTxt ?? null,
+    canonicalTargetInspection: preflight.canonicalTargetInspection ?? null,
   };
 }
 

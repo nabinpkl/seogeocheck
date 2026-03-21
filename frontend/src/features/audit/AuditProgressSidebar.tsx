@@ -5,6 +5,7 @@ import {
   LoaderCircle,
   Radar,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { MetaLabel, SurfaceCard } from "./primitives";
 
@@ -76,12 +77,11 @@ export function AuditProgressSidebar({
 
           <div>
             <MetaLabel className="mb-2">Visibility Mapping</MetaLabel>
-            <div className="relative h-2 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className={cn("h-full rounded-full transition-all duration-500", progressBarClassName)}
-                style={{ width: `${progressValue}%` }}
-              />
-            </div>
+            <Progress
+              value={progressValue}
+              className="h-2 bg-slate-100"
+              indicatorClassName={cn("rounded-full", progressBarClassName)}
+            />
             <div
               className={cn(
                 "mt-2 text-[10px] font-black font-mono",

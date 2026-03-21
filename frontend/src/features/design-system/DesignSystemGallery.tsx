@@ -125,7 +125,7 @@ export function DesignSystemGallery() {
         <SectionHeading
           eyebrow="Internal"
           title="SEOGEO Design System"
-          description="A hidden gallery for visual QA, primitive validation, and feature-owned composition examples. Existing product screens stay untouched while new work adopts these foundations."
+          description="A hidden gallery for visual QA, primitive validation, and feature-owned composition examples. It reflects the shared primitives and promoted compositions that power the current frontend."
           action={
             <>
               <Button asChild variant="outline">
@@ -140,18 +140,18 @@ export function DesignSystemGallery() {
       <PageShell size="wide" className="pt-4">
         <div className="grid gap-6 xl:grid-cols-3">
           <MetricCard
-            label="Foundation Status"
-            value="Phase 1"
-            helper="Primitives, tokens, docs, and QA route are ready without retrofitting legacy marketing surfaces."
-            delta="+14 files"
+            label="Adoption Status"
+            value="In Use"
+            helper="Shared primitives now power production marketing, audit, layout, and utility surfaces instead of staying gallery-only."
+            delta="Live"
             deltaDirection="up"
             tone="success"
             icon={<Layers3 className="size-5" />}
           />
           <MetricCard
-            label="Migration Rule"
-            value="New UI Only"
-            helper="New or intentionally rewritten screens must use shared UI primitives instead of fresh ad hoc buttons, cards, inputs, badges, or progress bars."
+            label="Retrofit Rule"
+            value="Active Screens"
+            helper="Screens under active refactor should move matching controls and shells onto shared UI primitives instead of keeping raw one-off markup."
             delta="Locked"
             deltaDirection="flat"
             tone="info"
@@ -305,9 +305,9 @@ export function DesignSystemGallery() {
 
                 <Accordion type="single" collapsible className="rounded-2xl border border-border px-4">
                   <AccordionItem value="item-1">
-                    <AccordionTrigger>Why keep old UI unchanged?</AccordionTrigger>
+                    <AccordionTrigger>Why retrofit existing screens now?</AccordionTrigger>
                     <AccordionContent>
-                      This foundation is intentionally additive. It creates stable primitives for all new work without forcing a marketing redesign into the same slice.
+                      The shared layer is no longer just a starter kit. Retrofitting active screens keeps the design system honest by proving it can support real production layouts without a redesign pass.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-2">

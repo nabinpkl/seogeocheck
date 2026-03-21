@@ -95,6 +95,7 @@ async function runSeoAudit(jobId, targetUrl) {
     const preflight = await collectIndexabilityPreflight({
       requestedUrl: targetUrl,
       finalUrl: sourceSignals.finalUrl,
+      htmlCanonicalLinks: sourceSignals.htmlCanonicalLinks,
     });
     let renderedSignals = null;
     let renderedError = null;

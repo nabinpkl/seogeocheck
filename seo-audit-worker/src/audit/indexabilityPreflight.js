@@ -1,3 +1,5 @@
+import { buildCanonicalControl, comparableUrl, isHtmlContentType } from "../rules/controlBuilders.js";
+
 const DEFAULT_USER_AGENT = "SEOGEO/0.1 (+https://seogeo.local)";
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const ROBOTS_USER_AGENTS = ["Googlebot", "*"];
@@ -223,6 +225,31 @@ function selectRobotsRule(rules, targetPath) {
   return bestRule;
 }
 
+function getHtmlAttribute(tag, name) {
+  const pattern = new RegExp(`${name}\\s*=\\s*(\"([^\"]*)\"|'([^']*)'|([^\\s\"'>]+))`, "i");
+  const match = tag.match(pattern);
+  return match?.[2] ?? match?.[3] ?? match?.[4] ?? null;
+}
+
+function extractNamedMetaValuesFromHtml(html, name) {
+  const values = [];
+  const metaTags = html.match(/<meta\b[^>]*>/gi) ?? [];
+
+  for (const tag of metaTags) {
+    const metaName = getHtmlAttribute(tag, "name")?.trim().toLowerCase();
+    if (metaName !== name.toLowerCase()) {
+      continue;
+    }
+
+    const content = getHtmlAttribute(tag, "content")?.trim();
+    if (content) {
+      values.push(content);
+    }
+  }
+
+  return values;
+}
+
 export function evaluateRobotsTxt(body, pageUrl) {
   const page = new URL(pageUrl);
   const targetPath = normalizeRobotsPath(page.pathname, page.search);
@@ -298,6 +325,7 @@ async function followRedirectChain(targetUrl, fetchImpl, maxRedirects = 5) {
           finalUrl: nextUrl,
           finalResponseStatusCode: null,
           finalHeaders: null,
+          finalBodyText: null,
           chain,
         };
       }
@@ -306,11 +334,19 @@ async function followRedirectChain(targetUrl, fetchImpl, maxRedirects = 5) {
       continue;
     }
 
+    let finalBodyText = null;
+    try {
+      finalBodyText = await response.text();
+    } catch {
+      await response.body?.cancel?.();
+    }
+
     return {
       status: "ok",
       finalUrl: currentUrl,
       finalResponseStatusCode: response.status,
       finalHeaders: response.headers,
+      finalBodyText,
       chain,
     };
   }
@@ -320,6 +356,7 @@ async function followRedirectChain(targetUrl, fetchImpl, maxRedirects = 5) {
     finalUrl: null,
     finalResponseStatusCode: null,
     finalHeaders: null,
+    finalBodyText: null,
     chain,
   };
 }
@@ -389,36 +426,43 @@ async function fetchRobotsTxt(pageUrl, fetchImpl) {
   }
 }
 
-export async function collectIndexabilityPreflight(
-  { requestedUrl, finalUrl },
-  fetchImpl = globalThis.fetch
-) {
+export async function inspectUrl(targetUrl, fetchImpl = globalThis.fetch) {
   if (typeof fetchImpl !== "function") {
-    throw new Error("A fetch implementation is required to collect indexability preflight signals.");
+    throw new Error("A fetch implementation is required to inspect SEO signals for a URL.");
   }
 
   let redirectInspection;
   try {
-    redirectInspection = await followRedirectChain(requestedUrl, fetchImpl);
+    redirectInspection = await followRedirectChain(targetUrl, fetchImpl);
   } catch (error) {
     redirectInspection = {
       status: "unavailable",
-      finalUrl: finalUrl ?? null,
+      finalUrl: targetUrl,
       finalResponseStatusCode: null,
       finalHeaders: null,
+      finalBodyText: null,
       chain: [],
       error: error instanceof Error ? error.message : String(error),
     };
   }
 
-  const effectiveFinalUrl = finalUrl ?? redirectInspection.finalUrl ?? requestedUrl;
-  const robotsTxt = await fetchRobotsTxt(effectiveFinalUrl, fetchImpl);
+  const effectiveFinalUrl = redirectInspection.finalUrl ?? targetUrl;
+  const contentType = getHeader(redirectInspection.finalHeaders, "content-type");
+  const html = isHtmlContentType(contentType) ? redirectInspection.finalBodyText ?? "" : "";
   const xRobotsTagHeaders = getHeaderValues(redirectInspection.finalHeaders, "x-robots-tag");
   const linkHeaderAnnotations = parseLinkHeaderValues(
     getHeaderValues(redirectInspection.finalHeaders, "link")
   );
+  const robotsTxt = await fetchRobotsTxt(effectiveFinalUrl, fetchImpl);
 
   return {
+    inspectedUrl: targetUrl,
+    status: redirectInspection.status,
+    finalUrl: effectiveFinalUrl,
+    statusCode: redirectInspection.finalResponseStatusCode,
+    contentType,
+    metaRobotsTags: extractNamedMetaValuesFromHtml(html, "robots"),
+    googlebotRobotsTags: extractNamedMetaValuesFromHtml(html, "googlebot"),
     xRobotsTag: xRobotsTagHeaders.join(", ") || null,
     xRobotsTagHeaders,
     headerCanonicalLinks: linkHeaderAnnotations.filter((annotation) => annotation.rel === "canonical"),
@@ -429,11 +473,47 @@ export async function collectIndexabilityPreflight(
       status: redirectInspection.status,
       totalRedirects: Math.max(0, redirectInspection.chain.length - 1),
       finalUrlChanged:
-        Boolean(redirectInspection.finalUrl) && redirectInspection.finalUrl !== requestedUrl,
-      finalUrl: redirectInspection.finalUrl ?? effectiveFinalUrl,
+        Boolean(redirectInspection.finalUrl) && redirectInspection.finalUrl !== targetUrl,
+      finalUrl: effectiveFinalUrl,
       chain: redirectInspection.chain,
       error: redirectInspection.error ?? null,
     },
     robotsTxt,
+  };
+}
+
+export async function collectIndexabilityPreflight(
+  { requestedUrl, finalUrl, htmlCanonicalLinks = [] },
+  fetchImpl = globalThis.fetch
+) {
+  const pageInspection = await inspectUrl(requestedUrl, fetchImpl);
+  const effectiveFinalUrl = finalUrl ?? pageInspection.finalUrl ?? requestedUrl;
+  const canonicalControl = buildCanonicalControl(
+    htmlCanonicalLinks,
+    pageInspection.headerCanonicalLinks,
+    effectiveFinalUrl,
+    effectiveFinalUrl
+  );
+
+  let canonicalTargetInspection = null;
+  if (canonicalControl.resolvedCanonicalUrl) {
+    if (comparableUrl(canonicalControl.resolvedCanonicalUrl) === comparableUrl(effectiveFinalUrl)) {
+      canonicalTargetInspection = {
+        ...pageInspection,
+        reusedCurrentPageInspection: true,
+      };
+    } else {
+      canonicalTargetInspection = await inspectUrl(canonicalControl.resolvedCanonicalUrl, fetchImpl);
+    }
+  }
+
+  return {
+    xRobotsTag: pageInspection.xRobotsTag,
+    xRobotsTagHeaders: pageInspection.xRobotsTagHeaders,
+    headerCanonicalLinks: pageInspection.headerCanonicalLinks,
+    headerAlternateLinks: pageInspection.headerAlternateLinks,
+    redirectChain: pageInspection.redirectChain,
+    robotsTxt: pageInspection.robotsTxt,
+    canonicalTargetInspection,
   };
 }

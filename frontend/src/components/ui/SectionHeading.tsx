@@ -8,6 +8,7 @@ type SectionHeadingProps = {
   description?: string;
   action?: React.ReactNode;
   align?: "left" | "center";
+  as?: "h1" | "h2" | "h3";
   className?: string;
 };
 
@@ -17,8 +18,11 @@ export function SectionHeading({
   description,
   action,
   align = "left",
+  as = "h1",
   className,
 }: SectionHeadingProps) {
+  const HeadingTag = as;
+
   return (
     <div
       className={cn(
@@ -34,9 +38,9 @@ export function SectionHeading({
           </Badge>
         ) : null}
         <div className="space-y-2">
-          <h1 className="font-display text-3xl font-black tracking-tight text-foreground sm:text-4xl">
+          <HeadingTag className="font-display text-3xl font-black tracking-tight text-foreground sm:text-4xl">
             {title}
-          </h1>
+          </HeadingTag>
           {description ? (
             <p className="max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               {description}

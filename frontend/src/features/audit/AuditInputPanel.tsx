@@ -3,6 +3,8 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, ArrowRight, Globe, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type AuditInputPanelProps = {
   action: (formData: FormData) => void;
@@ -67,7 +69,7 @@ export function AuditInputPanel({
                   : "text-slate-400 group-focus-within:text-primary"
               }`}
             />
-            <input
+            <Input
               ref={inputRef}
               autoFocus
               type="text"
@@ -76,19 +78,19 @@ export function AuditInputPanel({
               onChange={(event) => onUrlChange(event.target.value)}
               disabled={isDisabled}
               placeholder="Enter your website URL (e.g. example.com)"
-              className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-foreground/35 sm:text-base sm:placeholder:text-sm"
+              className="h-11 min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-foreground shadow-none focus-visible:border-0 focus-visible:ring-0 sm:text-base sm:placeholder:text-sm"
             />
           </div>
-          <button
+          <Button
             type="submit"
             disabled={isDisabled}
-            className="group/btn relative mt-2 flex h-11 w-full items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-[10px] bg-primary px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-blue-300 disabled:text-blue-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:min-w-[180px] sm:w-auto sm:text-base"
+            className="group/btn relative mt-2 h-11 w-full min-w-[180px] justify-center gap-2 overflow-hidden whitespace-nowrap rounded-[10px] px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:bg-blue-300 disabled:text-blue-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:w-auto sm:text-base"
           >
             <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transition-transform group-hover/btn:translate-y-0" />
             {isPending ? (
               <>
                 <RotateCcw className="h-5 w-5 animate-spin" />
-                Interrogating AI...
+                Planning...
               </>
             ) : isAuditActive ? (
               <>
@@ -101,7 +103,7 @@ export function AuditInputPanel({
                 <ArrowRight className="h-5 w-5 transition-transform group-hover/btn:translate-x-1" />
               </>
             )}
-          </button>
+          </Button>
         </div>
 
         <div
@@ -113,14 +115,16 @@ export function AuditInputPanel({
         >
           <span className="text-white/20">•</span>
           <span className="text-white/30">Ready to test?</span>
-          <button
+          <Button
             type="button"
             onClick={onExampleAudit}
             disabled={isDisabled}
-            className="text-white/70 underline decoration-white/20 underline-offset-4 transition-all hover:text-white hover:decoration-white/50 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50"
+            variant="link"
+            size="sm"
+            className="h-auto px-0 text-white/70 decoration-white/20 underline-offset-4 hover:text-white hover:decoration-white/50 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50"
           >
             example.com
-          </button>
+          </Button>
         </div>
       </div>
     </form>

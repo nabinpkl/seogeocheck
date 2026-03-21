@@ -9,6 +9,7 @@
 - `ui/*`: shadcn-based primitives with stable variant props and no SEOGEO-specific copy, iconography, or layout assumptions.
 - `features/*`: domain-owned TSX, controllers, and feature-specific view-model shaping.
 - `layout/*`: global chrome only.
+- Existing screens under active refactor must migrate matching ad hoc controls and shells to `ui/*` instead of preserving raw one-off primitives.
 
 ## Tokens
 - Typography:
@@ -61,9 +62,9 @@
 - Shell and layout:
   - Page shells preserve readable widths.
   - Cards do not clip icons, focus rings, or long content.
+  - Existing screens being refactored should replace matching raw shells with `PageShell`, `Card`, or other shared compositions where possible.
 
 ## Magic UI Position
 - Magic UI is intentionally deferred.
 - When introduced later, use it only for additive, decorative, or marketing moments.
 - Do not base core navigation, forms, or data-dense product surfaces on Magic UI components.
-

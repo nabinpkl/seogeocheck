@@ -32,6 +32,7 @@ function createSourceSignals(overrides = {}) {
     ],
     linkedImages: [],
     structuredDataKinds: ["json-ld"],
+    structuredDataJsonLdBlocks: ['{"@context":"https://schema.org","@type":"WebPage"}'],
     redirectChain: {
       status: "ok",
       totalRedirects: 0,

@@ -100,6 +100,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - `frontend/src/features/*` owns domain-specific TSX, controllers, and view-model shaping. Use `frontend/src/features/audit` for audit UI and `frontend/src/features/marketing` for homepage marketing sections.
 - `frontend/src/components/layout` owns only global site chrome such as the navbar and footer.
 - For new or intentionally rewritten screens, do **not** introduce fresh ad hoc button, input, textarea, badge, card, separator, skeleton, progress, dialog, sheet, tab, tooltip, or accordion patterns when an existing `components/ui` primitive or composition fits.
+- When actively refactoring an existing screen, migrate matching ad hoc controls and shells onto `components/ui` primitives or shared compositions instead of preserving raw one-off markup.
 - Use the hidden dev-only gallery route at `/internal/design-system` during local development for visual QA of `components/ui` primitives and feature-owned compositions.
 
 ### Data Ownership Rules
@@ -117,7 +118,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 3.  **Documentation:** Always update `AGENTS.md` when introducing new core patterns.
 4.  **Libraries:** If version knowledge is stale, perform a web search for the latest documentation.
 6.  **Backward Compatibility:** Do not preserve old APIs, schemas, or behavior by default during iterative development. Favor the cleanest current vertical slice unless compatibility is explicitly requested.
-7.  **Fresh Docker Rebuild:** After every backend code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build -d` from the repository root so the backend stack is rebuilt from a fresh state.
+7.  **Fresh Docker Rebuild:** After every backend or worker code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build -d` from the repository root. (IMPORTANT: Do not run this on frontend only change.)
 
 ---
 

@@ -7,6 +7,7 @@ function createElement(type, options = {}) {
     type,
     attrs: options.attrs ?? {},
     textValue: options.textValue ?? "",
+    htmlValue: options.htmlValue ?? null,
     children: options.children ?? [],
   };
 }
@@ -24,6 +25,9 @@ function createCollection(elements, document) {
     },
     text() {
       return elements.map((element) => element.textValue ?? "").join(" ");
+    },
+    html() {
+      return elements[0]?.htmlValue ?? null;
     },
     toArray() {
       return elements;
@@ -107,7 +111,9 @@ function createCheerioStub(document) {
         return createCollection(document.anchors ?? [], document);
       case 'script[type="application/ld+json"]':
         return createCollection(
-          document.structuredDataKinds?.includes("json-ld") ? [createElement("script")] : [],
+          (document.structuredDataJsonLdBlocks ?? []).map((rawBlock) =>
+            createElement("script", { textValue: rawBlock, htmlValue: rawBlock })
+          ),
           document
         );
       case "[itemscope]":
@@ -184,6 +190,7 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
       bodyText: "One two three four",
       anchors: [],
       structuredDataKinds: [],
+      structuredDataJsonLdBlocks: [],
       fragmentTargets: [],
     }),
   });
@@ -207,6 +214,7 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
     sourceAnchors: [],
     linkedImages: [],
     structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
     htmlCanonicalLinks: [
       {
         href: "https://example.com/",
@@ -223,6 +231,7 @@ test("collectPageSignals extracts normalized page evidence from crawl inputs", (
     headerAlternateLinks: [],
     redirectChain: null,
     robotsTxt: null,
+    canonicalTargetInspection: null,
   });
 });
 
@@ -255,6 +264,7 @@ test("collectPageSignals inventories source anchors, linked images, structured d
       bodyText: "Body copy lives here",
       fragmentTargets: ["details"],
       structuredDataKinds: ["json-ld", "microdata"],
+      structuredDataJsonLdBlocks: ['{"@context":"https://schema.org","@type":"WebPage"}'],
       anchors: [
         createElement("a", {
           attrs: { href: "/products", rel: "nofollow" },
@@ -311,6 +321,42 @@ test("collectPageSignals inventories source anchors, linked images, structured d
         url: "https://example.com/robots.txt",
         finalUrl: "https://example.com/robots.txt",
       },
+      canonicalTargetInspection: {
+        inspectedUrl: "https://example.com/canonical",
+        status: "ok",
+        finalUrl: "https://example.com/canonical",
+        statusCode: 200,
+        contentType: "text/html; charset=utf-8",
+        metaRobotsTags: [],
+        googlebotRobotsTags: [],
+        xRobotsTag: null,
+        xRobotsTagHeaders: [],
+        headerCanonicalLinks: [],
+        headerAlternateLinks: [],
+        redirectChain: {
+          status: "ok",
+          totalRedirects: 0,
+          finalUrlChanged: false,
+          finalUrl: "https://example.com/canonical",
+          chain: [
+            {
+              url: "https://example.com/canonical",
+              statusCode: 200,
+              location: null,
+            },
+          ],
+        },
+        robotsTxt: {
+          status: "allowed",
+          allowsCrawl: true,
+          evaluatedUserAgent: "Googlebot",
+          matchedDirective: "allow",
+          matchedPattern: "/",
+          fetchStatusCode: 200,
+          url: "https://example.com/robots.txt",
+          finalUrl: "https://example.com/robots.txt",
+        },
+      },
     },
   });
 
@@ -356,6 +402,9 @@ test("collectPageSignals inventories source anchors, linked images, structured d
     },
   ]);
   assert.deepEqual(result.structuredDataKinds, ["json-ld", "microdata"]);
+  assert.deepEqual(result.structuredDataJsonLdBlocks, [
+    '{"@context":"https://schema.org","@type":"WebPage"}',
+  ]);
   assert.equal(result.xRobotsTag, "all");
   assert.deepEqual(result.xRobotsTagHeaders, ["all"]);
   assert.deepEqual(result.googlebotRobotsTags, ["index,follow"]);
@@ -383,4 +432,5 @@ test("collectPageSignals inventories source anchors, linked images, structured d
   ]);
   assert.equal(result.redirectChain.totalRedirects, 1);
   assert.equal(result.robotsTxt.evaluatedUserAgent, "Googlebot");
+  assert.equal(result.canonicalTargetInspection.finalUrl, "https://example.com/canonical");
 });

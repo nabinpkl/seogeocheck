@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import { PageShell } from "@/components/ui/PageShell";
 import { AuditSection } from "@/features/audit/AuditSection";
 
 export function Hero() {
@@ -20,7 +27,7 @@ export function Hero() {
       </div>
       <div className="pointer-events-none absolute inset-0 z-10 bg-blue-950/95 backdrop-blur-[8px]" />
 
-      <div className="relative z-20 mx-auto max-w-7xl px-6">
+      <PageShell className="relative z-20 !px-6 !py-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -35,14 +42,17 @@ export function Hero() {
             <p className="max-w-4xl text-lg text-blue-200 md:text-xl md:leading-relaxed">
               Audit your site to identify visibility gaps so search engines and AI can easily find and recommend you.
             </p>
-            <a
-              href="/oops-under-construction"
-              className="group mt-6 flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-semibold text-primary transition-all hover:bg-primary/10"
+            <Button
+              asChild
+              variant="outline"
+              className="group mt-6 h-auto rounded-full border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10 hover:text-primary"
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px]">🤖</span>
-              <span>Learn how to let your agent use our service</span>
-              <span className="text-xl leading-none transition-transform group-hover:translate-x-1">→</span>
-            </a>
+              <Link href="/oops-under-construction">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px]">🤖</span>
+                <span>Learn how to let your agent use our service</span>
+                <span className="text-xl leading-none transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+            </Button>
           </div>
 
 
@@ -68,24 +78,31 @@ export function Hero() {
                 desc: "Ensuring your content is clear enough for voice assistants and AI to use as a direct answer."
               }
             ].map((item, idx) => (
-              <div key={idx} className="group/card flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm transition-all hover:bg-white/10 hover:translate-y-[-4px]">
-                <div className="relative h-24 w-24 overflow-hidden rounded-2xl">
-                  <Image
-                    src={`/illustrations/${item.label.toLowerCase()}.png`}
-                    alt={item.title}
-                    fill
-                    className="object-contain transition-transform group-hover/card:scale-110"
-                  />
-                </div>
-                <h3 className="mt-6 font-display text-xl font-bold text-white">{item.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-blue-300">{item.desc}</p>
-              </div>
+              <Card
+                key={idx}
+                className="group/card rounded-3xl border border-white/10 bg-white/5 py-0 text-center text-white ring-1 ring-white/10 backdrop-blur-sm transition-all hover:translate-y-[-4px] hover:bg-white/10"
+              >
+                <CardContent className="flex flex-col items-center px-8 py-8">
+                  <div className="relative h-24 w-24 overflow-hidden rounded-2xl">
+                    <Image
+                      src={`/illustrations/${item.label.toLowerCase()}.png`}
+                      alt={item.title}
+                      fill
+                      className="object-contain transition-transform group-hover/card:scale-110"
+                    />
+                  </div>
+                  <h3 className="mt-6 font-display text-xl font-bold text-white">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-blue-300">{item.desc}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
 
 
         </motion.div>
-      </div>
+      </PageShell>
     </section>
   );
 }

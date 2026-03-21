@@ -4,19 +4,23 @@ import * as React from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Zap, ArrowRight, ShieldCheck, Globe, CheckCircle2 } from "lucide-react";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import { PageShell } from "@/components/ui/PageShell";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 
 export function Features() {
   return (
     <section id="features" className="relative z-10 scroll-mt-24 bg-white py-24">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="text-center">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Everything you need to be recommended by AI
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-foreground/60">
-            We bridge the gap between technical signals and the generative AI ecosystem.
-          </p>
-        </div>
+      <PageShell className="!px-6 !py-0">
+        <SectionHeading
+          as="h2"
+          align="center"
+          title="Everything you need to be recommended by AI"
+          description="We bridge the gap between technical signals and the generative AI ecosystem."
+        />
 
         <div className="mt-16 grid gap-12 md:grid-cols-3">
           {[
@@ -36,13 +40,18 @@ export function Features() {
               description: "Verify your site's trustworthiness signals that AI engines use to decide which sources to cite."
             }
           ].map((feature, i) => (
-            <div key={i} className="group rounded-3xl border border-border p-8 transition-colors hover:border-primary/20 hover:bg-primary/5">
+            <Card
+              key={i}
+              className="group rounded-3xl border border-border py-0 shadow-sm transition-colors hover:border-primary/20 hover:bg-primary/5"
+            >
+              <CardContent className="p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary transition-colors group-hover:bg-primary group-hover:text-white">
                 {feature.icon}
               </div>
-              <h3 className="mt-6 font-display text-xl font-bold text-foreground">{feature.title}</h3>
-              <p className="mt-4 text-foreground/60 leading-relaxed">{feature.description}</p>
-            </div>
+                <h3 className="mt-6 font-display text-xl font-bold text-foreground">{feature.title}</h3>
+                <p className="mt-4 leading-relaxed text-foreground/60">{feature.description}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
@@ -79,7 +88,7 @@ export function Features() {
             </ul>
           </div>
 
-          <div className="relative group overflow-hidden rounded-[2.5rem] border border-border bg-white p-3 shadow-2xl shadow-primary/5 transition-all hover:shadow-primary/10">
+          <Card className="relative group overflow-hidden rounded-[2.5rem] border border-border bg-white p-3 shadow-2xl shadow-primary/5 transition-all hover:shadow-primary/10">
             <div className="absolute inset-0 z-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
             <Image 
               src="/illustration.png" 
@@ -88,9 +97,9 @@ export function Features() {
               height={400}
               className="relative z-10 w-full rounded-[1.8rem] object-cover shadow-sm"
             />
-          </div>
+          </Card>
         </motion.div>
-      </div>
+      </PageShell>
     </section>
   );
 }
