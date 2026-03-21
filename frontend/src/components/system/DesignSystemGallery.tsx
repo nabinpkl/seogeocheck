@@ -57,6 +57,12 @@ import { MetricCard } from "@/components/system/MetricCard";
 import { PageShell } from "@/components/system/PageShell";
 import { SectionHeading } from "@/components/system/SectionHeading";
 import { StatusBadge } from "@/components/system/StatusBadge";
+import { AuditCategoryScoreGrid } from "@/components/system/audit/AuditCategoryScoreGrid";
+import { AuditCheckRow } from "@/components/system/audit/AuditCheckRow";
+import { AuditProgressSidebar } from "@/components/system/audit/AuditProgressSidebar";
+import { AuditResultActions } from "@/components/system/audit/AuditResultActions";
+import { AuditScoreHero } from "@/components/system/audit/AuditScoreHero";
+import { AuditStatusHeader } from "@/components/system/audit/AuditStatusHeader";
 import {
   Activity,
   AlertTriangle,
@@ -67,6 +73,52 @@ import {
 } from "lucide-react";
 
 export function DesignSystemGallery() {
+  const sampleHeaderModel = {
+    statusLabel: "READY",
+    statusTone: "success" as const,
+    targetUrlLabel: "https://seogeocheck.com",
+    targetUrlHref: "https://seogeocheck.com",
+    title: "Visibility Analysis & Search Intelligence Report",
+    titleTone: "default" as const,
+    titleIcon: <ShieldCheck className="h-5 w-5 text-primary" />,
+    errorMessage: null,
+  };
+
+  const sampleIssueRow = {
+    id: "gallery-issue-row",
+    kind: "issue" as const,
+    title: "Primary heading is missing on the source HTML response",
+    evidenceSourceLabel: "Source HTML",
+    severityLabel: "Critical",
+    tone: "critical" as const,
+    summaryLabel: "Recommended fix",
+    summary:
+      "Add a descriptive H1 to the canonical page response so search systems can identify the primary topic immediately.",
+    selector: "main > section:nth-child(1)",
+    metric: "Heading coverage",
+    isHero: true,
+  };
+
+  const samplePassedRow = {
+    id: "gallery-passed-row",
+    kind: "passed" as const,
+    title: "Canonical link is present and points to the resolved target",
+    evidenceSourceLabel: "Surface Comparison",
+    severityLabel: "Passed",
+    tone: "success" as const,
+    summaryLabel: "What is working",
+    summary:
+      "The HTML and rendered DOM both expose the same canonical URL, which reduces ambiguity for indexing systems.",
+    selector: "head > link[rel='canonical']",
+    metric: "Canonical consistency",
+  };
+
+  const sampleCategories = [
+    { key: "reachability", label: "Reachability", score: 82, tone: "success" as const },
+    { key: "metadata", label: "Metadata", score: 61, tone: "info" as const },
+    { key: "discovery", label: "Discovery", score: 34, tone: "critical" as const },
+  ];
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <PageShell className="pb-4" size="wide">
@@ -376,6 +428,61 @@ export function DesignSystemGallery() {
               </CardContent>
             </Card>
           </aside>
+        </div>
+      </PageShell>
+
+      <PageShell size="wide" className="pt-0">
+        <div className="space-y-8">
+          <SectionHeading
+            eyebrow="Audit System"
+            title="Audit-specific presentation components"
+            description="These examples mirror the real audit experience while staying decoupled from raw Zustand and TanStack Query state."
+          />
+
+          <AuditStatusHeader
+            model={sampleHeaderModel}
+            actions={
+              <AuditResultActions
+                compact
+                onReAudit={() => undefined}
+                onReset={() => undefined}
+              />
+            }
+          />
+
+          <AuditScoreHero
+            reportScore={61}
+            issueCount={4}
+            passedCheckCount={11}
+            onScrollToIssues={() => undefined}
+            onScrollToPassed={() => undefined}
+          />
+
+          <AuditCategoryScoreGrid categories={sampleCategories} />
+
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_360px]">
+            <div className="space-y-4">
+              <AuditCheckRow model={sampleIssueRow} />
+              <AuditCheckRow model={samplePassedRow} />
+              <AuditResultActions
+                onReAudit={() => undefined}
+                onReset={() => undefined}
+              />
+            </div>
+
+            <AuditProgressSidebar
+              connectionLabel="On"
+              hasAuditFailed={false}
+              targetUrlLabel="https://seogeocheck.com"
+              gapsCount={4}
+              signalsCount={11}
+              progressValue={72}
+              progressLabel="72%"
+              progressBarClassName="bg-primary"
+              currentStepMessage="Comparing source HTML and rendered DOM"
+              operationState="active"
+            />
+          </div>
         </div>
       </PageShell>
     </main>

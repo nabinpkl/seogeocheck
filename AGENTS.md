@@ -118,7 +118,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 3.  **Documentation:** Always update `AGENTS.md` when introducing new core patterns.
 4.  **Libraries:** If version knowledge is stale, perform a web search for the latest documentation.
 6.  **Backward Compatibility:** Do not preserve old APIs, schemas, or behavior by default during iterative development. Favor the cleanest current vertical slice unless compatibility is explicitly requested.
-7.  **Fresh Docker Rebuild:** After every code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build -d` from the repository root so the full stack is rebuilt from a fresh state.
+7.  **Fresh Docker Rebuild:** After every non-frontend code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build -d` from the repository root so the backend stack is rebuilt from a fresh state.
 
 ---
 

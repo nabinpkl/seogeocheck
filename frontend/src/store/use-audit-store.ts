@@ -1,7 +1,8 @@
 "use client";
 
 import { create } from "zustand";
-import type { AuditStreamEvent, AuditUiStatus } from "@/lib/audit";
+import type { AuditStreamEvent } from "@/types/audit";
+import type { AuditUiStatus } from "@/store/audit-types";
 
 type ConnectionStatus = "idle" | "connecting" | "open" | "closed";
 

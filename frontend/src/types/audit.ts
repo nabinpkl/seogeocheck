@@ -7,7 +7,6 @@ export const AUDIT_STATUSES = [
 ] as const;
 
 export type AuditStatus = (typeof AUDIT_STATUSES)[number];
-export type AuditUiStatus = AuditStatus | "IDLE";
 
 export type AuditStreamEvent = {
   jobId?: string;
@@ -188,15 +187,3 @@ export type AuditReport = {
   };
   [key: string]: unknown;
 };
-
-export const auditReportQueryKey = (jobId: string) =>
-  ["audit-report", jobId] as const;
-
-export class ReportPendingError extends Error {
-  readonly status = 202;
-
-  constructor(message = "Your results are still being prepared.") {
-    super(message);
-    this.name = "ReportPendingError";
-  }
-}
