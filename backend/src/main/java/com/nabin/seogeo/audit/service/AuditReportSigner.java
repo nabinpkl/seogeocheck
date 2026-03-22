@@ -59,6 +59,12 @@ public class AuditReportSigner {
         long passedCheckCount = result.checks().stream()
                 .filter(check -> "passed".equals(check.status()))
                 .count();
+        long notApplicableCount = result.checks().stream()
+            .filter(check -> "not_applicable".equals(check.status()))
+            .count();
+        long systemErrorCount = result.checks().stream()
+            .filter(check -> "system_error".equals(check.status()))
+            .count();
         String topIssue = result.checks().stream()
                 .filter(check -> "issue".equals(check.status()))
                 .min(Comparator.comparingInt(this::severityRank))
@@ -72,6 +78,8 @@ public class AuditReportSigner {
         summary.put("targetUrl", targetUrl);
         summary.put("issueCount", issueCount);
         summary.put("passedCheckCount", passedCheckCount);
+        summary.put("notApplicableCount", notApplicableCount);
+        summary.put("systemErrorCount", systemErrorCount);
         summary.put("topIssue", topIssue);
 
         Map<String, Object> report = new LinkedHashMap<>();

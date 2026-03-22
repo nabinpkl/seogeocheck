@@ -7,6 +7,8 @@ const rowToneClasses = {
   error: "border-rose-100 bg-rose-50/30",
   issue: "border-slate-100 bg-slate-50",
   passed: "border-emerald-100 bg-emerald-50/30",
+  not_applicable: "border-slate-200 bg-slate-50/70",
+  system_error: "border-amber-200 bg-amber-50/40",
   complete: "border-emerald-100 bg-emerald-50/30",
   neutral: "border-slate-100 bg-slate-50",
 };
@@ -15,6 +17,8 @@ const iconToneClasses = {
   error: "text-rose-500",
   issue: "text-primary",
   passed: "text-emerald-500",
+  not_applicable: "text-slate-500",
+  system_error: "text-amber-600",
   complete: "text-emerald-500",
   neutral: "text-slate-400",
 };
@@ -49,10 +53,10 @@ export function AuditLiveStreamPanel({
                 <span className="ml-auto text-xs text-slate-400">{row.timestampLabel}</span>
               </div>
 
-              {(row.selector || row.detail) ? (
+              {(row.selector || row.messageSections.length > 0) ? (
                 <details className="mt-3 rounded-xl border border-slate-100 bg-white/50 px-4 py-3 text-left text-sm text-slate-600">
                   <summary className="cursor-pointer list-none font-semibold text-slate-700">
-                    {row.state === "passed" ? "Why this passed" : "Suggested fix"}
+                    View details
                   </summary>
                   <div className="mt-3 space-y-2">
                     {row.selector ? (
@@ -63,12 +67,12 @@ export function AuditLiveStreamPanel({
                         </code>
                       </p>
                     ) : null}
-                    {row.detail ? (
-                      <p>
-                        <span className="font-semibold text-slate-700">{row.detailLabel}</span>{" "}
-                        {row.detail}
+                    {row.messageSections.map((section) => (
+                      <p key={section.label}>
+                        <span className="font-semibold text-slate-700">{section.label}:</span>{" "}
+                        {section.body}
                       </p>
-                    ) : null}
+                    ))}
                   </div>
                 </details>
               ) : null}

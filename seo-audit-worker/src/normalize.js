@@ -20,11 +20,33 @@ function averageFamilyScore(checks) {
     return 0;
   }
 
+  const evaluableChecks = checks.filter(
+    (check) => check.status === "issue" || check.status === "passed"
+  );
+  if (evaluableChecks.length === 0) {
+    return 0;
+  }
+
   const familyScores = Object.values(
-    Object.groupBy(checks, (check) => check.metadata?.problemFamily ?? check.id)
+    Object.groupBy(evaluableChecks, (check) => check.metadata?.problemFamily ?? check.id)
   ).map((familyChecks) => familyChecks.some((check) => check.status === "issue") ? 0 : 100);
 
   return averageScore(familyScores);
+}
+
+function statusRank(status) {
+  switch (status) {
+    case "issue":
+      return 0;
+    case "passed":
+      return 1;
+    case "not_applicable":
+      return 2;
+    case "system_error":
+      return 3;
+    default:
+      return 4;
+  }
 }
 
 function toSeverityRank(severity) {
@@ -173,9 +195,9 @@ export function normalizeSeoAuditResult(input) {
 
   const sortedChecks = [...checks]
     .sort((left, right) => {
-      // 1. Issues first
+      // 1. Status ordering
       if (left.status !== right.status) {
-        return left.status === "issue" ? -1 : 1;
+        return statusRank(left.status) - statusRank(right.status);
       }
 
       // 2. Severity (for issues)

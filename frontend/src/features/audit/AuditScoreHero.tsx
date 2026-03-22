@@ -16,6 +16,8 @@ export function AuditScoreHero({
   onScrollToIssues,
   onScrollToFamilies,
 }: AuditScoreHeroProps) {
+  void onScrollToFamilies;
+
   const tone =
     reportScore > 70 ? "success" : reportScore > 40 ? "info" : "critical";
 
@@ -27,7 +29,7 @@ export function AuditScoreHero({
         : "text-rose-500";
   const label =
     tone === "success"
-      ? "High Authority"
+      ? "High Visibility"
       : tone === "info"
         ? "Moderate Reach"
         : "Optimizing Visibility";
@@ -41,12 +43,12 @@ export function AuditScoreHero({
       <div className="relative flex flex-col items-center gap-12 lg:flex-row lg:justify-center lg:gap-16 xl:gap-24">
         <div className="flex flex-col items-center">
           <div className="mb-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-            Visibility Score
+            Visibility Score <span className="tracking-widest">(%)</span>
           </div>
 
           <div className="group/score relative flex h-44 w-44 items-center justify-center font-mono">
             <svg
-              className="absolute inset-0 h-full w-full rotate-[-90deg]"
+              className="absolute inset-0 h-full w-full -rotate-90"
               viewBox="0 0 160 160"
             >
               <circle

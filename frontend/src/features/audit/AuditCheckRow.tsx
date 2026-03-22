@@ -11,6 +11,8 @@ const rowToneClasses = {
     info: "border-blue-200/50 bg-blue-50/30 hover:bg-blue-50/50",
   },
   passed: "border-emerald-500/10 bg-emerald-500/[0.03] hover:bg-emerald-500/[0.05]",
+  notApplicable: "border-slate-200 bg-slate-50/70 hover:bg-slate-100/70",
+  systemError: "border-amber-200 bg-amber-50/30 hover:bg-amber-50/50",
 };
 
 const iconToneClasses = {
@@ -18,10 +20,15 @@ const iconToneClasses = {
   warning: "text-amber-600",
   info: "text-blue-600",
   success: "text-emerald-500",
+  neutral: "text-slate-500",
+  systemError: "text-amber-600",
 };
 
 export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
   const isIssue = model.kind === "issue";
+  const isPassed = model.kind === "passed";
+  const isNotApplicable = model.kind === "not_applicable";
+  const isSystemError = model.kind === "system_error";
   const rowToneClass = isIssue
     ? rowToneClasses.issue[
         model.tone === "critical"
@@ -30,7 +37,11 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
             ? "warning"
             : "info"
       ]
-    : rowToneClasses.passed;
+    : isPassed
+      ? rowToneClasses.passed
+      : isNotApplicable
+        ? rowToneClasses.notApplicable
+        : rowToneClasses.systemError;
   const iconToneClass = isIssue
     ? iconToneClasses[
         model.tone === "critical"
@@ -39,10 +50,18 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
             ? "warning"
             : "info"
       ]
-    : iconToneClasses.success;
+    : isPassed
+      ? iconToneClasses.success
+      : isNotApplicable
+        ? iconToneClasses.neutral
+        : iconToneClasses.systemError;
 
-  const statusIcon = model.kind === "passed" ? (
+  const statusIcon = isPassed ? (
     <CheckCircle2 className="h-4 w-4" />
+  ) : isNotApplicable ? (
+    <Info className="h-4 w-4" />
+  ) : isSystemError ? (
+    <AlertTriangle className="h-4 w-4" />
   ) : model.tone === "critical" ? (
     <AlertCircle className="h-4 w-4" />
   ) : model.tone === "warning" ? (
@@ -82,6 +101,8 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
               tone={
                 model.kind === "passed"
                   ? "success"
+                  : model.kind === "not_applicable"
+                    ? "neutral"
                   : model.tone === "critical"
                     ? "critical"
                     : model.tone === "warning"
@@ -100,16 +121,22 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
       <div
         className={cn(
           "border-t border-slate-100 px-5 py-4 text-left text-sm",
-          isIssue ? "text-slate-600" : "text-emerald-700"
+          isIssue
+            ? "text-slate-600"
+            : isPassed
+              ? "text-emerald-700"
+              : isNotApplicable
+                ? "text-slate-700"
+                : "text-amber-800"
         )}
       >
         <div className="space-y-2">
-          {model.summaryLabel && model.summary ? (
-            <p>
-              <span className="font-bold text-slate-900">{model.summaryLabel}:</span>{" "}
-              {model.summary}
+          {model.messageSections.map((section) => (
+            <p key={section.label}>
+              <span className="font-bold text-slate-900">{section.label}:</span>{" "}
+              {section.body}
             </p>
-          ) : null}
+          ))}
           {model.selector ? (
             <p>
               <span className="font-bold text-slate-900">Page area:</span>{" "}

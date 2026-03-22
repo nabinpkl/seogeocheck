@@ -119,13 +119,189 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
   assert.equal(result.checks.some((check) => check.id === "robots-noarchive"), true);
   assert.equal(result.checks.some((check) => check.id === "robots-notranslate"), true);
   assert.equal(result.checks.some((check) => check.id === "canonical-target-health"), true);
+  assert.equal(
+    result.checks.find((check) => check.id === "canonical-target-health")?.status,
+    "not_applicable"
+  );
   assert.equal(result.checks.some((check) => check.id === "social-preview-core"), true);
   assert.equal(result.checks.some((check) => check.id === "twitter-preview-core"), true);
   assert.equal(result.checks.some((check) => check.id === "meta-viewport"), true);
   assert.equal(result.checks.some((check) => check.id === "favicon-presence"), true);
   assert.equal(result.checks.some((check) => check.id === "head-duplicate-hygiene"), true);
-  assert.equal(result.checks.at(-1).id, "url-reachable");
-  assert.equal(result.checks.at(-1).status, "passed");
+  assert.equal(
+    result.checks.some(
+      (check) => check.id === "url-reachable" && check.status === "passed"
+    ),
+    true
+  );
+});
+
+test("normalizeSeoAuditResult keeps ideal-state guidance and blocker detail for not applicable checks", () => {
+  const result = normalizeSeoAuditResult({
+    requestedUrl: "https://example.com",
+    finalUrl: "https://example.com/",
+    statusCode: 200,
+    title: "",
+    metaDescription: "",
+    canonicalUrl: null,
+    h1Count: 0,
+    headingOutline: [],
+    bodyImages: [],
+    lang: "",
+    robotsContent: "index,follow",
+    openGraphTitle: "",
+    openGraphDescription: "",
+    wordCount: 120,
+    contentType: "text/html; charset=utf-8",
+    xRobotsTag: null,
+    sourceAnchors: [],
+    linkedImages: [],
+    structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
+    redirectChain: {
+      status: "ok",
+      totalRedirects: 0,
+      finalUrlChanged: false,
+      finalUrl: "https://example.com/",
+      chain: [
+        {
+          url: "https://example.com/",
+          statusCode: 200,
+          location: null,
+        },
+      ],
+      error: null,
+    },
+    robotsTxt: {
+      status: "allowed",
+      allowsCrawl: true,
+      evaluatedUserAgent: "Googlebot",
+      matchedDirective: "allow",
+      matchedPattern: "/",
+      fetchStatusCode: 200,
+      url: "https://example.com/robots.txt",
+      finalUrl: "https://example.com/robots.txt",
+      error: null,
+    },
+  });
+
+  const metaDescriptionQuality = result.checks.find(
+    (check) => check.id === "meta-description-quality"
+  );
+  const documentTitleQuality = result.checks.find(
+    (check) => check.id === "document-title-quality"
+  );
+  const canonicalSignals = result.checks.find((check) => check.id === "canonical-signals");
+  const structuredDataPresence = result.checks.find(
+    (check) => check.id === "structured-data-presence"
+  );
+  const internalLinkCoverage = result.checks.find(
+    (check) => check.id === "internal-link-coverage"
+  );
+
+  assert.equal(metaDescriptionQuality?.status, "not_applicable");
+  assert.match(metaDescriptionQuality?.instruction ?? "", /preferred length range/i);
+  assert.match(metaDescriptionQuality?.detail ?? "", /needs a meta description/i);
+
+  assert.equal(documentTitleQuality?.status, "not_applicable");
+  assert.match(documentTitleQuality?.instruction ?? "", /preferred length range/i);
+  assert.match(documentTitleQuality?.detail ?? "", /needs a title/i);
+
+  assert.equal(canonicalSignals?.status, "not_applicable");
+  assert.match(canonicalSignals?.instruction ?? "", /one valid canonical target/i);
+  assert.match(canonicalSignals?.detail ?? "", /no canonical declaration/i);
+
+  assert.equal(structuredDataPresence?.status, "not_applicable");
+  assert.match(structuredDataPresence?.instruction ?? "", /rich results/i);
+  assert.match(structuredDataPresence?.detail ?? "", /optional/i);
+
+  assert.equal(internalLinkCoverage?.status, "not_applicable");
+  assert.match(internalLinkCoverage?.instruction ?? "", /secondary check should assess/i);
+  assert.match(internalLinkCoverage?.detail ?? "", /already covers pages that expose zero/i);
+});
+
+test("normalizeSeoAuditResult fills concrete detail for thin issue checks", () => {
+  const result = normalizeSeoAuditResult({
+    requestedUrl: "https://example.com",
+    finalUrl: "https://example.com/",
+    statusCode: 200,
+    title: "",
+    metaDescription: "",
+    canonicalUrl: "https://example.com/",
+    h1Count: 1,
+    headingOutline: [{ level: 1, text: "Home" }],
+    bodyImages: [],
+    lang: "",
+    robotsContent: "index,follow",
+    openGraphTitle: "Example Home",
+    openGraphDescription: "Source summary",
+    wordCount: 140,
+    contentType: "text/html; charset=utf-8",
+    viewportContent: "",
+    iconLinks: [],
+    xRobotsTag: null,
+    sourceAnchors: [
+      {
+        href: "/products",
+        resolvedHref: "https://example.com/products",
+        sameOrigin: true,
+        crawlable: true,
+        text: "Products",
+        usesJavascriptHref: false,
+        isFragmentOnly: false,
+        hasMatchingFragmentTarget: false,
+      },
+    ],
+    linkedImages: [],
+    structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
+    redirectChain: {
+      status: "ok",
+      totalRedirects: 0,
+      finalUrlChanged: false,
+      finalUrl: "https://example.com/",
+      chain: [
+        {
+          url: "https://example.com/",
+          statusCode: 200,
+          location: null,
+        },
+      ],
+      error: null,
+    },
+    robotsTxt: {
+      status: "allowed",
+      allowsCrawl: true,
+      evaluatedUserAgent: "Googlebot",
+      matchedDirective: "allow",
+      matchedPattern: "/",
+      fetchStatusCode: 200,
+      url: "https://example.com/robots.txt",
+      finalUrl: "https://example.com/robots.txt",
+      error: null,
+    },
+  });
+
+  assert.match(
+    result.checks.find((check) => check.id === "document-title")?.detail ?? "",
+    /No <title> element/i
+  );
+  assert.match(
+    result.checks.find((check) => check.id === "meta-description")?.detail ?? "",
+    /meta name="description"/i
+  );
+  assert.match(
+    result.checks.find((check) => check.id === "html-lang")?.detail ?? "",
+    /No lang attribute/i
+  );
+  assert.match(
+    result.checks.find((check) => check.id === "meta-viewport")?.detail ?? "",
+    /meta name="viewport"/i
+  );
+  assert.match(
+    result.checks.find((check) => check.id === "favicon-presence")?.detail ?? "",
+    /favicon or apple-touch icon/i
+  );
 });
 
 test("normalizeSeoAuditResult includes rendered DOM summaries and comparison findings when provided", () => {

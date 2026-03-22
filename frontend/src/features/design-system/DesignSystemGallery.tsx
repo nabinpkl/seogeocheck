@@ -88,6 +88,8 @@ export function DesignSystemGallery() {
     id: "gallery-issue-row",
     kind: "issue" as const,
     title: "Primary heading is missing on the source HTML response",
+    problemFamily: "heading_structure",
+    problemFamilyLabel: "Heading Structure",
     evidenceSourceLabel: "Source HTML",
     severityLabel: "Critical",
     tone: "critical" as const,
@@ -103,6 +105,8 @@ export function DesignSystemGallery() {
     id: "gallery-passed-row",
     kind: "passed" as const,
     title: "Canonical link is present and points to the resolved target",
+    problemFamily: "canonical_controls",
+    problemFamilyLabel: "Canonical Controls",
     evidenceSourceLabel: "Surface Comparison",
     severityLabel: "Passed",
     tone: "success" as const,
@@ -455,7 +459,7 @@ export function DesignSystemGallery() {
             issueCount={4}
             passedCheckCount={11}
             onScrollToIssues={() => undefined}
-            onScrollToPassed={() => undefined}
+            onScrollToFamilies={() => undefined}
           />
 
           <AuditCategoryScoreGrid categories={sampleCategories} />

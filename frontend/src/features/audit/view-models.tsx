@@ -10,6 +10,7 @@ import type {
   AuditCheckRowModel,
   AuditFamilyChecklistGroupModel,
   AuditHeaderModel,
+  AuditMessageSection,
   AuditStreamRowModel,
   AuditTone,
 } from "./models";
@@ -68,6 +69,30 @@ export function isIssueCheck(status?: string) {
 
 export function isPassedCheck(status?: string) {
   return status === "passed";
+}
+
+export function isNotApplicableCheck(status?: string) {
+  return status === "not_applicable";
+}
+
+export function isSystemErrorCheck(status?: string) {
+  return status === "system_error";
+}
+
+function checkStatusRank(status?: string) {
+  if (status === "issue") {
+    return 0;
+  }
+  if (status === "passed") {
+    return 1;
+  }
+  if (status === "not_applicable") {
+    return 2;
+  }
+  if (status === "system_error") {
+    return 3;
+  }
+  return 4;
 }
 
 export function toneForSeverity(severity?: string): AuditTone {
@@ -207,16 +232,53 @@ export function renderEventLead(event: AuditStreamEvent) {
   return "New audit signal received.";
 }
 
-export function renderEventDetail(event: AuditStreamEvent) {
-  if (typeof event.instruction === "string") {
-    return event.instruction;
+function appendMessageSection(
+  sections: AuditMessageSection[],
+  label: string,
+  value?: string | null
+) {
+  if (typeof value !== "string") {
+    return;
   }
 
-  if (typeof event.detail === "string") {
-    return event.detail;
+  const normalized = value.trim();
+  if (!normalized) {
+    return;
   }
 
-  return null;
+  sections.push({ label, body: normalized });
+}
+
+function buildMessageSections(
+  kind: AuditCheckKind | "neutral",
+  values: { instruction?: string | null; detail?: string | null }
+): AuditMessageSection[] {
+  const sections: AuditMessageSection[] = [];
+
+  switch (kind) {
+    case "issue":
+      appendMessageSection(sections, "Recommended fix", values.instruction);
+      appendMessageSection(sections, "What we found", values.detail);
+      break;
+    case "passed":
+      appendMessageSection(sections, "What is working", values.detail);
+      appendMessageSection(sections, "Why this passed", values.instruction);
+      break;
+    case "not_applicable":
+      appendMessageSection(sections, "What good looks like", values.instruction);
+      appendMessageSection(sections, "Why not applicable", values.detail);
+      break;
+    case "system_error":
+      appendMessageSection(sections, "Why verification failed", values.detail);
+      appendMessageSection(sections, "Next step", values.instruction);
+      break;
+    default:
+      appendMessageSection(sections, "Detail", values.detail);
+      appendMessageSection(sections, "Next step", values.instruction);
+      break;
+  }
+
+  return sections;
 }
 
 export function formatCategoryLabel(key: string) {
@@ -272,13 +334,14 @@ export function formatProblemFamilyLabel(problemFamily?: string) {
 }
 
 function compareChecksByPriority(left: AuditReportCheck, right: AuditReportCheck) {
-  const leftIssue = isIssueCheck(left.status);
-  const rightIssue = isIssueCheck(right.status);
-
-  if (leftIssue !== rightIssue) {
-    return leftIssue ? -1 : 1;
+  const leftRank = checkStatusRank(left.status);
+  const rightRank = checkStatusRank(right.status);
+  if (leftRank !== rightRank) {
+    return leftRank - rightRank;
   }
 
+  const leftIssue = isIssueCheck(left.status);
+  const rightIssue = isIssueCheck(right.status);
   if (leftIssue && rightIssue) {
     const severityDiff = severityRank(left.severity) - severityRank(right.severity);
     if (severityDiff !== 0) {
@@ -328,18 +391,32 @@ export function buildFamilyChecklistGroups(
             ...check,
             id: check.id ?? `${familyKey}-${check.status ?? "unknown"}-${index}`,
           },
-          isIssueCheck(check.status) ? "issue" : "passed"
+          isIssueCheck(check.status)
+            ? "issue"
+            : isPassedCheck(check.status)
+              ? "passed"
+              : isNotApplicableCheck(check.status)
+                ? "not_applicable"
+                : "system_error"
         )
       );
 
       const issueCount = sortedChecks.filter((check) => isIssueCheck(check.status)).length;
       const passedCount = sortedChecks.filter((check) => isPassedCheck(check.status)).length;
+      const notApplicableCount = sortedChecks.filter((check) =>
+        isNotApplicableCheck(check.status)
+      ).length;
+      const systemErrorCount = sortedChecks.filter((check) =>
+        isSystemErrorCheck(check.status)
+      ).length;
 
       return {
         id: familyKey,
         title: formatProblemFamilyLabel(familyKey),
         issueCount,
         passedCount,
+        notApplicableCount,
+        systemErrorCount,
         rows,
       };
     })
@@ -369,37 +446,43 @@ export function buildAuditCheckRowModel(
   options?: { isHero?: boolean }
 ): AuditCheckRowModel {
   const isIssue = kind === "issue";
-
-  let summaryLabel: string | null = null;
-  let summary: string | null = null;
-
-  if (isIssue && check.instruction) {
-    summaryLabel = "Recommended fix";
-    summary = check.instruction;
-  } else if (!isIssue && check.detail) {
-    summaryLabel = "What is working";
-    summary = check.detail;
-  } else if (!isIssue && check.instruction) {
-    summaryLabel = "Why this passed";
-    summary = check.instruction;
-  } else if (isIssue && check.detail) {
-    summaryLabel = "Recommendation";
-    summary = check.detail;
-  }
+  const isPassed = kind === "passed";
+  const isNotApplicable = kind === "not_applicable";
 
   const problemFamily = normalizeProblemFamily(check.metadata?.problemFamily as string | undefined);
 
   return {
     id: check.id ?? `${kind}-${check.label ?? "unknown"}-${check.selector ?? "none"}`,
     kind,
-    title: check.label ?? (isIssue ? "Technical Finding" : "Optimized Signal"),
+    title: check.label ??
+      (isIssue
+        ? "Technical Finding"
+        : isPassed
+          ? "Optimized Signal"
+          : isNotApplicable
+            ? "Check Not Applicable"
+            : "Verification Needed"),
     problemFamily,
     problemFamilyLabel: formatProblemFamilyLabel(problemFamily),
     evidenceSourceLabel: formatEvidenceSource(check.metadata?.evidenceSource),
-    severityLabel: isIssue ? formatSeverityLabel(check.severity) : "Passed",
-    tone: isIssue ? toneForSeverity(check.severity) : "success",
-    summaryLabel,
-    summary,
+    severityLabel: isIssue
+      ? formatSeverityLabel(check.severity)
+      : isPassed
+        ? "Passed"
+        : isNotApplicable
+          ? "Not Applicable"
+          : "Couldn't Verify",
+    tone: isIssue
+      ? toneForSeverity(check.severity)
+      : isPassed
+        ? "success"
+        : isNotApplicable
+          ? "neutral"
+          : "warning",
+    messageSections: buildMessageSections(kind, {
+      instruction: check.instruction,
+      detail: check.detail,
+    }),
     selector: typeof check.selector === "string" ? check.selector : null,
     metric: typeof check.metric === "string" ? check.metric : null,
     isHero: options?.isHero,
@@ -409,12 +492,18 @@ export function buildAuditCheckRowModel(
 export function buildAuditStreamRowModel(event: AuditStreamEvent): AuditStreamRowModel {
   const isIssue = isIssueCheck(event.checkStatus);
   const isPassed = isPassedCheck(event.checkStatus);
+  const isNotApplicable = isNotApplicableCheck(event.checkStatus);
+  const isSystemError = isSystemErrorCheck(event.checkStatus);
   const isError = event.type === "error";
   const state =
     isError
       ? "error"
       : isPassed
         ? "passed"
+        : isNotApplicable
+          ? "not_applicable"
+          : isSystemError
+            ? "system_error"
         : isIssue
           ? "issue"
           : event.type === "complete"
@@ -428,16 +517,43 @@ export function buildAuditStreamRowModel(event: AuditStreamEvent): AuditStreamRo
       typeof event.timestamp === "string" ? event.timestamp : undefined
     ),
     selector: typeof event.selector === "string" ? event.selector : null,
-    detail: renderEventDetail(event),
-    detailLabel: isPassed ? "What went well:" : "Recommendation:",
+    messageSections: buildMessageSections(
+      isPassed
+        ? "passed"
+        : isNotApplicable
+          ? "not_applicable"
+          : isSystemError
+            ? "system_error"
+            : isIssue
+              ? "issue"
+              : "neutral",
+      {
+        instruction: typeof event.instruction === "string" ? event.instruction : null,
+        detail: typeof event.detail === "string" ? event.detail : null,
+      }
+    ),
     severityLabel:
       typeof event.severity === "string"
         ? formatSeverityLabel(event.severity)
         : isPassed
           ? "Passed"
+          : isNotApplicable
+            ? "Not Applicable"
+            : isSystemError
+              ? "Couldn't Verify"
           : null,
     tone:
-      isError ? "critical" : isPassed ? "success" : isIssue ? toneForSeverity(event.severity) : "neutral",
+      isError
+        ? "critical"
+        : isPassed
+          ? "success"
+          : isNotApplicable
+            ? "neutral"
+            : isSystemError
+              ? "warning"
+              : isIssue
+                ? toneForSeverity(event.severity)
+                : "neutral",
     state,
   };
 }

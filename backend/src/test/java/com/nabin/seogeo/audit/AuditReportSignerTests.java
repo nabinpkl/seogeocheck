@@ -4,6 +4,8 @@ import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.SeoAuditCheck;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import com.nabin.seogeo.audit.service.AuditReportSigner;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.jupiter.api.Test;
 
 import java.time.OffsetDateTime;
@@ -15,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AuditReportSignerTests {
 
     @Test
-    void reportSignatureIsDeterministicForTheSameInput() {
+        void reportSignatureIsDeterministicForTheSameInput() throws Exception {
         AuditProperties auditProperties = new AuditProperties();
         auditProperties.setReportSigningSecret("test-signing-secret");
         AuditReportSigner signer = new AuditReportSigner(auditProperties, new com.fasterxml.jackson.databind.ObjectMapper());
@@ -52,6 +54,26 @@ class AuditReportSignerTests {
                         "head > meta[name=\"description\"]",
                         null,
                         Map.of("score", 100)
+                ), new SeoAuditCheck(
+                        "canonical-target-health",
+                        "Canonical target health is not applicable yet",
+                        "not_applicable",
+                        null,
+                        null,
+                        "A single valid canonical target is not available yet, so target health cannot be evaluated.",
+                        "head > link[rel=\"canonical\"]",
+                        "canonical-target-health",
+                        Map.of("score", 0)
+                ), new SeoAuditCheck(
+                        "alternate-language-scan",
+                        "Could not verify alternate language annotations",
+                        "system_error",
+                        null,
+                        null,
+                        "The audit worker timed out while collecting alternate language headers.",
+                        "head > link[rel=\"alternate\"]",
+                        "alternate-language-annotations",
+                        Map.of("reasonCode", "timeout")
                 )),
                 Map.of("worker", "seo-audit-worker")
         );
@@ -68,5 +90,18 @@ class AuditReportSignerTests {
         assertThat(firstReport.signatureValue()).isEqualTo(secondReport.signatureValue());
         assertThat(firstReport.reportJson()).contains("SEO_SIGNALS_SIGNED_AUDIT");
         assertThat(firstReport.reportJson()).contains("\"indexabilityVerdict\":\"At Risk\"");
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> payload = mapper.readValue(
+                        firstReport.reportJson(),
+                        new TypeReference<>() {}
+                );
+                Object summaryNode = payload.get("summary");
+                assertThat(summaryNode).isInstanceOf(Map.class);
+                Map<?, ?> summary = (Map<?, ?>) summaryNode;
+                assertThat(summary.get("issueCount")).isEqualTo(1);
+                assertThat(summary.get("passedCheckCount")).isEqualTo(1);
+                assertThat(summary.get("notApplicableCount")).isEqualTo(1);
+                assertThat(summary.get("systemErrorCount")).isEqualTo(1);
     }
 }

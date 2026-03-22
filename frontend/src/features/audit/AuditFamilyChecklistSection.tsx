@@ -35,10 +35,34 @@ export function AuditFamilyChecklistSection({
             <div className="flex flex-wrap items-end justify-between gap-2 px-2">
               <h4 className="text-xl font-black tracking-tight text-slate-900">{group.title}</h4>
               <MetaLabel>
-                {group.issueCount} {group.issueCount === 1 ? "Issue" : "Issues"}
-                {group.passedCount > 0 ? ` • ${group.passedCount} ${
-                  group.passedCount === 1 ? "Passed" : "Passed"
-                }` : ""}
+                {group.issueCount > 0 ? (
+                  <>
+                    {group.issueCount} {group.issueCount === 1 ? "Issue" : "Issues"}
+                    {group.passedCount > 0 ? ` • ${group.passedCount} Passed` : ""}
+                    {group.notApplicableCount > 0 ? ` • ${group.notApplicableCount} Not Applicable` : ""}
+                    {group.systemErrorCount > 0
+                      ? ` • ${group.systemErrorCount} Couldn't verify`
+                      : ""}
+                  </>
+                ) : group.passedCount > 0 ? (
+                  <>
+                    {`${group.passedCount} Passed`}
+                    {group.notApplicableCount > 0 ? ` • ${group.notApplicableCount} N/A` : ""}
+                    {group.systemErrorCount > 0
+                      ? ` • ${group.systemErrorCount} Couldn't verify`
+                      : ""}
+                  </>
+                ) : group.notApplicableCount > 0 || group.systemErrorCount > 0 ? (
+                  <>
+                    {group.notApplicableCount > 0 ? `${group.notApplicableCount} N/A` : ""}
+                    {group.notApplicableCount > 0 && group.systemErrorCount > 0 ? " • " : ""}
+                    {group.systemErrorCount > 0
+                      ? `${group.systemErrorCount} Couldn't verify`
+                      : ""}
+                  </>
+                ) : (
+                  "No checks"
+                )}
               </MetaLabel>
             </div>
             <div className="space-y-3">

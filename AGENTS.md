@@ -39,6 +39,7 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - **Tech:** Node.js + Temporal TypeScript SDK + Crawlee + Playwright.
 - **Logic:** Custom SEO signal extraction, crawlability checks, metadata checks, and browser-executed comparison checks against the rendered DOM.
 - **Normalization Contract:** Node workers must translate raw tool output into SEOGEO-native findings with imperative `instruction` text before results are returned to the orchestrator.
+- **Audit Messaging Contract:** For audit checks, `instruction` is the normative guidance or ideal state, while `detail` is the concrete evidence, blocker, or applicability reason. This applies to streamed events and persisted reports. `not_applicable` checks must still set `instruction` so the UI can explain what good would look like once the check becomes relevant.
 - **Rule Authoring Pattern:** SEO worker checks must be organized as `collect source HTML evidence -> derive source facts -> collect rendered DOM evidence -> compare surfaces -> evaluate rules -> score packs`. Shared evidence should be collected once per surface and reused across rules; source HTML remains authoritative for fix priority, while rendered evidence adds comparison context and render-dependency risk.
 
 ### Target Worker Topology

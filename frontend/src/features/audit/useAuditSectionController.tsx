@@ -20,7 +20,6 @@ import {
   formatConnectionLabel,
   isIssueCheck,
   isPassedCheck,
-  selectTopRecommendationChecks,
 } from "./view-models";
 import type { AuditSectionViewProps } from "./AuditSection.types";
 
@@ -322,8 +321,9 @@ export function useAuditSectionController(): AuditSectionViewProps {
     [url]
   );
 
-  const topRecommendationRows = selectTopRecommendationChecks(reportFindings).map(
-    (check, index) =>
+  const topRecommendationRows = reportChecks
+    .filter((check) => isIssueCheck(check.status))
+    .map((check, index) =>
       buildAuditCheckRowModel(
         {
           ...check,
@@ -331,7 +331,7 @@ export function useAuditSectionController(): AuditSectionViewProps {
         },
         "issue"
       )
-  );
+    );
   const [topRecommendationHeroRow, ...topRecommendationRowsRest] = topRecommendationRows;
   const familyGroups = buildFamilyChecklistGroups(reportChecks);
   const headerModel = buildAuditHeaderModel({

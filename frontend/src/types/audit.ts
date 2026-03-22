@@ -57,6 +57,8 @@ export type AuditReport = {
     targetUrl?: string;
     issueCount?: number;
     passedCheckCount?: number;
+    notApplicableCount?: number;
+    systemErrorCount?: number;
     [key: string]: unknown;
   };
   checks?: AuditReportCheck[];

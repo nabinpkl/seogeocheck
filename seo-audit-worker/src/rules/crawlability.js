@@ -1,5 +1,10 @@
 import { defineRule } from "./defineRule.js";
-import { issueCheck, passedCheck } from "./utils.js";
+import {
+  issueCheck,
+  notApplicableCheck,
+  passedCheck,
+  systemErrorCheck,
+} from "./utils.js";
 
 function formatConflictDetail(conflict) {
   return `${conflict.target} has conflicting ${conflict.field} directives: ${conflict.values.join(", ")}.`;
@@ -289,6 +294,38 @@ const canonicalSignals = defineRule({
   priority: 7,
   problemFamily: "canonical_controls",
   check: (facts) => {
+    if (facts.canonicalControl.status === "missing") {
+      return notApplicableCheck(
+        "canonical-signals",
+        "Canonical structure cannot be evaluated without a canonical declaration",
+        "No canonical declaration was detected, so duplicate or conflict structure checks are not applicable yet.",
+        'head > link[rel="canonical"]',
+        "canonical-status",
+        {
+          canonicalControl: facts.canonicalControl,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["canonical-indexability-consistency"],
+        },
+        "A healthy canonical setup exposes one valid canonical target before duplicate and conflict checks run."
+      );
+    }
+
+    if (facts.canonicalControl.status === "invalid") {
+      return notApplicableCheck(
+        "canonical-signals",
+        "Canonical structure cannot be evaluated until canonical markup is valid",
+        "Canonical declarations exist but are invalid, so duplicate or conflict structure checks are not applicable yet.",
+        'head > link[rel="canonical"]',
+        "canonical-status",
+        {
+          canonicalControl: facts.canonicalControl,
+          reasonCode: "invalid_prerequisite",
+          blockedBy: ["canonical-indexability-consistency"],
+        },
+        "A healthy canonical setup uses one valid canonical URL so duplicate and conflict checks can run reliably."
+      );
+    }
+
     if (facts.canonicalControl.status === "multiple") {
       return issueCheck(
         "canonical-signals",
@@ -334,13 +371,14 @@ const canonicalIndexabilityConsistency = defineRule({
   problemFamily: "canonical_controls",
   check: (facts) => {
     if (facts.canonicalSelfReferenceControl.status === "not_applicable") {
-      return passedCheck(
+      return notApplicableCheck(
         "canonical-indexability-consistency",
         "Self-referencing canonical is not required here",
         "This page is not currently in the eligible indexable state where a self-referencing canonical is required by this audit.",
         'head > link[rel="canonical"]',
         "canonical-final-url",
-        facts.canonicalSelfReferenceControl
+        facts.canonicalSelfReferenceControl,
+        "When a page is indexable and intended to stand on its own, a healthy canonical setup points to its own final URL."
       );
     }
 
@@ -384,13 +422,14 @@ const canonicalIndexabilityConsistency = defineRule({
     }
 
     if (facts.canonicalSelfReferenceControl.status === "not_evaluable") {
-      return passedCheck(
+      return notApplicableCheck(
         "canonical-indexability-consistency",
         "Self-referencing canonical will be evaluated after structural fixes",
         "The canonical declaration needs duplicate or conflict cleanup before self-reference can be evaluated reliably.",
         'head > link[rel="canonical"]',
         "canonical-final-url",
-        facts.canonicalSelfReferenceControl
+        facts.canonicalSelfReferenceControl,
+        "Once canonical declarations are reduced to one valid target, this check should confirm it matches the final page URL."
       );
     }
 
@@ -413,13 +452,14 @@ const canonicalTargetHealth = defineRule({
   problemFamily: "canonical_controls",
   check: (facts) => {
     if (facts.canonicalTargetControl.status === "not_applicable") {
-      return passedCheck(
+      return notApplicableCheck(
         "canonical-target-health",
         "Canonical target health is not applicable yet",
         "A single valid canonical target is not available yet, so target health cannot be evaluated.",
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl
+        facts.canonicalTargetControl,
+        "Once one valid canonical target exists, it should resolve to a reachable, indexable HTML page."
       );
     }
 
@@ -435,6 +475,35 @@ const canonicalTargetHealth = defineRule({
     }
 
     if (facts.canonicalTargetControl.status === "unknown") {
+      const inspectionStatus = facts.canonicalTargetControl.inspection?.status;
+      const inspectionUnavailable =
+        inspectionStatus === "unavailable" ||
+        facts.canonicalTargetControl.inspection?.statusCode === null;
+      if (inspectionUnavailable) {
+        const reasonCode =
+          facts.canonicalTargetControl.inspection?.redirectChain?.error?.toLowerCase().includes(
+            "timeout"
+          )
+            ? "timeout"
+            : "upstream_fetch_failed";
+
+        return systemErrorCheck(
+          "canonical-target-health",
+          "Couldn't verify canonical target health",
+          facts.canonicalTargetControl.targetUrl
+            ? `The audit could not complete canonical target inspection for ${facts.canonicalTargetControl.targetUrl}.`
+            : "The audit could not complete canonical target inspection.",
+          'head > link[rel="canonical"]',
+          "canonical-target-health",
+          {
+            ...facts.canonicalTargetControl,
+            reasonCode,
+            retryable: true,
+          },
+          "Retry this audit to re-run canonical target verification."
+        );
+      }
+
       return issueCheck(
         "canonical-target-health",
         "Confirm the canonical target can be inspected reliably",
@@ -550,17 +619,20 @@ const robotsTxtCrawlability = defineRule({
     }
 
     if (facts.robotsTxtAllowsCrawl === null) {
-      return issueCheck(
+      return systemErrorCheck(
         "robots-txt-crawlability",
-        "Make robots.txt crawl rules reachable for this URL",
-        "low",
-        "Return a readable robots.txt file so crawl permissions for this URL can be confirmed reliably.",
+        "Couldn't verify robots.txt crawlability",
         facts.robotsTxt.fetchStatusCode
           ? `The robots.txt request returned HTTP ${facts.robotsTxt.fetchStatusCode}.`
           : "The audit could not confirm robots.txt rules for this URL.",
         "document",
         "robots-txt",
-        { robotsTxt: facts.robotsTxt }
+        {
+          robotsTxt: facts.robotsTxt,
+          reasonCode: "upstream_fetch_failed",
+          retryable: true,
+        },
+        "Retry this audit to re-check robots.txt crawlability signals."
       );
     }
 
@@ -585,15 +657,20 @@ const redirectChainClarity = defineRule({
   problemFamily: "redirect_chain",
   check: (facts) => {
     if (facts.redirectChainStatus === "unavailable") {
-      return issueCheck(
+      return systemErrorCheck(
         "redirect-chain-clarity",
-        "Return a verifiable redirect path to the final page URL",
-        "low",
-        "Make the redirect path to the final page URL readable so the audit can confirm how crawlers reach the indexable destination.",
+        "Couldn't verify redirect chain",
         facts.redirectChain.error ?? "The audit could not verify the redirect chain for this URL.",
         "document",
         "redirect-chain",
-        { redirectChain: facts.redirectChain }
+        {
+          redirectChain: facts.redirectChain,
+          reasonCode: facts.redirectChain.error?.toLowerCase().includes("timeout")
+            ? "timeout"
+            : "upstream_fetch_failed",
+          retryable: true,
+        },
+        "Retry this audit to re-check redirect chain evidence."
       );
     }
 
@@ -631,13 +708,17 @@ const alternateLanguageSignals = defineRule({
   problemFamily: "alternate_language_controls",
   check: (facts) => {
     if (facts.alternateLanguageControl.status === "none") {
-      return passedCheck(
+      return notApplicableCheck(
         "alternate-language-signals",
         "No alternate language annotations are required here",
         "No hreflang-based alternate language annotations were detected, which is acceptable for pages without localized variants.",
         'head > link[rel="alternate"]',
         "alternate-language-status",
-        { alternateLanguageControl: facts.alternateLanguageControl }
+        {
+          alternateLanguageControl: facts.alternateLanguageControl,
+          reasonCode: "missing_prerequisite",
+        },
+        "If this page has localized variants, a healthy setup maps each variant with valid hreflang annotations and clear target URLs."
       );
     }
 
@@ -713,7 +794,7 @@ const htmlLang = defineRule({
           "Declare the page language in the HTML response before rendering",
           "low",
           "Add a lang attribute in the HTML response before rendering to clarify language targeting without relying on rendered JavaScript.",
-          null,
+          "No lang attribute was found on the source HTML element.",
           "html",
           null,
           facts.langControl
@@ -760,6 +841,22 @@ const internalLinkRelDiscovery = defineRule({
   priority: 13,
   problemFamily: "internal_link_discovery",
   check: (facts) => {
+    if (facts.sameOriginCrawlableLinkCount === 0) {
+      return notApplicableCheck(
+        "internal-link-rel-discovery",
+        "Internal link discovery will be evaluated after crawlable links are added",
+        "This check needs at least one same-origin crawlable source link before rel-based discovery suppression can be evaluated.",
+        "a[href]",
+        "internal-link-rel-blockers",
+        {
+          linkDiscoveryControl: facts.linkDiscoveryControl,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["source-crawlable-links"],
+        },
+        "A healthy internal discovery setup includes crawlable same-origin links without nofollow-style rel values when those links should help discovery."
+      );
+    }
+
     if (facts.linkDiscoveryControl.blockedByRelCount === 0) {
       return passedCheck(
         "internal-link-rel-discovery",
@@ -794,24 +891,34 @@ const internalLinkCoverage = defineRule({
   problemFamily: "internal_link_discovery",
   check: (facts) => {
     if (facts.internalLinkCoverageControl.status === "not_applicable") {
-      return passedCheck(
+      return notApplicableCheck(
         "internal-link-coverage",
         "Internal link coverage is not evaluated for this page shape",
         "This check only applies to reachable HTML pages with enough source text to evaluate broader internal-link coverage.",
         "a[href]",
         "internal-link-coverage",
-        facts.internalLinkCoverageControl
+        {
+          ...facts.internalLinkCoverageControl,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["source-visible-text"],
+        },
+        "A healthy coverage check applies on reachable HTML pages with enough source text and a reasonable set of crawlable internal links for the page length."
       );
     }
 
     if (facts.internalLinkCoverageControl.status === "handled_by_baseline") {
-      return passedCheck(
+      return notApplicableCheck(
         "internal-link-coverage",
         "Baseline crawlable-link coverage issue is handled elsewhere",
         "The essential crawlable-link rule already covers pages that expose zero same-origin crawlable links in source HTML.",
         "a[href]",
         "internal-link-coverage",
-        facts.internalLinkCoverageControl
+        {
+          ...facts.internalLinkCoverageControl,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["source-crawlable-links"],
+        },
+        "Once the page exposes at least one same-origin crawlable source link, this secondary check should assess whether broader internal-link coverage is sufficient for the page length."
       );
     }
 
@@ -846,6 +953,23 @@ const anchorTextQuality = defineRule({
   priority: 18,
   problemFamily: "anchor_text_quality",
   check: (facts) => {
+    if (facts.sourceAnchors.length === 0) {
+      return notApplicableCheck(
+        "anchor-text-quality",
+        "Anchor text quality will be evaluated after links are added",
+        "This check needs source links before anchor text quality can be evaluated.",
+        "a[href]",
+        "generic-anchor-text",
+        {
+          emptyAnchorTextCount: facts.emptyAnchorTextCount,
+          genericAnchorTextCount: facts.genericAnchorTextCount,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["source-crawlable-links"],
+        },
+        "A healthy anchor text check needs source links with destination-specific wording instead of empty or generic labels."
+      );
+    }
+
     if (facts.emptyAnchorTextCount > 0) {
       return issueCheck(
         "anchor-text-quality",
@@ -897,6 +1021,22 @@ const fragmentRouteHygiene = defineRule({
   priority: 22,
   problemFamily: "fragment_routes",
   check: (facts) => {
+    if (facts.sourceAnchors.length === 0) {
+      return notApplicableCheck(
+        "fragment-route-hygiene",
+        "Route hygiene will be evaluated after links are added",
+        "This check needs source links before route hygiene can be evaluated.",
+        "a[href]",
+        "non-crawlable-routes",
+        {
+          problematicLinkCount: 0,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["source-crawlable-links"],
+        },
+        "A healthy route hygiene check needs source links that use real crawlable URLs rather than javascript: handlers or fragment-only navigation."
+      );
+    }
+
     const problematicLinks = facts.sourceAnchors.filter(
       (anchor) =>
         anchor.usesJavascriptHref || (anchor.isFragmentOnly && !anchor.hasMatchingFragmentTarget)

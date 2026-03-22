@@ -1,5 +1,5 @@
 import { defineRule } from "./defineRule.js";
-import { issueCheck, passedCheck } from "./utils.js";
+import { issueCheck, notApplicableCheck, passedCheck } from "./utils.js";
 
 const primaryHeading = defineRule({
   id: "primary-heading",
@@ -98,13 +98,18 @@ const headingStructure = defineRule({
   relatedPacks: [],
   check: (facts) => {
     if (facts.headingControl.status === "missing") {
-      return passedCheck(
+      return notApplicableCheck(
         "heading-structure",
         "Heading structure will be evaluated after a primary heading is added",
         "The source HTML needs a primary heading before heading hierarchy quality can be evaluated.",
         "body h1",
         "h1-count",
-        facts.headingControl
+        {
+          ...facts.headingControl,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["primary-heading"],
+        },
+        "A healthy heading structure starts with one primary H1 and avoids skipping heading levels in source HTML."
       );
     }
 
@@ -192,13 +197,18 @@ const headingOutlineQuality = defineRule({
   relatedPacks: [],
   check: (facts) => {
     if (facts.headingQualityControl.status === "not_applicable") {
-      return passedCheck(
+      return notApplicableCheck(
         "heading-outline-quality",
         "Heading outline quality will be evaluated after headings are added",
         "The source HTML needs headings before outline quality can be evaluated.",
         "body h1, body h2, body h3, body h4, body h5, body h6",
         "heading-outline-quality",
-        facts.headingQualityControl
+        {
+          ...facts.headingQualityControl,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["primary-heading"],
+        },
+        "A healthy heading outline starts with an H1, uses non-empty headings, and avoids repeated labels in source HTML."
       );
     }
 

@@ -8,7 +8,12 @@ export type AuditTone =
   | "critical"
   | "pending";
 
-export type AuditCheckKind = "issue" | "passed";
+export type AuditCheckKind = "issue" | "passed" | "not_applicable" | "system_error";
+
+export type AuditMessageSection = {
+  label: string;
+  body: string;
+};
 
 export type AuditCheckRowModel = {
   id: string;
@@ -19,8 +24,7 @@ export type AuditCheckRowModel = {
   evidenceSourceLabel: string | null;
   severityLabel: string | null;
   tone: AuditTone;
-  summaryLabel: string | null;
-  summary: string | null;
+  messageSections: AuditMessageSection[];
   selector: string | null;
   metric: string | null;
   isHero?: boolean;
@@ -31,6 +35,8 @@ export type AuditFamilyChecklistGroupModel = {
   title: string;
   issueCount: number;
   passedCount: number;
+  notApplicableCount: number;
+  systemErrorCount: number;
   rows: AuditCheckRowModel[];
 };
 
@@ -39,11 +45,17 @@ export type AuditStreamRowModel = {
   title: string;
   timestampLabel: string;
   selector: string | null;
-  detail: string | null;
-  detailLabel: string;
+  messageSections: AuditMessageSection[];
   severityLabel: string | null;
   tone: AuditTone;
-  state: "neutral" | "issue" | "passed" | "error" | "complete";
+  state:
+    | "neutral"
+    | "issue"
+    | "passed"
+    | "not_applicable"
+    | "system_error"
+    | "error"
+    | "complete";
 };
 
 export type AuditCategoryScoreModel = {

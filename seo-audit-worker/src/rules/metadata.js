@@ -1,5 +1,5 @@
 import { defineRule } from "./defineRule.js";
-import { issueCheck, passedCheck } from "./utils.js";
+import { issueCheck, notApplicableCheck, passedCheck } from "./utils.js";
 
 const documentTitle = defineRule({
   id: "document-title",
@@ -15,7 +15,7 @@ const documentTitle = defineRule({
           "Add a unique page title in the HTML response before rendering",
           "high",
           "Add a unique <title> in the HTML response before rendering so search engines can understand the page without relying on rendered JavaScript.",
-          null,
+          "No <title> element was found in source HTML.",
           "head > title",
           null,
           { length: 0 }
@@ -66,7 +66,7 @@ const metaDescription = defineRule({
           "Add a meta description in the HTML response before rendering",
           "medium",
           "Add a concise meta description in the HTML response before rendering so search engines can read a summary snippet without relying on rendered JavaScript.",
-          null,
+          'No <meta name="description"> tag was found in source HTML.',
           'head > meta[name="description"]',
           null,
           { length: 0 }
@@ -136,13 +136,14 @@ const structuredDataPresence = defineRule({
           "structured-data-kinds",
           { structuredDataKinds: facts.structuredDataKinds }
         )
-      : passedCheck(
+      : notApplicableCheck(
           "structured-data-presence",
           "No source structured data was detected",
           "No structured data was detected in the HTML response before rendering. This is optional for general pages and can be added later when the page qualifies for rich results.",
           'script[type="application/ld+json"], [itemscope], [typeof]',
           "structured-data-kinds",
-          { structuredDataKinds: [] }
+          { structuredDataKinds: [], reasonCode: "missing_prerequisite" },
+          "If this page should be eligible for rich results, add valid structured data in source HTML that matches the visible page content."
         );
   },
 });
@@ -156,13 +157,14 @@ const documentTitleQuality = defineRule({
   relatedPacks: [],
   check: (facts) => {
     if (!facts.hasTitle) {
-      return passedCheck(
+      return notApplicableCheck(
         "document-title-quality",
         "Title quality will be evaluated after a title is added",
         "The source HTML needs a title before title length quality can be evaluated.",
         "head > title",
         "document-title-length",
-        facts.titleControl
+        { ...facts.titleControl, reasonCode: "missing_prerequisite", blockedBy: ["document-title"] },
+        "A healthy source title exists before rendering and stays within the audit's preferred length range."
       );
     }
 
@@ -212,13 +214,18 @@ const metaDescriptionQuality = defineRule({
   relatedPacks: [],
   check: (facts) => {
     if (!facts.hasMetaDescription) {
-      return passedCheck(
+      return notApplicableCheck(
         "meta-description-quality",
         "Meta description quality will be evaluated after one is added",
         "The source HTML needs a meta description before length quality can be evaluated.",
         'head > meta[name="description"]',
         "meta-description-length",
-        facts.metaDescriptionControl
+        {
+          ...facts.metaDescriptionControl,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["meta-description"],
+        },
+        "A healthy source meta description exists before rendering and stays within the audit's preferred length range."
       );
     }
 
@@ -313,13 +320,14 @@ const socialPreviewUrlHygiene = defineRule({
   relatedPacks: [],
   check: (facts) => {
     if (facts.socialUrlControl.status === "none") {
-      return passedCheck(
+      return notApplicableCheck(
         "social-preview-url-hygiene",
         "No social preview URLs need validation yet",
         "This check only validates social URL fields that are already present in source HTML.",
         'head > meta[property="og:url"], head > meta[property="og:image"], head > meta[name="twitter:image"]',
         "social-url-hygiene",
-        facts.socialUrlControl
+        { ...facts.socialUrlControl, reasonCode: "missing_prerequisite" },
+        "When social preview URLs are present, they should use absolute HTTP(S) values for og:url, og:image, and twitter:image."
       );
     }
 
@@ -401,13 +409,18 @@ const coreMetadataAlignment = defineRule({
   relatedPacks: [],
   check: (facts) => {
     if (facts.metadataAlignmentControl.status === "not_applicable") {
-      return passedCheck(
+      return notApplicableCheck(
         "core-metadata-alignment",
         "Core metadata alignment will be evaluated after title and H1 are available",
         "This check needs both a source title and a source H1 before alignment can be evaluated.",
         "head > title, body h1, head > meta[name=\"description\"]",
         "metadata-alignment",
-        facts.metadataAlignmentControl
+        {
+          ...facts.metadataAlignmentControl,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["document-title", "primary-heading"],
+        },
+        "A healthy metadata set keeps the source title, first H1, and meta description focused on the same primary topic."
       );
     }
 
@@ -457,7 +470,7 @@ const metaViewport = defineRule({
         "Add a viewport meta tag in source HTML",
         "medium",
         "Add a mobile-friendly viewport meta tag in the HTML response before rendering so the page declares responsive intent in source HTML.",
-        null,
+        'No <meta name="viewport"> tag was found in source HTML.',
         'head > meta[name="viewport"]',
         "meta-viewport",
         facts.viewportControl
@@ -497,13 +510,14 @@ const structuredDataValidity = defineRule({
   relatedPacks: [],
   check: (facts) => {
     if (facts.structuredDataControl.status === "none") {
-      return passedCheck(
+      return notApplicableCheck(
         "structured-data-validity",
         "No JSON-LD blocks need validation",
         "The source HTML did not expose JSON-LD blocks to validate in this pass.",
         'script[type="application/ld+json"]',
         "structured-data-validity",
-        facts.structuredDataControl
+        { ...facts.structuredDataControl, reasonCode: "missing_prerequisite" },
+        "If this page is intended for rich results, a healthy setup includes parseable JSON-LD blocks with @context and @type in source HTML."
       );
     }
 
@@ -571,7 +585,7 @@ const faviconPresence = defineRule({
         "Add a favicon or app icon in source HTML",
         "low",
         "Add a favicon or app icon link in the HTML response before rendering so the page has a basic browser and sharing presentation asset.",
-        null,
+        "No favicon or apple-touch icon link was found in source HTML.",
         'head > link[rel~="icon"], head > link[rel="apple-touch-icon"]',
         "favicon",
         facts.faviconControl
