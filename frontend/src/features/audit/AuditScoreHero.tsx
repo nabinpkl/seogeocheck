@@ -6,7 +6,7 @@ type AuditScoreHeroProps = {
   issueCount: number;
   passedCheckCount: number;
   onScrollToIssues: () => void;
-  onScrollToPassed: () => void;
+  onScrollToFamilies: () => void;
 };
 
 export function AuditScoreHero({
@@ -14,7 +14,7 @@ export function AuditScoreHero({
   issueCount,
   passedCheckCount,
   onScrollToIssues,
-  onScrollToPassed,
+  onScrollToFamilies,
 }: AuditScoreHeroProps) {
   const tone =
     reportScore > 70 ? "success" : reportScore > 40 ? "info" : "critical";
@@ -118,14 +118,13 @@ export function AuditScoreHero({
 
           <button
             type="button"
-            onClick={onScrollToPassed}
-            className="group/stat flex cursor-pointer flex-col items-center text-left transition-transform hover:scale-105 lg:items-start"
+            className="group/stat flex cursor-default! flex-col items-center text-left transition-transform hover:scale-105 lg:items-start"
           >
             <div className="font-mono text-6xl font-black leading-none tracking-tighter text-emerald-500 drop-shadow-[0_0_20px_rgba(16,185,129,0.1)] lg:text-7xl">
               {passedCheckCount}
             </div>
             <div className="mt-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
-              Checks passed
+              Checks Passed
             </div>
             <div className="mt-4 h-0.5 w-8 bg-emerald-500/20 transition-all group-hover/stat:w-full group-hover/stat:bg-emerald-500" />
           </button>

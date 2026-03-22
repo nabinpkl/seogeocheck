@@ -12,6 +12,7 @@ import {
 import type { AuditReport } from "@/types/audit";
 import { useAuditStore } from "@/store/use-audit-store";
 import {
+  buildFamilyChecklistGroups,
   buildAuditCheckRowModel,
   buildAuditHeaderModel,
   buildAuditStreamRowModel,
@@ -19,6 +20,7 @@ import {
   formatConnectionLabel,
   isIssueCheck,
   isPassedCheck,
+  selectTopRecommendationChecks,
 } from "./view-models";
 import type { AuditSectionViewProps } from "./AuditSection.types";
 
@@ -320,27 +322,18 @@ export function useAuditSectionController(): AuditSectionViewProps {
     [url]
   );
 
-  const topIssue = reportChecks.find((check) => check.label === report?.summary?.topIssue);
-  const issueRows = reportFindings
-    .filter((finding) => finding.label !== report?.summary?.topIssue)
-    .map((finding, index) =>
+  const topRecommendationRows = selectTopRecommendationChecks(reportFindings).map(
+    (check, index) =>
       buildAuditCheckRowModel(
         {
-          ...finding,
-          id: finding.id ?? `${finding.selector ?? "issue"}-${index}`,
+          ...check,
+          id: check.id ?? `${check.selector ?? "issue"}-${index}`,
         },
         "issue"
       )
-    );
-  const passedRows = reportPassedChecks.map((check, index) =>
-    buildAuditCheckRowModel(
-      {
-        ...check,
-        id: check.id ?? `${check.selector ?? "passed"}-${index}`,
-      },
-      "passed"
-    )
   );
+  const [topRecommendationHeroRow, ...topRecommendationRowsRest] = topRecommendationRows;
+  const familyGroups = buildFamilyChecklistGroups(reportChecks);
   const headerModel = buildAuditHeaderModel({
     status,
     isPending,
@@ -352,8 +345,8 @@ export function useAuditSectionController(): AuditSectionViewProps {
     reportScore,
     userFacingError,
   });
-  const topIssueRow = topIssue
-    ? buildAuditCheckRowModel(topIssue, "issue", { isHero: true })
+  const topRecommendationHero = topRecommendationHeroRow
+    ? { ...topRecommendationHeroRow, isHero: true }
     : null;
   const currentOperationState = hasAuditFailed
     ? "failed"
@@ -412,16 +405,16 @@ export function useAuditSectionController(): AuditSectionViewProps {
           issueCount,
           passedCheckCount,
           categoryScores,
-          topIssueRow,
-          issueRows,
-          passedRows,
+          topRecommendationHeroRow: topRecommendationHero,
+          topRecommendationRows: topRecommendationRowsRest,
+          familyGroups,
           onScrollToIssues: () =>
             document
               .getElementById("requires-attention")
               ?.scrollIntoView({ behavior: "smooth" }),
-          onScrollToPassed: () =>
+          onScrollToFamilies: () =>
             document
-              .getElementById("passed-checks")
+              .getElementById("family-checklists")
               ?.scrollIntoView({ behavior: "smooth" }),
           onReAudit: handleReAudit,
           onReset: handleReset,

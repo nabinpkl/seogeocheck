@@ -8,6 +8,7 @@ import type {
   AuditCategoryScoreModel,
   AuditCheckKind,
   AuditCheckRowModel,
+  AuditFamilyChecklistGroupModel,
   AuditHeaderModel,
   AuditStreamRowModel,
   AuditTone,
@@ -31,6 +32,36 @@ const CATEGORY_ORDER = [
   "discovery",
 ] as const;
 
+const DEFAULT_PROBLEM_FAMILY = "general_hygiene";
+
+const PROBLEM_FAMILY_LABELS: Record<string, string> = {
+  robots_controls: "Robots Controls",
+  meta_refresh: "Meta Refresh",
+  canonical_controls: "Canonical Controls",
+  robots_txt: "Robots.txt",
+  redirect_chain: "Redirect Chain",
+  alternate_language_controls: "Alternate Language",
+  html_lang: "HTML Language",
+  source_link_presence: "Source Link Presence",
+  internal_link_discovery: "Internal Link Discovery",
+  anchor_text_quality: "Anchor Text Quality",
+  fragment_routes: "Fragment Routes",
+  render_dependency: "Render Dependency",
+  heading_structure: "Heading Structure",
+  document_title: "Document Title",
+  meta_description: "Meta Description",
+  social_open_graph: "Open Graph",
+  structured_data: "Structured Data",
+  social_twitter: "Twitter Preview",
+  social_url_hygiene: "Social URL Hygiene",
+  robots_preview: "Robots Preview",
+  metadata_alignment: "Metadata Alignment",
+  meta_viewport: "Meta Viewport",
+  favicon: "Favicon",
+  head_hygiene: "Head Hygiene",
+  general_hygiene: "General Hygiene",
+};
+
 export function isIssueCheck(status?: string) {
   return status === "issue";
 }
@@ -47,6 +78,17 @@ export function toneForSeverity(severity?: string): AuditTone {
       return "warning";
     default:
       return "info";
+  }
+}
+
+export function severityRank(severity?: string) {
+  switch (severity) {
+    case "high":
+      return 0;
+    case "medium":
+      return 1;
+    default:
+      return 2;
   }
 }
 
@@ -206,6 +248,121 @@ export function formatEvidenceSource(evidenceSource?: string) {
   return evidenceSource.replaceAll("_", " ");
 }
 
+function normalizeProblemFamily(problemFamily?: string) {
+  const trimmed = typeof problemFamily === "string" ? problemFamily.trim() : "";
+  if (!trimmed) {
+    return DEFAULT_PROBLEM_FAMILY;
+  }
+
+  return trimmed.toLowerCase();
+}
+
+function prettifyProblemFamily(problemFamily: string) {
+  return problemFamily
+    .replaceAll("_", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(" ");
+}
+
+export function formatProblemFamilyLabel(problemFamily?: string) {
+  const normalized = normalizeProblemFamily(problemFamily);
+  return PROBLEM_FAMILY_LABELS[normalized] ?? prettifyProblemFamily(normalized);
+}
+
+function compareChecksByPriority(left: AuditReportCheck, right: AuditReportCheck) {
+  const leftIssue = isIssueCheck(left.status);
+  const rightIssue = isIssueCheck(right.status);
+
+  if (leftIssue !== rightIssue) {
+    return leftIssue ? -1 : 1;
+  }
+
+  if (leftIssue && rightIssue) {
+    const severityDiff = severityRank(left.severity) - severityRank(right.severity);
+    if (severityDiff !== 0) {
+      return severityDiff;
+    }
+  }
+
+  const leftLabel = typeof left.label === "string" ? left.label : "";
+  const rightLabel = typeof right.label === "string" ? right.label : "";
+  return leftLabel.localeCompare(rightLabel);
+}
+
+export function selectTopRecommendationChecks(checks: AuditReportCheck[]) {
+  const issues = checks.filter((check) => isIssueCheck(check.status));
+  if (issues.length === 0) {
+    return [];
+  }
+
+  const strongestRank = Math.min(...issues.map((check) => severityRank(check.severity)));
+  return issues
+    .filter((check) => severityRank(check.severity) === strongestRank)
+    .sort(compareChecksByPriority);
+}
+
+export function buildFamilyChecklistGroups(
+  checks: AuditReportCheck[]
+): AuditFamilyChecklistGroupModel[] {
+  if (checks.length === 0) {
+    return [];
+  }
+
+  const grouped = new Map<string, AuditReportCheck[]>();
+
+  for (const check of checks) {
+    const familyKey = normalizeProblemFamily(check.metadata?.problemFamily as string | undefined);
+    const current = grouped.get(familyKey) ?? [];
+    current.push(check);
+    grouped.set(familyKey, current);
+  }
+
+  return [...grouped.entries()]
+    .map(([familyKey, familyChecks]) => {
+      const sortedChecks = [...familyChecks].sort(compareChecksByPriority);
+      const rows = sortedChecks.map((check, index) =>
+        buildAuditCheckRowModel(
+          {
+            ...check,
+            id: check.id ?? `${familyKey}-${check.status ?? "unknown"}-${index}`,
+          },
+          isIssueCheck(check.status) ? "issue" : "passed"
+        )
+      );
+
+      const issueCount = sortedChecks.filter((check) => isIssueCheck(check.status)).length;
+      const passedCount = sortedChecks.filter((check) => isPassedCheck(check.status)).length;
+
+      return {
+        id: familyKey,
+        title: formatProblemFamilyLabel(familyKey),
+        issueCount,
+        passedCount,
+        rows,
+      };
+    })
+    .sort((left, right) => {
+      const leftSeverity = left.rows
+        .filter((row) => row.kind === "issue")
+        .reduce((rank, row) => Math.min(rank, severityRank(row.tone === "critical" ? "high" : row.tone === "warning" ? "medium" : "low")), 99);
+      const rightSeverity = right.rows
+        .filter((row) => row.kind === "issue")
+        .reduce((rank, row) => Math.min(rank, severityRank(row.tone === "critical" ? "high" : row.tone === "warning" ? "medium" : "low")), 99);
+
+      if (leftSeverity !== rightSeverity) {
+        return leftSeverity - rightSeverity;
+      }
+
+      if (left.issueCount !== right.issueCount) {
+        return right.issueCount - left.issueCount;
+      }
+
+      return left.title.localeCompare(right.title);
+    });
+}
+
 export function buildAuditCheckRowModel(
   check: AuditReportCheck,
   kind: AuditCheckKind,
@@ -230,10 +387,14 @@ export function buildAuditCheckRowModel(
     summary = check.detail;
   }
 
+  const problemFamily = normalizeProblemFamily(check.metadata?.problemFamily as string | undefined);
+
   return {
     id: check.id ?? `${kind}-${check.label ?? "unknown"}-${check.selector ?? "none"}`,
     kind,
     title: check.label ?? (isIssue ? "Technical Finding" : "Optimized Signal"),
+    problemFamily,
+    problemFamilyLabel: formatProblemFamilyLabel(problemFamily),
     evidenceSourceLabel: formatEvidenceSource(check.metadata?.evidenceSource),
     severityLabel: isIssue ? formatSeverityLabel(check.severity) : "Passed",
     tone: isIssue ? toneForSeverity(check.severity) : "success",

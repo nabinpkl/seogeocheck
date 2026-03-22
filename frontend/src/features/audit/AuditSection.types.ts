@@ -4,6 +4,7 @@ import * as React from "react";
 import type {
   AuditCategoryScoreModel,
   AuditCheckRowModel,
+  AuditFamilyChecklistGroupModel,
   AuditHeaderModel,
   AuditStreamRowModel,
 } from "./models";
@@ -18,11 +19,11 @@ export type AuditResultsSectionProps = {
   issueCount: number;
   passedCheckCount: number;
   categoryScores: AuditCategoryScoreModel[];
-  topIssueRow: AuditCheckRowModel | null;
-  issueRows: AuditCheckRowModel[];
-  passedRows: AuditCheckRowModel[];
+  topRecommendationHeroRow: AuditCheckRowModel | null;
+  topRecommendationRows: AuditCheckRowModel[];
+  familyGroups: AuditFamilyChecklistGroupModel[];
   onScrollToIssues: () => void;
-  onScrollToPassed: () => void;
+  onScrollToFamilies: () => void;
 } & AuditSectionActions;
 
 export type AuditSectionViewProps = {

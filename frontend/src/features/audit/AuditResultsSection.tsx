@@ -3,6 +3,7 @@
 import * as React from "react";
 import { AuditCategoryScoreGrid } from "./AuditCategoryScoreGrid";
 import { AuditChecksSection } from "./AuditChecksSection";
+import { AuditFamilyChecklistSection } from "./AuditFamilyChecklistSection";
 import { AuditResultActions } from "./AuditResultActions";
 import { AuditScoreHero } from "./AuditScoreHero";
 import type { AuditResultsSectionProps } from "./AuditSection.types";
@@ -12,11 +13,11 @@ export function AuditResultsSection({
   issueCount,
   passedCheckCount,
   categoryScores,
-  topIssueRow,
-  issueRows,
-  passedRows,
+  topRecommendationHeroRow,
+  topRecommendationRows,
+  familyGroups,
   onScrollToIssues,
-  onScrollToPassed,
+  onScrollToFamilies,
   onReAudit,
   onReset,
 }: AuditResultsSectionProps) {
@@ -27,7 +28,7 @@ export function AuditResultsSection({
         issueCount={issueCount}
         passedCheckCount={passedCheckCount}
         onScrollToIssues={onScrollToIssues}
-        onScrollToPassed={onScrollToPassed}
+        onScrollToFamilies={onScrollToFamilies}
       />
 
       <AuditCategoryScoreGrid categories={categoryScores} />
@@ -36,23 +37,15 @@ export function AuditResultsSection({
         <AuditChecksSection
           id="requires-attention-panel"
           title="Requires Your Attention"
-          countLabel={`${issueCount} Issues Detected`}
-          heroRow={topIssueRow}
-          rows={issueRows}
+          countLabel={`${topRecommendationRows.length + (topRecommendationHeroRow ? 1 : 0)} Essential Signals`}
+          heroRow={topRecommendationHeroRow}
+          rows={topRecommendationRows}
           emptyMessage="No urgent issues were flagged in this audit. Your site cleared every tracked check in this slice."
           emptyTone="success"
         />
       </section>
 
-      <section id="passed-checks">
-        <AuditChecksSection
-          id="passed-checks-panel"
-          title="Passed Checks"
-          countLabel={`${passedCheckCount} Validated`}
-          rows={passedRows}
-          emptyMessage="We did not capture any confirmed passed checks for this run."
-        />
-      </section>
+      <AuditFamilyChecklistSection groups={familyGroups} />
 
       <AuditResultActions onReAudit={onReAudit} onReset={onReset} />
     </>

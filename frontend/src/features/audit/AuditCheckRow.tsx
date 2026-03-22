@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, CheckCircle2, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EvidenceTag, SeverityBadge } from "./primitives";
 import type { AuditCheckRowModel } from "./models";
@@ -14,11 +14,10 @@ const rowToneClasses = {
 };
 
 const iconToneClasses = {
-  critical: "border-rose-200 bg-rose-50 text-rose-600 shadow-sm",
-  warning: "border-amber-200 bg-amber-50 text-amber-600 shadow-sm",
-  info: "border-blue-200 bg-blue-50 text-blue-600 shadow-sm",
-  success:
-    "border-emerald-500/20 bg-emerald-500/5 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]",
+  critical: "text-rose-600",
+  warning: "text-amber-600",
+  info: "text-blue-600",
+  success: "text-emerald-500",
 };
 
 export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
@@ -42,6 +41,16 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
       ]
     : iconToneClasses.success;
 
+  const statusIcon = model.kind === "passed" ? (
+    <CheckCircle2 className="h-4 w-4" />
+  ) : model.tone === "critical" ? (
+    <AlertCircle className="h-4 w-4" />
+  ) : model.tone === "warning" ? (
+    <AlertTriangle className="h-4 w-4" />
+  ) : (
+    <Info className="h-4 w-4" />
+  );
+
   return (
     <details
       open={model.isHero}
@@ -53,11 +62,11 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
       <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 text-left">
         <div
           className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all group-open/row:rotate-90",
+            "flex h-6 w-6 shrink-0 items-center justify-center transition-all",
             iconToneClass
           )}
         >
-          <ChevronRight className="h-4 w-4" />
+          {statusIcon}
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-bold tracking-tight text-slate-900">
@@ -84,6 +93,7 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
               {model.severityLabel}
             </SeverityBadge>
           ) : null}
+          <ChevronRight className="h-4 w-4 text-slate-400 transition group-open/row:rotate-90" />
         </div>
       </summary>
 

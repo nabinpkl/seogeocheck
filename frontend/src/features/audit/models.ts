@@ -14,6 +14,8 @@ export type AuditCheckRowModel = {
   id: string;
   kind: AuditCheckKind;
   title: string;
+  problemFamily: string;
+  problemFamilyLabel: string;
   evidenceSourceLabel: string | null;
   severityLabel: string | null;
   tone: AuditTone;
@@ -22,6 +24,14 @@ export type AuditCheckRowModel = {
   selector: string | null;
   metric: string | null;
   isHero?: boolean;
+};
+
+export type AuditFamilyChecklistGroupModel = {
+  id: string;
+  title: string;
+  issueCount: number;
+  passedCount: number;
+  rows: AuditCheckRowModel[];
 };
 
 export type AuditStreamRowModel = {
