@@ -12,6 +12,7 @@ import com.nabin.seogeo.audit.persistence.AuditReportEntity;
 import com.nabin.seogeo.audit.persistence.AuditReportRepository;
 import com.nabin.seogeo.audit.persistence.AuditRunEntity;
 import com.nabin.seogeo.audit.persistence.AuditRunRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,6 +108,63 @@ public class AuditPersistenceService {
         entity.setPayloadJson(writeJson(payload));
         entity.setCreatedAt(timestamp);
         auditEventRepository.save(entity);
+
+        if ("status".equals(eventType) && status == AuditStatus.STREAMING) {
+            run.setStatus(AuditStatus.STREAMING);
+            auditRunRepository.save(run);
+        }
+
+        return new AuditEventRecord(jobId, nextSequence, eventType, status, payload);
+    }
+
+    @Transactional
+    public AuditEventRecord appendProjectedEvent(
+            String jobId,
+            String sourceEventId,
+            String eventType,
+            AuditStatus status,
+            Map<String, Object> attributes,
+            OffsetDateTime emittedAt,
+            String sourceTopic,
+            Integer sourcePartition,
+            Long sourceOffset
+    ) {
+        Optional<AuditEventEntity> existing = auditEventRepository.findBySourceEventId(sourceEventId);
+        if (existing.isPresent()) {
+            return toRecord(existing.orElseThrow());
+        }
+
+        AuditRunEntity run = getRunOrThrow(jobId);
+        long nextSequence = auditEventRepository.findMaxSequenceByJobId(jobId) + 1;
+        OffsetDateTime timestamp = emittedAt == null ? OffsetDateTime.now() : emittedAt;
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("jobId", jobId);
+        payload.put("eventId", String.valueOf(nextSequence));
+        payload.put("timestamp", timestamp.toString());
+        payload.put("type", eventType);
+        payload.put("status", status.name());
+        payload.putAll(attributes);
+
+        AuditEventEntity entity = new AuditEventEntity();
+        entity.setJobId(jobId);
+        entity.setSequence(nextSequence);
+        entity.setEventType(eventType);
+        entity.setStatus(status);
+        entity.setPayloadJson(writeJson(payload));
+        entity.setCreatedAt(timestamp);
+        entity.setSourceEventId(sourceEventId);
+        entity.setSourceTopic(sourceTopic);
+        entity.setSourcePartition(sourcePartition);
+        entity.setSourceOffset(sourceOffset);
+
+        try {
+            auditEventRepository.save(entity);
+        } catch (DataIntegrityViolationException exception) {
+            return auditEventRepository.findBySourceEventId(sourceEventId)
+                    .map(this::toRecord)
+                    .orElseThrow(() -> exception);
+        }
 
         if ("status".equals(eventType) && status == AuditStatus.STREAMING) {
             run.setStatus(AuditStatus.STREAMING);

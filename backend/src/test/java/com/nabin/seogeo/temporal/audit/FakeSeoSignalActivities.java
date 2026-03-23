@@ -1,12 +1,15 @@
 package com.nabin.seogeo.temporal.audit;
 
+import com.nabin.seogeo.audit.domain.AuditProgressEvent;
 import com.nabin.seogeo.audit.domain.SeoAuditCheck;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
+import com.nabin.seogeo.audit.service.AuditProgressProjectorService;
 import io.temporal.failure.ApplicationFailure;
 import io.temporal.spring.boot.ActivityImpl;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +19,11 @@ import java.util.Map;
 public class FakeSeoSignalActivities implements SeoSignalActivities {
 
     private static final String TARGET_URL_UNREACHABLE = "TARGET_URL_UNREACHABLE";
+    private final AuditProgressProjectorService auditProgressProjectorService;
+
+    public FakeSeoSignalActivities(AuditProgressProjectorService auditProgressProjectorService) {
+        this.auditProgressProjectorService = auditProgressProjectorService;
+    }
 
     @Override
     public SeoAuditResult runSeoAudit(String jobId, String targetUrl) {
@@ -36,6 +44,83 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                     TARGET_URL_UNREACHABLE
             );
         }
+
+        project(jobId, new AuditProgressEvent(
+                1,
+                jobId + ":stage:source_capture_complete",
+                jobId,
+                "seo-audit-worker",
+                "status",
+                "STREAMING",
+                OffsetDateTime.now(),
+                "Collected source HTML signals.",
+                "source_capture_complete",
+                25,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        project(jobId, new AuditProgressEvent(
+                1,
+                jobId + ":rule:document-title",
+                jobId,
+                "seo-audit-worker",
+                "check",
+                "STREAMING",
+                OffsetDateTime.now(),
+                "Add a unique page title",
+                null,
+                null,
+                "document-title",
+                "issue",
+                "high",
+                "Add a unique <title> that names the page and its primary intent so search engines can classify it quickly.",
+                null,
+                "head > title",
+                null
+        ));
+        project(jobId, new AuditProgressEvent(
+                1,
+                jobId + ":rule:primary-heading",
+                jobId,
+                "seo-audit-worker",
+                "check",
+                "STREAMING",
+                OffsetDateTime.now(),
+                "Strengthen the primary heading",
+                null,
+                null,
+                "primary-heading",
+                "issue",
+                "medium",
+                "Use a single descriptive <h1> that matches the page's primary search intent.",
+                null,
+                "body h1",
+                null
+        ));
+        project(jobId, new AuditProgressEvent(
+                1,
+                jobId + ":rule:meta-description",
+                jobId,
+                "seo-audit-worker",
+                "check",
+                "STREAMING",
+                OffsetDateTime.now(),
+                "Meta description is present",
+                null,
+                null,
+                "meta-description",
+                "passed",
+                null,
+                null,
+                "The page already offers a summary snippet for search results.",
+                "head > meta[name=\"description\"]",
+                null
+        ));
 
         return new SeoAuditResult(
                 targetUrl,
@@ -89,5 +174,9 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                         "fetchTime", "2026-03-16T00:00:00Z"
                 )
         );
+    }
+
+    private void project(String jobId, AuditProgressEvent event) {
+        auditProgressProjectorService.project(event, "test-progress-topic", 0, 0L);
     }
 }

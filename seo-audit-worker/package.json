@@ -4,15 +4,24 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22 <25"
+  },
   "scripts": {
     "start": "node src/worker.js",
     "test": "node --test",
     "install:browsers": "playwright install chromium"
   },
   "dependencies": {
+    "@confluentinc/kafka-javascript": "^1.8.2",
     "@temporalio/common": "^1.11.7",
     "@temporalio/worker": "^1.11.7",
     "crawlee": "^3.16.0",
     "playwright": "^1.56.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@confluentinc/kafka-javascript"
+    ]
   }
 }

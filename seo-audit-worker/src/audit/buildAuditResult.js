@@ -1,7 +1,9 @@
-import { normalizeSeoAuditResult } from "../normalize.js";
+import { buildSeoAuditResultFromEvaluation, evaluateSeoAudit } from "../normalize.js";
 
-export function buildAuditResult({ sourceInput, renderedInput = null, renderedError = null }) {
-  return normalizeSeoAuditResult({
+export { buildSeoAuditResultFromEvaluation };
+
+export function evaluateAudit({ sourceInput, renderedInput = null, renderedError = null }) {
+  return evaluateSeoAudit({
     ...sourceInput,
     renderedDom: renderedInput,
     renderedError:
@@ -11,4 +13,14 @@ export function buildAuditResult({ sourceInput, renderedInput = null, renderedEr
           }
         : renderedError,
   });
+}
+
+export function buildAuditResult({ sourceInput, renderedInput = null, renderedError = null }) {
+  return buildSeoAuditResultFromEvaluation(
+    evaluateAudit({
+      sourceInput,
+      renderedInput,
+      renderedError,
+    })
+  );
 }

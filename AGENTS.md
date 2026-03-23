@@ -45,8 +45,8 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 ### Target Worker Topology
 - **API Tier:** Owns external HTTP contracts, audit initiation, SSE stream delivery, and final report retrieval.
 - **Java Worker Tier:** Owns Temporal workflow orchestration, persistence coordination, report signing, and Java-native extraction such as `jsoup`.
-- **Node Worker Tier:** Owns custom SEO-signal extraction and future specialized crawl/browser activities on dedicated Temporal task queues.
-- **Current Slice:** The backend currently combines the API tier and Java worker tier, while the SEO audit worker runs as a dedicated Node Temporal worker on its own task queue with a dual-pass `source_html -> rendered_dom -> comparison` flow.
+- **Node Worker Tier:** Owns custom SEO-signal extraction and future specialized crawl/browser activities on dedicated Temporal task queues. Worker-originated progress should be emitted as structured events, not browser-facing streams.
+- **Current Slice:** The backend currently combines the API tier and Java worker tier, while the SEO audit worker runs as a dedicated Node Temporal worker on its own task queue with a dual-pass `source_html -> rendered_dom -> comparison` flow. In-flight worker progress is published to Kafka and projected by Java into the Postgres audit event log before SSE fan-out.
 - **Architecture Direction:** The active direction is `API + Java worker + Node worker`, with worker roles independently scalable and specialized crawl work executed through Temporal instead of HTTP wrappers.
 
 ---
@@ -57,7 +57,8 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - **Redis Agent:** Sliding Window rate-limiting; SSE Buffer.
 - **Postgres Agent:** System of Record (Audit Snapshots, User Credits).
 - **SSE Agent:** Unidirectional streaming (Java -> Next.js 16).
-- **Momentum Pattern (Current Slice):** Until Redis is required for fan-out or hot buffering, momentum is implemented as an append-only Postgres event log with ordered replay and Loom-backed SSE tailing.
+- **Kafka Progress Bus (Current Slice):** Specialized workers publish structured progress events to Kafka. The Java tier consumes and projects them into the Postgres audit event log, preserving Java ownership of replay, ordering, and user-facing stream semantics.
+- **Momentum Pattern (Current Slice):** Momentum is implemented as an append-only Postgres event log with ordered replay and Loom-backed SSE tailing. Kafka is the upstream transport for worker progress, not the user-facing stream itself.
 - **Handshake Rule:** The terminal `complete` event must only be emitted after the final report is fully persisted so the frontend can safely switch from live stream state to canonical query state.
 
 ### Frontend-to-Backend Audit Contract

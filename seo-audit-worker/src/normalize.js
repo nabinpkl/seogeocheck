@@ -151,49 +151,38 @@ function deriveIndexabilityVerdict(facts) {
   };
 }
 
-export function normalizeSeoAuditResult(input) {
-  const sourceFacts = deriveFacts(input);
-  const renderedFacts = input.renderedDom
-    ? deriveFacts({
-        ...input.renderedDom,
-        requestedUrl: sourceFacts.requestedUrl,
-        finalUrl: input.renderedDom.finalUrl ?? sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
-      })
-    : null;
-  const sourceChecks = SORTED_RULES.map((rule) => {
-    const result = rule.check(sourceFacts);
-    return {
-      ...result,
-      metadata: {
-        ...(result.metadata ?? {}),
-        evidenceSource: "source_html",
-        problemFamily: rule.problemFamily,
-      },
-      category: rule.packId,
-      priority: rule.priority,
-      relatedPacks: rule.relatedPacks,
-    };
-  });
-  const comparison = compareSurfaces({
-    sourceFacts,
-    renderedFacts,
-    renderedError: input.renderedError,
-  });
-  const checks = [...sourceChecks, ...comparison.checks];
+function toSourceCheck(rule, sourceFacts) {
+  const result = rule.check(sourceFacts);
+
+  return {
+    ...result,
+    metadata: {
+      ...(result.metadata ?? {}),
+      evidenceSource: "source_html",
+      problemFamily: rule.problemFamily,
+    },
+    category: rule.packId,
+    priority: rule.priority,
+    relatedPacks: rule.relatedPacks,
+  };
+}
+
+function buildCategoryScores(checks) {
   const categoryIds = new Set([
     ...ACTIVE_PACKS.map((pack) => pack.id),
     ...checks.map((check) => check.category).filter(Boolean),
   ]);
-  const indexabilityVerdict = deriveIndexabilityVerdict(sourceFacts);
 
-  const categoryScores = Object.fromEntries(
+  return Object.fromEntries(
     [...categoryIds].map((categoryId) => [
       categoryId,
       averageFamilyScore(checks.filter((check) => check.category === categoryId)),
     ])
   );
+}
 
-  const sortedChecks = [...checks]
+function sortChecks(checks) {
+  return [...checks]
     .sort((left, right) => {
       // 1. Status ordering
       if (left.status !== right.status) {
@@ -214,6 +203,48 @@ export function normalizeSeoAuditResult(input) {
       return left.label.localeCompare(right.label);
     })
     .map(({ category, priority, relatedPacks, ...check }) => check);
+}
+
+export function evaluateSeoAudit(input) {
+  const sourceFacts = deriveFacts(input);
+  const renderedFacts = input.renderedDom
+    ? deriveFacts({
+        ...input.renderedDom,
+        requestedUrl: sourceFacts.requestedUrl,
+        finalUrl: input.renderedDom.finalUrl ?? sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
+      })
+    : null;
+  const sourceChecks = SORTED_RULES.map((rule) => toSourceCheck(rule, sourceFacts));
+  const comparison = compareSurfaces({
+    sourceFacts,
+    renderedFacts,
+    renderedError: input.renderedError,
+  });
+  const checks = [...sourceChecks, ...comparison.checks];
+  const indexabilityVerdict = deriveIndexabilityVerdict(sourceFacts);
+  const categoryScores = buildCategoryScores(checks);
+
+  return {
+    sourceFacts,
+    renderedFacts,
+    sourceChecks,
+    comparison,
+    checks,
+    indexabilityVerdict,
+    categoryScores,
+  };
+}
+
+export function buildSeoAuditResultFromEvaluation(evaluation) {
+  const {
+    sourceFacts,
+    renderedFacts,
+    checks,
+    comparison,
+    indexabilityVerdict,
+    categoryScores,
+  } = evaluation;
+  const sortedChecks = sortChecks(checks);
 
   return {
     requestedUrl: sourceFacts.requestedUrl,
@@ -298,4 +329,8 @@ export function normalizeSeoAuditResult(input) {
       renderComparison: comparison.summary,
     },
   };
+}
+
+export function normalizeSeoAuditResult(input) {
+  return buildSeoAuditResultFromEvaluation(evaluateSeoAudit(input));
 }

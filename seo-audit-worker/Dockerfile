@@ -7,7 +7,7 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 RUN corepack enable && \
     apt-get update && \
-    apt-get install -y procps && \
+    apt-get install -y build-essential python3 pkg-config procps && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

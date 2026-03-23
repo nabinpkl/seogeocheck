@@ -18,10 +18,12 @@ import java.time.OffsetDateTime;
 @Table(
         name = "audit_events",
         indexes = {
-                @Index(name = "idx_audit_events_job_sequence", columnList = "job_id, sequence")
+                @Index(name = "idx_audit_events_job_sequence", columnList = "job_id, sequence"),
+                @Index(name = "idx_audit_events_source_event_id", columnList = "source_event_id")
         },
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_audit_events_job_sequence", columnNames = {"job_id", "sequence"})
+                @UniqueConstraint(name = "uk_audit_events_job_sequence", columnNames = {"job_id", "sequence"}),
+                @UniqueConstraint(name = "uk_audit_events_source_event_id", columnNames = {"source_event_id"})
         }
 )
 public class AuditEventEntity {
@@ -48,6 +50,18 @@ public class AuditEventEntity {
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
+
+    @Column(name = "source_event_id", length = 191)
+    private String sourceEventId;
+
+    @Column(name = "source_topic", length = 255)
+    private String sourceTopic;
+
+    @Column(name = "source_partition")
+    private Integer sourcePartition;
+
+    @Column(name = "source_offset")
+    private Long sourceOffset;
 
     public Long getId() {
         return id;
@@ -99,5 +113,37 @@ public class AuditEventEntity {
 
     public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getSourceEventId() {
+        return sourceEventId;
+    }
+
+    public void setSourceEventId(String sourceEventId) {
+        this.sourceEventId = sourceEventId;
+    }
+
+    public String getSourceTopic() {
+        return sourceTopic;
+    }
+
+    public void setSourceTopic(String sourceTopic) {
+        this.sourceTopic = sourceTopic;
+    }
+
+    public Integer getSourcePartition() {
+        return sourcePartition;
+    }
+
+    public void setSourcePartition(Integer sourcePartition) {
+        this.sourcePartition = sourcePartition;
+    }
+
+    public Long getSourceOffset() {
+        return sourceOffset;
+    }
+
+    public void setSourceOffset(Long sourceOffset) {
+        this.sourceOffset = sourceOffset;
     }
 }

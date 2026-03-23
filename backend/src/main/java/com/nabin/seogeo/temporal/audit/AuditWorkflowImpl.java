@@ -1,7 +1,6 @@
 package com.nabin.seogeo.temporal.audit;
 
 import com.nabin.seogeo.audit.domain.AuditStatus;
-import com.nabin.seogeo.audit.domain.SeoAuditCheck;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
@@ -11,8 +10,6 @@ import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 @WorkflowImpl(taskQueues = "${seogeo.audit.task-queue}")
@@ -45,7 +42,6 @@ public class AuditWorkflowImpl implements AuditWorkflow {
             ));
 
             SeoAuditResult result = seoSignalActivities.runSeoAudit(request.jobId(), request.targetUrl());
-            emitAuditSignalEvents(request.jobId(), result);
 
             auditActivities.persistReport(auditActivities.buildSignedReport(request.jobId(), request.targetUrl(), result));
             auditActivities.markVerified(request.jobId());
@@ -69,44 +65,6 @@ public class AuditWorkflowImpl implements AuditWorkflow {
                                 .build())
                         .build()
         );
-    }
-
-    private void emitAuditSignalEvents(String jobId, SeoAuditResult result) {
-        List<SeoAuditCheck> checks = result.checks();
-
-        if (checks.isEmpty()) {
-            auditActivities.appendEvent(jobId, "status", AuditStatus.STREAMING, Map.of(
-                    "message", "No major issues found so far.",
-                    "progress", 70
-            ));
-            return;
-        }
-
-        int total = checks.size();
-        for (int index = 0; index < total; index++) {
-            SeoAuditCheck check = checks.get(index);
-            int progress = Math.min(90, 25 + ((index + 1) * 55 / total));
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("message", check.label());
-            payload.put("checkStatus", check.status());
-            payload.put("progress", progress);
-            if (check.severity() != null && !check.severity().isBlank()) {
-                payload.put("severity", check.severity());
-            }
-            if (check.instruction() != null && !check.instruction().isBlank()) {
-                payload.put("instruction", check.instruction());
-            }
-            if (check.detail() != null && !check.detail().isBlank()) {
-                payload.put("detail", check.detail());
-            }
-            if (check.selector() != null && !check.selector().isBlank()) {
-                payload.put("selector", check.selector());
-            }
-            if (check.metric() != null && !check.metric().isBlank()) {
-                payload.put("metric", check.metric());
-            }
-            auditActivities.appendEvent(jobId, "check", AuditStatus.STREAMING, payload);
-        }
     }
 
     private void handleFailure(String jobId, Exception exception) {

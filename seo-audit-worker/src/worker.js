@@ -3,11 +3,21 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { NativeConnection, Worker } from "@temporalio/worker";
-import { buildAuditResult } from "./audit/buildAuditResult.js";
+import { buildSeoAuditResultFromEvaluation, evaluateAudit } from "./audit/buildAuditResult.js";
 import { collectRenderedDomSignals } from "./audit/collectRenderedDomSignals.js";
 import { collectIndexabilityPreflight } from "./audit/indexabilityPreflight.js";
 import { collectSourceHtmlSignals } from "./audit/collectPageSignals.js";
 import { toSeoAuditFailure } from "./errors.js";
+import {
+  createCheckEvent,
+  createStageEvent,
+  createWorkerErrorEvent,
+} from "./progress/auditProgressEvents.js";
+import {
+  disconnectAuditProgressProducer,
+  emitProgressEvent,
+  getAuditProgressProducer,
+} from "./progress/kafkaProgressProducer.js";
 
 const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? "127.0.0.1:7233";
 const TEMPORAL_NAMESPACE = process.env.TEMPORAL_NAMESPACE ?? "default";
@@ -92,22 +102,40 @@ async function runSeoAudit(jobId, targetUrl) {
   try {
     const config = new Configuration({ storageDir });
     const sourceSignals = await captureSourceHtmlSignals(targetUrl, config);
+    await emitProgressEvent(
+      createStageEvent(jobId, "source_capture_complete", "Collected source HTML signals.")
+    );
+
     const preflight = await collectIndexabilityPreflight({
       requestedUrl: targetUrl,
       finalUrl: sourceSignals.finalUrl,
       htmlCanonicalLinks: sourceSignals.htmlCanonicalLinks,
     });
+    await emitProgressEvent(
+      createStageEvent(jobId, "preflight_complete", "Checked crawl and canonical prerequisites.")
+    );
+
     let renderedSignals = null;
     let renderedError = null;
 
     try {
       renderedSignals = await captureRenderedDomSignals(targetUrl, config);
+      await emitProgressEvent(
+        createStageEvent(jobId, "rendered_capture_complete", "Rendered comparison is ready.")
+      );
     } catch (error) {
       renderedError = error;
       console.warn(`[seo-audit-worker] rendered DOM comparison unavailable for ${jobId}:`, error);
+      await emitProgressEvent(
+        createStageEvent(
+          jobId,
+          "rendered_capture_unavailable",
+          "Rendered comparison was unavailable; continuing with source findings."
+        )
+      );
     }
 
-    auditResult = buildAuditResult({
+    const evaluation = evaluateAudit({
       sourceInput: {
         ...sourceSignals,
         ...preflight,
@@ -115,9 +143,25 @@ async function runSeoAudit(jobId, targetUrl) {
       renderedInput: renderedSignals,
       renderedError,
     });
+    for (const check of evaluation.sourceChecks) {
+      await emitProgressEvent(createCheckEvent(jobId, check));
+    }
+    for (const check of evaluation.comparison.checks) {
+      await emitProgressEvent(createCheckEvent(jobId, check));
+    }
+    await emitProgressEvent(
+      createStageEvent(jobId, "finalizing_report", "Preparing the final signed report.")
+    );
+
+    auditResult = buildSeoAuditResultFromEvaluation(evaluation);
 
     return auditResult;
   } catch (error) {
+    try {
+      await emitProgressEvent(createWorkerErrorEvent(jobId, error));
+    } catch (emitError) {
+      console.warn(`[seo-audit-worker] failed to emit Kafka error event for ${jobId}:`, emitError);
+    }
     throw toSeoAuditFailure(error);
   } finally {
     try {
@@ -132,6 +176,7 @@ async function main() {
   const connection = await NativeConnection.connect({
     address: TEMPORAL_ADDRESS,
   });
+  await getAuditProgressProducer();
 
   const worker = await Worker.create({
     connection,
@@ -151,5 +196,8 @@ async function main() {
 
 main().catch((error) => {
   console.error("[seo-audit-worker] fatal error", error);
+  disconnectAuditProgressProducer().catch((disconnectError) => {
+    console.error("[seo-audit-worker] failed to disconnect Kafka producer", disconnectError);
+  });
   process.exitCode = 1;
 });
