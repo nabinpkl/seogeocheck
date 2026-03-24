@@ -199,7 +199,7 @@
     "redirectStep": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["url", "statusCode", "location"],
+      "required": ["url"],
       "properties": {
         "url": { "type": "string", "minLength": 1 },
         "statusCode": { "$ref": "#/$defs/nullableInteger" },
@@ -209,7 +209,7 @@
     "redirectChain": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "totalRedirects", "finalUrlChanged", "finalUrl", "chain", "error"],
+      "required": ["status", "totalRedirects", "finalUrlChanged", "chain"],
       "properties": {
         "status": { "type": "string" },
         "totalRedirects": { "type": "integer", "minimum": 0 },
@@ -225,17 +225,7 @@
     "robotsTxt": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "status",
-        "allowsCrawl",
-        "evaluatedUserAgent",
-        "matchedDirective",
-        "matchedPattern",
-        "fetchStatusCode",
-        "url",
-        "finalUrl",
-        "error"
-      ],
+      "required": ["status"],
       "properties": {
         "status": { "type": "string" },
         "allowsCrawl": { "$ref": "#/$defs/nullableBoolean" },
@@ -251,7 +241,7 @@
     "xRobotsTag": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["value", "blocksIndexing"],
+      "required": ["blocksIndexing"],
       "properties": {
         "value": { "$ref": "#/$defs/nullableString" },
         "blocksIndexing": { "type": "boolean" }
@@ -260,7 +250,7 @@
     "linkAnnotation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["href", "rel", "hreflang", "media", "type"],
+      "required": [],
       "properties": {
         "href": { "$ref": "#/$defs/nullableString" },
         "rel": { "$ref": "#/$defs/nullableString" },
@@ -270,19 +260,19 @@
       }
     },
     "canonicalCandidate": {
-      "allOf": [
-        { "$ref": "#/$defs/linkAnnotation" },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["surface", "status", "resolvedUrl"],
-          "properties": {
-            "surface": { "type": "string", "enum": ["html", "http_header"] },
-            "status": { "type": "string" },
-            "resolvedUrl": { "$ref": "#/$defs/nullableString" }
-          }
-        }
-      ]
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "status", "resolvedUrl"],
+      "properties": {
+        "href": { "$ref": "#/$defs/nullableString" },
+        "rel": { "$ref": "#/$defs/nullableString" },
+        "hreflang": { "$ref": "#/$defs/nullableString" },
+        "media": { "$ref": "#/$defs/nullableString" },
+        "type": { "$ref": "#/$defs/nullableString" },
+        "surface": { "type": "string", "enum": ["html", "http_header"] },
+        "status": { "type": "string" },
+        "resolvedUrl": { "$ref": "#/$defs/nullableString" }
+      }
     },
     "canonicalControl": {
       "type": "object",
@@ -295,7 +285,6 @@
         "htmlCount",
         "headerCount",
         "invalidCandidates",
-        "resolvedCanonicalUrl",
         "consistency"
       ],
       "properties": {
@@ -322,7 +311,7 @@
     "canonicalSelfReferenceControl": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "expectsSelfReference", "finalUrl", "resolvedCanonicalUrl"],
+      "required": ["status", "expectsSelfReference"],
       "properties": {
         "status": { "type": "string" },
         "expectsSelfReference": { "type": "boolean" },
@@ -334,16 +323,11 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "inspectedUrl",
         "status",
-        "finalUrl",
-        "statusCode",
-        "contentType",
         "isReachable",
         "isHtmlResponse",
         "metaRobotsTags",
         "googlebotRobotsTags",
-        "xRobotsTag",
         "xRobotsTagHeaders",
         "headerCanonicalLinks",
         "headerAlternateLinks",
@@ -456,15 +440,7 @@
         "translateValues",
         "maxSnippetValues",
         "maxImagePreviewValues",
-        "maxVideoPreviewValues",
-        "indexing",
-        "following",
-        "snippet",
-        "archive",
-        "translate",
-        "maxSnippet",
-        "maxImagePreview",
-        "maxVideoPreview"
+        "maxVideoPreviewValues"
       ],
       "properties": {
         "entries": {
@@ -500,15 +476,6 @@
         "targetedOverrides",
         "unsupportedTokens",
         "malformedTokens",
-        "effectiveIndexing",
-        "effectiveFollowing",
-        "effectiveSnippet",
-        "effectiveArchive",
-        "effectiveTranslate",
-        "effectiveMaxSnippet",
-        "effectiveMaxImagePreview",
-        "effectiveMaxVideoPreview",
-        "effectiveTarget",
         "hasBlockingNoindex",
         "hasNoarchiveDirective",
         "hasNotranslateDirective"
@@ -550,19 +517,19 @@
       }
     },
     "alternateLanguageAnnotation": {
-      "allOf": [
-        { "$ref": "#/$defs/linkAnnotation" },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["surface", "status", "resolvedUrl"],
-          "properties": {
-            "surface": { "type": "string", "enum": ["html", "http_header"] },
-            "status": { "type": "string" },
-            "resolvedUrl": { "$ref": "#/$defs/nullableString" }
-          }
-        }
-      ]
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "status", "resolvedUrl"],
+      "properties": {
+        "href": { "$ref": "#/$defs/nullableString" },
+        "rel": { "$ref": "#/$defs/nullableString" },
+        "hreflang": { "$ref": "#/$defs/nullableString" },
+        "media": { "$ref": "#/$defs/nullableString" },
+        "type": { "$ref": "#/$defs/nullableString" },
+        "surface": { "type": "string", "enum": ["html", "http_header"] },
+        "status": { "type": "string" },
+        "resolvedUrl": { "$ref": "#/$defs/nullableString" }
+      }
     },
     "alternateLanguageConflict": {
       "type": "object",
@@ -602,7 +569,7 @@
     "linkDiscoveryAffectedLink": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["href", "text", "relTokens"],
+      "required": ["relTokens"],
       "properties": {
         "href": { "$ref": "#/$defs/nullableString" },
         "text": { "$ref": "#/$defs/nullableString" },
@@ -662,7 +629,7 @@
     "headingTransition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["fromLevel", "toLevel", "expectedNextLevel", "headingText"],
+      "required": ["fromLevel", "toLevel", "expectedNextLevel"],
       "properties": {
         "fromLevel": { "type": "integer", "minimum": 1, "maximum": 6 },
         "toLevel": { "type": "integer", "minimum": 1, "maximum": 6 },
@@ -693,7 +660,7 @@
     "headingRepeat": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text", "count"],
+      "required": ["count"],
       "properties": {
         "text": { "$ref": "#/$defs/nullableString" },
         "count": { "type": "integer", "minimum": 2 }
@@ -720,7 +687,7 @@
     "missingAltImage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["src", "alt"],
+      "required": [],
       "properties": {
         "src": { "$ref": "#/$defs/nullableString" },
         "alt": { "$ref": "#/$defs/nullableString" }
@@ -753,7 +720,7 @@
     "langControl": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "value", "canonicalValue"],
+      "required": ["status"],
       "properties": {
         "status": { "type": "string" },
         "value": { "$ref": "#/$defs/nullableString" },
@@ -772,7 +739,7 @@
     "openGraphFieldValues": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["title", "description", "type", "url", "image"],
+      "required": [],
       "properties": {
         "title": { "$ref": "#/$defs/nullableString" },
         "description": { "$ref": "#/$defs/nullableString" },
@@ -784,7 +751,7 @@
     "twitterFieldValues": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["card", "title", "description", "image"],
+      "required": [],
       "properties": {
         "card": { "$ref": "#/$defs/nullableString" },
         "title": { "$ref": "#/$defs/nullableString" },
@@ -829,7 +796,7 @@
     "socialUrlField": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["field", "rawValue", "status", "resolvedUrl"],
+      "required": ["field", "rawValue", "status"],
       "properties": {
         "field": { "type": "string" },
         "rawValue": { "type": "string" },
@@ -853,7 +820,6 @@
       "additionalProperties": false,
       "required": [
         "status",
-        "firstH1Text",
         "titleSharedTokenCount",
         "metaDescriptionSharedTokenCount",
         "titleH1Mismatch",
@@ -871,15 +837,7 @@
     "robotsPreviewControl": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "status",
-        "effectiveSnippet",
-        "effectiveMaxSnippet",
-        "effectiveMaxImagePreview",
-        "effectiveMaxVideoPreview",
-        "restrictiveSignals",
-        "conflicts"
-      ],
+      "required": ["status", "restrictiveSignals", "conflicts"],
       "properties": {
         "status": { "type": "string" },
         "effectiveSnippet": { "$ref": "#/$defs/nullableString" },
@@ -893,7 +851,7 @@
     "viewportControl": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "content", "hasDeviceWidth", "hasInitialScale", "disablesZoom"],
+      "required": ["status", "hasDeviceWidth", "hasInitialScale", "disablesZoom"],
       "properties": {
         "status": { "type": "string" },
         "content": { "$ref": "#/$defs/nullableString" },
@@ -905,7 +863,7 @@
     "iconLink": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["href", "rel", "sizes", "type"],
+      "required": [],
       "properties": {
         "href": { "$ref": "#/$defs/nullableString" },
         "rel": { "$ref": "#/$defs/nullableString" },
@@ -1012,15 +970,7 @@
     "canonicalTargetControl": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "status",
-        "targetUrl",
-        "finalUrl",
-        "redirectCount",
-        "reusedCurrentPageInspection",
-        "inspection",
-        "robotsControl"
-      ],
+      "required": ["status", "redirectCount", "reusedCurrentPageInspection"],
       "properties": {
         "status": { "type": "string" },
         "targetUrl": { "$ref": "#/$defs/nullableString" },
@@ -1044,7 +994,7 @@
     "metaRefreshEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rawValue", "status", "delaySeconds", "targetUrl", "resolvedTargetUrl"],
+      "required": ["status", "delaySeconds"],
       "properties": {
         "rawValue": { "$ref": "#/$defs/nullableString" },
         "status": { "type": "string" },
@@ -1154,9 +1104,21 @@
         "blockedBy": { "type": "array", "items": { "type": "string" } },
         "retryable": { "type": "boolean" },
         "length": { "type": "integer", "minimum": 0 },
+        "minLength": { "type": "integer", "minimum": 0 },
+        "maxLength": { "type": "integer", "minimum": 0 },
         "title": { "type": "string" },
+        "content": { "$ref": "#/$defs/nullableString" },
+        "contentType": { "$ref": "#/$defs/nullableString" },
+        "value": { "$ref": "#/$defs/nullableString" },
+        "canonicalValue": { "$ref": "#/$defs/nullableString" },
+        "finalUrl": { "$ref": "#/$defs/nullableString" },
+        "resolvedCanonicalUrl": { "$ref": "#/$defs/nullableString" },
+        "targetUrl": { "$ref": "#/$defs/nullableString" },
+        "status": { "$ref": "#/$defs/nullableString" },
+        "statusCode": { "$ref": "#/$defs/nullableInteger" },
         "wordCount": { "type": "integer", "minimum": 0 },
         "h1Count": { "type": "integer", "minimum": 0 },
+        "headingCount": { "type": "integer", "minimum": 0 },
         "bodyImageCount": { "type": "integer", "minimum": 0 },
         "eligibleBodyImageCount": { "type": "integer", "minimum": 0 },
         "bodyImageMissingAltCount": { "type": "integer", "minimum": 0 },
@@ -1166,7 +1128,26 @@
         "nonCrawlableLinkCount": { "type": "integer", "minimum": 0 },
         "emptyAnchorTextCount": { "type": "integer", "minimum": 0 },
         "genericAnchorTextCount": { "type": "integer", "minimum": 0 },
+        "emptyHeadingCount": { "type": "integer", "minimum": 0 },
+        "repeatedHeadingCount": { "type": "integer", "minimum": 0 },
         "problematicLinkCount": { "type": "integer", "minimum": 0 },
+        "iconCount": { "type": "integer", "minimum": 0 },
+        "tagCount": { "type": "integer", "minimum": 0 },
+        "fieldCount": { "type": "integer", "minimum": 0 },
+        "minimumRecommendedCount": { "type": "integer", "minimum": 0 },
+        "immediateRedirectCount": { "type": "integer", "minimum": 0 },
+        "refreshOnlyCount": { "type": "integer", "minimum": 0 },
+        "timedRedirectCount": { "type": "integer", "minimum": 0 },
+        "malformedCount": { "type": "integer", "minimum": 0 },
+        "redirectCount": { "type": "integer", "minimum": 0 },
+        "metaDescriptionSharedTokenCount": { "type": "integer", "minimum": 0 },
+        "titleSharedTokenCount": { "type": "integer", "minimum": 0 },
+        "totalJsonLdBlocks": { "type": "integer", "minimum": 0 },
+        "validJsonLdBlocks": { "type": "integer", "minimum": 0 },
+        "invalidJsonLdBlocks": { "type": "integer", "minimum": 0 },
+        "emptyJsonLdBlocks": { "type": "integer", "minimum": 0 },
+        "missingContextBlocks": { "type": "integer", "minimum": 0 },
+        "missingTypeBlocks": { "type": "integer", "minimum": 0 },
         "structuredDataKinds": { "type": "array", "items": { "type": "string" } },
         "sourceWordCount": { "type": "integer", "minimum": 0 },
         "renderedWordCount": { "type": "integer", "minimum": 0 },
@@ -1186,8 +1167,27 @@
         "renderedH1Count": { "type": "integer", "minimum": 0 },
         "effectiveIndexing": { "$ref": "#/$defs/nullableString" },
         "effectiveTarget": { "$ref": "#/$defs/nullableString" },
+        "effectiveSnippet": { "$ref": "#/$defs/nullableString" },
         "effectiveArchive": { "$ref": "#/$defs/nullableString" },
         "effectiveTranslate": { "$ref": "#/$defs/nullableString" },
+        "effectiveMaxSnippet": { "$ref": "#/$defs/nullableString" },
+        "effectiveMaxImagePreview": { "$ref": "#/$defs/nullableString" },
+        "effectiveMaxVideoPreview": { "$ref": "#/$defs/nullableString" },
+        "expectsSelfReference": { "type": "boolean" },
+        "hasDeviceWidth": { "type": "boolean" },
+        "hasInitialScale": { "type": "boolean" },
+        "disablesZoom": { "type": "boolean" },
+        "hasMultipleH1": { "type": "boolean" },
+        "hasSkippedLevels": { "type": "boolean" },
+        "firstHeadingNotH1": { "type": "boolean" },
+        "reusedCurrentPageInspection": { "type": "boolean" },
+        "titleH1Mismatch": { "type": "boolean" },
+        "weakMetaDescriptionAlignment": { "type": "boolean" },
+        "firstH1Text": { "$ref": "#/$defs/nullableString" },
+        "missingFields": { "type": "array", "items": { "type": "string" } },
+        "presentFields": { "type": "array", "items": { "type": "string" } },
+        "rels": { "type": "array", "items": { "type": "string" } },
+        "restrictiveSignals": { "type": "array", "items": { "type": "string" } },
         "conflicts": { "type": "array", "items": { "$ref": "#/$defs/robotsSameTargetConflict" } },
         "targetedOverrides": { "type": "array", "items": { "$ref": "#/$defs/robotsTargetedOverride" } },
         "problematicTokens": {
@@ -1201,6 +1201,42 @@
               "token": { "type": "string" }
             }
           }
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/metaRefreshEntry" },
+              { "$ref": "#/$defs/robotsDirectiveEntry" }
+            ]
+          }
+        },
+        "fieldValues": {
+          "oneOf": [
+            { "$ref": "#/$defs/openGraphFieldValues" },
+            { "$ref": "#/$defs/twitterFieldValues" }
+          ]
+        },
+        "duplicateFields": { "type": "array", "items": { "$ref": "#/$defs/socialFieldDuplicate" } },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/socialUrlField" } },
+        "invalidFields": { "type": "array", "items": { "$ref": "#/$defs/socialUrlField" } },
+        "links": { "type": "array", "items": { "$ref": "#/$defs/iconLink" } },
+        "skippedTransitions": { "type": "array", "items": { "$ref": "#/$defs/headingTransition" } },
+        "repeatedHeadings": { "type": "array", "items": { "$ref": "#/$defs/headingRepeat" } },
+        "problematicFields": { "type": "array", "items": { "$ref": "#/$defs/duplicateFieldCount" } },
+        "blocks": { "type": "array", "items": { "$ref": "#/$defs/structuredDataBlock" } },
+        "duplicateHeadCounts": { "$ref": "#/$defs/duplicateHeadCounts" },
+        "inspection": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/urlInspection" }
+          ]
+        },
+        "robotsControl": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/robotsControl" }
+          ]
         },
         "canonicalControl": { "$ref": "#/$defs/canonicalControl" },
         "alternateLanguageControl": { "$ref": "#/$defs/alternateLanguageControl" },

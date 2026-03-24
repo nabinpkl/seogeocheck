@@ -111,6 +111,7 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
   assert.equal(result.rawSummary.robotsControl.status, "clear");
   assert.equal(result.rawSummary.robotsControl.hasNoarchiveDirective, true);
   assert.equal(result.rawSummary.robotsControl.hasNotranslateDirective, true);
+  assert.equal(result.categoryScores.discovery, 0);
   assert.equal(result.rawSummary.sourceHtml.headingHierarchySkipCount, 1);
   assert.equal(result.rawSummary.sourceHtml.bodyImageMissingAltCount, 1);
   assert.equal(result.checks.some((check) => check.id === "document-title-quality"), true);

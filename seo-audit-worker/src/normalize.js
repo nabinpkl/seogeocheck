@@ -1,4 +1,4 @@
-import { ACTIVE_PACKS, SORTED_RULES } from "./rules/index.js";
+import { PACKS, SORTED_RULES } from "./rules/index.js";
 import { deriveFacts } from "./rules/deriveFacts.js";
 import { compareSurfaces } from "./rules/compareSurfaces.js";
 
@@ -169,7 +169,7 @@ function toSourceCheck(rule, sourceFacts) {
 
 function buildCategoryScores(checks) {
   const categoryIds = new Set([
-    ...ACTIVE_PACKS.map((pack) => pack.id),
+    ...PACKS.map((pack) => pack.id),
     ...checks.map((check) => check.category).filter(Boolean),
   ]);
 

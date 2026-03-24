@@ -4,8 +4,7 @@
 - move from key string
 to explicit contract
 
-# improve 11 things need your attention and 18 checks passed
-to blockers and other numbers too.
+# Improve 11 things need your attention and 18 checks passed to blockers and other numbers too.
 
 # BLOG-POST 5
 # How llm generates code that seems to work test passed - but is entirely fake

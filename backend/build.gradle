@@ -64,7 +64,7 @@ jsonSchema2Pojo {
 	targetDirectory = file("${layout.buildDirectory.get().asFile}/generated/sources/jsonschema2pojo/main/java")
 	targetPackage = 'com.nabin.seogeo.audit.contract.generated'
 	annotationStyle = 'jackson2'
-	includeAdditionalProperties = false
+	includeAdditionalProperties = true
 	includeConstructors = false
 	includeSetters = true
 	initializeCollections = false

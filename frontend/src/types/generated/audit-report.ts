@@ -40,16 +40,6 @@ export type ProblemFamily =
   | 'url-reachable';
 export type ReasonCode = 'missing_prerequisite' | 'invalid_prerequisite' | 'upstream_fetch_failed' | 'timeout';
 export type NullableString = string | null;
-export type CanonicalCandidate = LinkAnnotation & {
-  surface: 'html' | 'http_header';
-  status: string;
-  resolvedUrl: NullableString;
-};
-export type AlternateLanguageAnnotation = LinkAnnotation & {
-  surface: 'html' | 'http_header';
-  status: string;
-  resolvedUrl: NullableString;
-};
 export type NullableInteger = number | null;
 export type NullableBoolean = boolean | null;
 
@@ -95,9 +85,21 @@ export interface ReportCheckMetadata {
   blockedBy?: string[];
   retryable?: boolean;
   length?: number;
+  minLength?: number;
+  maxLength?: number;
   title?: string;
+  content?: NullableString;
+  contentType?: NullableString;
+  value?: NullableString;
+  canonicalValue?: NullableString;
+  finalUrl?: NullableString;
+  resolvedCanonicalUrl?: NullableString;
+  targetUrl?: NullableString;
+  status?: NullableString;
+  statusCode?: NullableInteger;
   wordCount?: number;
   h1Count?: number;
+  headingCount?: number;
   bodyImageCount?: number;
   eligibleBodyImageCount?: number;
   bodyImageMissingAltCount?: number;
@@ -107,7 +109,26 @@ export interface ReportCheckMetadata {
   nonCrawlableLinkCount?: number;
   emptyAnchorTextCount?: number;
   genericAnchorTextCount?: number;
+  emptyHeadingCount?: number;
+  repeatedHeadingCount?: number;
   problematicLinkCount?: number;
+  iconCount?: number;
+  tagCount?: number;
+  fieldCount?: number;
+  minimumRecommendedCount?: number;
+  immediateRedirectCount?: number;
+  refreshOnlyCount?: number;
+  timedRedirectCount?: number;
+  malformedCount?: number;
+  redirectCount?: number;
+  metaDescriptionSharedTokenCount?: number;
+  titleSharedTokenCount?: number;
+  totalJsonLdBlocks?: number;
+  validJsonLdBlocks?: number;
+  invalidJsonLdBlocks?: number;
+  emptyJsonLdBlocks?: number;
+  missingContextBlocks?: number;
+  missingTypeBlocks?: number;
   structuredDataKinds?: string[];
   sourceWordCount?: number;
   renderedWordCount?: number;
@@ -127,14 +148,46 @@ export interface ReportCheckMetadata {
   renderedH1Count?: number;
   effectiveIndexing?: NullableString;
   effectiveTarget?: NullableString;
+  effectiveSnippet?: NullableString;
   effectiveArchive?: NullableString;
   effectiveTranslate?: NullableString;
+  effectiveMaxSnippet?: NullableString;
+  effectiveMaxImagePreview?: NullableString;
+  effectiveMaxVideoPreview?: NullableString;
+  expectsSelfReference?: boolean;
+  hasDeviceWidth?: boolean;
+  hasInitialScale?: boolean;
+  disablesZoom?: boolean;
+  hasMultipleH1?: boolean;
+  hasSkippedLevels?: boolean;
+  firstHeadingNotH1?: boolean;
+  reusedCurrentPageInspection?: boolean;
+  titleH1Mismatch?: boolean;
+  weakMetaDescriptionAlignment?: boolean;
+  firstH1Text?: NullableString;
+  missingFields?: string[];
+  presentFields?: string[];
+  rels?: string[];
+  restrictiveSignals?: string[];
   conflicts?: RobotsSameTargetConflict[];
   targetedOverrides?: RobotsTargetedOverride[];
   problematicTokens?: {
     type: string;
     token: string;
   }[];
+  entries?: (MetaRefreshEntry | RobotsDirectiveEntry)[];
+  fieldValues?: OpenGraphFieldValues | TwitterFieldValues;
+  duplicateFields?: SocialFieldDuplicate[];
+  fields?: SocialUrlField[];
+  invalidFields?: SocialUrlField[];
+  links?: IconLink[];
+  skippedTransitions?: HeadingTransition[];
+  repeatedHeadings?: HeadingRepeat[];
+  problematicFields?: DuplicateFieldCount[];
+  blocks?: StructuredDataBlock[];
+  duplicateHeadCounts?: DuplicateHeadCounts;
+  inspection?: null | UrlInspection;
+  robotsControl?: null | RobotsControl;
   canonicalControl?: CanonicalControl;
   alternateLanguageControl?: AlternateLanguageControl;
   linkDiscoveryControl?: LinkDiscoveryControl;
@@ -169,6 +222,183 @@ export interface RobotsTargetedOverride {
   generalValue: string;
   targetedValue: string;
 }
+export interface MetaRefreshEntry {
+  rawValue?: NullableString;
+  status: string;
+  delaySeconds: number | null;
+  targetUrl?: NullableString;
+  resolvedTargetUrl?: NullableString;
+}
+export interface RobotsDirectiveEntry {
+  surface: string;
+  target: string;
+  rawValue: string;
+  directives: string[];
+  indexingValues: string[];
+  followingValues: string[];
+  snippetValues: string[];
+  archiveValues: string[];
+  translateValues: string[];
+  maxSnippetValues: string[];
+  maxImagePreviewValues: string[];
+  maxVideoPreviewValues: string[];
+  unsupportedTokens: string[];
+  malformedTokens: string[];
+}
+export interface OpenGraphFieldValues {
+  title?: NullableString;
+  description?: NullableString;
+  type?: NullableString;
+  url?: NullableString;
+  image?: NullableString;
+}
+export interface TwitterFieldValues {
+  card?: NullableString;
+  title?: NullableString;
+  description?: NullableString;
+  image?: NullableString;
+}
+export interface SocialFieldDuplicate {
+  field: string;
+  count: number;
+}
+export interface SocialUrlField {
+  field: string;
+  rawValue: string;
+  status: string;
+  resolvedUrl?: NullableString;
+}
+export interface IconLink {
+  href?: NullableString;
+  rel?: NullableString;
+  sizes?: NullableString;
+  type?: NullableString;
+}
+export interface HeadingTransition {
+  fromLevel: number;
+  toLevel: number;
+  expectedNextLevel: number;
+  headingText?: NullableString;
+}
+export interface HeadingRepeat {
+  text?: NullableString;
+  count: number;
+}
+export interface DuplicateFieldCount {
+  field: string;
+  count: number;
+}
+export interface StructuredDataBlock {
+  status: string;
+  hasContext: boolean;
+  hasType: boolean;
+}
+export interface DuplicateHeadCounts {
+  title: number;
+  metaDescription: number;
+  viewport: number;
+  openGraphTitle: number;
+  openGraphDescription: number;
+  openGraphType: number;
+  openGraphUrl: number;
+  openGraphImage: number;
+  twitterCard: number;
+  twitterTitle: number;
+  twitterDescription: number;
+  twitterImage: number;
+}
+export interface UrlInspection {
+  inspectedUrl?: NullableString;
+  status: string;
+  finalUrl?: NullableString;
+  statusCode?: NullableInteger;
+  contentType?: NullableString;
+  isReachable: boolean;
+  isHtmlResponse: boolean;
+  metaRobotsTags: string[];
+  googlebotRobotsTags: string[];
+  xRobotsTag?: NullableString;
+  xRobotsTagHeaders: string[];
+  headerCanonicalLinks: LinkAnnotation[];
+  headerAlternateLinks: LinkAnnotation[];
+  redirectChain: RedirectChain;
+  redirectCount: number;
+  robotsTxt: RobotsTxt;
+  reusedCurrentPageInspection: boolean;
+}
+export interface LinkAnnotation {
+  href?: NullableString;
+  rel?: NullableString;
+  hreflang?: NullableString;
+  media?: NullableString;
+  type?: NullableString;
+}
+export interface RedirectChain {
+  status: string;
+  totalRedirects: number;
+  finalUrlChanged: boolean;
+  finalUrl?: NullableString;
+  chain: RedirectStep[];
+  error?: NullableString;
+}
+export interface RedirectStep {
+  url: string;
+  statusCode?: NullableInteger;
+  location?: NullableString;
+}
+export interface RobotsTxt {
+  status: string;
+  allowsCrawl?: NullableBoolean;
+  evaluatedUserAgent?: NullableString;
+  matchedDirective?: NullableString;
+  matchedPattern?: NullableString;
+  fetchStatusCode?: NullableInteger;
+  url?: NullableString;
+  finalUrl?: NullableString;
+  error?: NullableString;
+}
+export interface RobotsControl {
+  status: string;
+  entries: RobotsDirectiveEntry[];
+  targets: {
+    [k: string]: RobotsTargetSummary;
+  };
+  sameTargetConflicts: RobotsSameTargetConflict[];
+  targetedOverrides: RobotsTargetedOverride[];
+  unsupportedTokens: string[];
+  malformedTokens: string[];
+  effectiveIndexing?: NullableString;
+  effectiveFollowing?: NullableString;
+  effectiveSnippet?: NullableString;
+  effectiveArchive?: NullableString;
+  effectiveTranslate?: NullableString;
+  effectiveMaxSnippet?: NullableString;
+  effectiveMaxImagePreview?: NullableString;
+  effectiveMaxVideoPreview?: NullableString;
+  effectiveTarget?: NullableString;
+  hasBlockingNoindex: boolean;
+  hasNoarchiveDirective: boolean;
+  hasNotranslateDirective: boolean;
+}
+export interface RobotsTargetSummary {
+  entries: RobotsDirectiveEntry[];
+  indexingValues: string[];
+  followingValues: string[];
+  snippetValues: string[];
+  archiveValues: string[];
+  translateValues: string[];
+  maxSnippetValues: string[];
+  maxImagePreviewValues: string[];
+  maxVideoPreviewValues: string[];
+  indexing?: NullableString;
+  following?: NullableString;
+  snippet?: NullableString;
+  archive?: NullableString;
+  translate?: NullableString;
+  maxSnippet?: NullableString;
+  maxImagePreview?: NullableString;
+  maxVideoPreview?: NullableString;
+}
 export interface CanonicalControl {
   status: string;
   candidates: CanonicalCandidate[];
@@ -177,15 +407,18 @@ export interface CanonicalControl {
   htmlCount: number;
   headerCount: number;
   invalidCandidates: CanonicalCandidate[];
-  resolvedCanonicalUrl: NullableString;
+  resolvedCanonicalUrl?: NullableString;
   consistency: string;
 }
-export interface LinkAnnotation {
-  href: NullableString;
-  rel: NullableString;
-  hreflang: NullableString;
-  media: NullableString;
-  type: NullableString;
+export interface CanonicalCandidate {
+  href?: NullableString;
+  rel?: NullableString;
+  hreflang?: NullableString;
+  media?: NullableString;
+  type?: NullableString;
+  surface: 'html' | 'http_header';
+  status: string;
+  resolvedUrl: NullableString;
 }
 export interface AlternateLanguageControl {
   status: string;
@@ -196,6 +429,16 @@ export interface AlternateLanguageControl {
   groupedByLanguage: {
     [k: string]: AlternateLanguageAnnotation[];
   };
+}
+export interface AlternateLanguageAnnotation {
+  href?: NullableString;
+  rel?: NullableString;
+  hreflang?: NullableString;
+  media?: NullableString;
+  type?: NullableString;
+  surface: 'html' | 'http_header';
+  status: string;
+  resolvedUrl: NullableString;
 }
 export interface AlternateLanguageConflict {
   hreflang: string;
@@ -209,8 +452,8 @@ export interface LinkDiscoveryControl {
   affectedLinks: LinkDiscoveryAffectedLink[];
 }
 export interface LinkDiscoveryAffectedLink {
-  href: NullableString;
-  text: NullableString;
+  href?: NullableString;
+  text?: NullableString;
   relTokens: string[];
 }
 export interface InternalLinkCoverageControl {
@@ -238,22 +481,12 @@ export interface HeadingControl {
   hasMultipleH1: boolean;
   hasSkippedLevels: boolean;
 }
-export interface HeadingTransition {
-  fromLevel: number;
-  toLevel: number;
-  expectedNextLevel: number;
-  headingText: NullableString;
-}
 export interface HeadingQualityControl {
   status: string;
   emptyHeadingCount: number;
   repeatedHeadingCount: number;
   firstHeadingNotH1: boolean;
   repeatedHeadings: HeadingRepeat[];
-}
-export interface HeadingRepeat {
-  text: NullableString;
-  count: number;
 }
 export interface BodyImageAltControl {
   status: string;
@@ -266,13 +499,13 @@ export interface BodyImageAltControl {
   missingAltImages: MissingAltImage[];
 }
 export interface MissingAltImage {
-  src: NullableString;
-  alt: NullableString;
+  src?: NullableString;
+  alt?: NullableString;
 }
 export interface LangControl {
   status: string;
-  value: NullableString;
-  canonicalValue: NullableString;
+  value?: NullableString;
+  canonicalValue?: NullableString;
 }
 export interface SocialMetadataControl {
   status: string;
@@ -286,17 +519,6 @@ export interface OpenGraphSummary {
   duplicateFields: SocialFieldDuplicate[];
   fieldValues: OpenGraphFieldValues;
 }
-export interface SocialFieldDuplicate {
-  field: string;
-  count: number;
-}
-export interface OpenGraphFieldValues {
-  title: NullableString;
-  description: NullableString;
-  type: NullableString;
-  url: NullableString;
-  image: NullableString;
-}
 export interface TwitterSummary {
   status: string;
   presentFields: string[];
@@ -304,27 +526,15 @@ export interface TwitterSummary {
   duplicateFields: SocialFieldDuplicate[];
   fieldValues: TwitterFieldValues;
 }
-export interface TwitterFieldValues {
-  card: NullableString;
-  title: NullableString;
-  description: NullableString;
-  image: NullableString;
-}
 export interface SocialUrlControl {
   status: string;
   fieldCount: number;
   invalidFields: SocialUrlField[];
   fields: SocialUrlField[];
 }
-export interface SocialUrlField {
-  field: string;
-  rawValue: string;
-  status: string;
-  resolvedUrl: NullableString;
-}
 export interface MetadataAlignmentControl {
   status: string;
-  firstH1Text: NullableString;
+  firstH1Text?: NullableString;
   titleSharedTokenCount: number;
   metaDescriptionSharedTokenCount: number;
   titleH1Mismatch: boolean;
@@ -332,16 +542,16 @@ export interface MetadataAlignmentControl {
 }
 export interface RobotsPreviewControl {
   status: string;
-  effectiveSnippet: NullableString;
-  effectiveMaxSnippet: NullableString;
-  effectiveMaxImagePreview: NullableString;
-  effectiveMaxVideoPreview: NullableString;
+  effectiveSnippet?: NullableString;
+  effectiveMaxSnippet?: NullableString;
+  effectiveMaxImagePreview?: NullableString;
+  effectiveMaxVideoPreview?: NullableString;
   restrictiveSignals: string[];
   conflicts: RobotsSameTargetConflict[];
 }
 export interface ViewportControl {
   status: string;
-  content: NullableString;
+  content?: NullableString;
   hasDeviceWidth: boolean;
   hasInitialScale: boolean;
   disablesZoom: boolean;
@@ -352,34 +562,10 @@ export interface FaviconControl {
   rels: string[];
   links: IconLink[];
 }
-export interface IconLink {
-  href: NullableString;
-  rel: NullableString;
-  sizes: NullableString;
-  type: NullableString;
-}
 export interface HeadHygieneControl {
   status: string;
   duplicateHeadCounts: DuplicateHeadCounts;
   problematicFields: DuplicateFieldCount[];
-}
-export interface DuplicateHeadCounts {
-  title: number;
-  metaDescription: number;
-  viewport: number;
-  openGraphTitle: number;
-  openGraphDescription: number;
-  openGraphType: number;
-  openGraphUrl: number;
-  openGraphImage: number;
-  twitterCard: number;
-  twitterTitle: number;
-  twitterDescription: number;
-  twitterImage: number;
-}
-export interface DuplicateFieldCount {
-  field: string;
-  count: number;
 }
 export interface StructuredDataControl {
   status: string;
@@ -391,120 +577,14 @@ export interface StructuredDataControl {
   missingTypeBlocks: number;
   blocks: StructuredDataBlock[];
 }
-export interface StructuredDataBlock {
-  status: string;
-  hasContext: boolean;
-  hasType: boolean;
-}
 export interface CanonicalTargetControl {
   status: string;
-  targetUrl: NullableString;
-  finalUrl: NullableString;
+  targetUrl?: NullableString;
+  finalUrl?: NullableString;
   redirectCount: number;
   reusedCurrentPageInspection: boolean;
-  inspection: null | UrlInspection;
-  robotsControl: null | RobotsControl;
-}
-export interface UrlInspection {
-  inspectedUrl: NullableString;
-  status: string;
-  finalUrl: NullableString;
-  statusCode: NullableInteger;
-  contentType: NullableString;
-  isReachable: boolean;
-  isHtmlResponse: boolean;
-  metaRobotsTags: string[];
-  googlebotRobotsTags: string[];
-  xRobotsTag: NullableString;
-  xRobotsTagHeaders: string[];
-  headerCanonicalLinks: LinkAnnotation[];
-  headerAlternateLinks: LinkAnnotation[];
-  redirectChain: RedirectChain;
-  redirectCount: number;
-  robotsTxt: RobotsTxt;
-  reusedCurrentPageInspection: boolean;
-}
-export interface RedirectChain {
-  status: string;
-  totalRedirects: number;
-  finalUrlChanged: boolean;
-  finalUrl: NullableString;
-  chain: RedirectStep[];
-  error: NullableString;
-}
-export interface RedirectStep {
-  url: string;
-  statusCode: NullableInteger;
-  location: NullableString;
-}
-export interface RobotsTxt {
-  status: string;
-  allowsCrawl: NullableBoolean;
-  evaluatedUserAgent: NullableString;
-  matchedDirective: NullableString;
-  matchedPattern: NullableString;
-  fetchStatusCode: NullableInteger;
-  url: NullableString;
-  finalUrl: NullableString;
-  error: NullableString;
-}
-export interface RobotsControl {
-  status: string;
-  entries: RobotsDirectiveEntry[];
-  targets: {
-    [k: string]: RobotsTargetSummary;
-  };
-  sameTargetConflicts: RobotsSameTargetConflict[];
-  targetedOverrides: RobotsTargetedOverride[];
-  unsupportedTokens: string[];
-  malformedTokens: string[];
-  effectiveIndexing: NullableString;
-  effectiveFollowing: NullableString;
-  effectiveSnippet: NullableString;
-  effectiveArchive: NullableString;
-  effectiveTranslate: NullableString;
-  effectiveMaxSnippet: NullableString;
-  effectiveMaxImagePreview: NullableString;
-  effectiveMaxVideoPreview: NullableString;
-  effectiveTarget: NullableString;
-  hasBlockingNoindex: boolean;
-  hasNoarchiveDirective: boolean;
-  hasNotranslateDirective: boolean;
-}
-export interface RobotsDirectiveEntry {
-  surface: string;
-  target: string;
-  rawValue: string;
-  directives: string[];
-  indexingValues: string[];
-  followingValues: string[];
-  snippetValues: string[];
-  archiveValues: string[];
-  translateValues: string[];
-  maxSnippetValues: string[];
-  maxImagePreviewValues: string[];
-  maxVideoPreviewValues: string[];
-  unsupportedTokens: string[];
-  malformedTokens: string[];
-}
-export interface RobotsTargetSummary {
-  entries: RobotsDirectiveEntry[];
-  indexingValues: string[];
-  followingValues: string[];
-  snippetValues: string[];
-  archiveValues: string[];
-  translateValues: string[];
-  maxSnippetValues: string[];
-  maxImagePreviewValues: string[];
-  maxVideoPreviewValues: string[];
-  indexing: NullableString;
-  following: NullableString;
-  snippet: NullableString;
-  archive: NullableString;
-  translate: NullableString;
-  maxSnippet: NullableString;
-  maxImagePreview: NullableString;
-  maxVideoPreview: NullableString;
+  inspection?: null | UrlInspection;
+  robotsControl?: null | RobotsControl;
 }
 export interface MetaRefreshControl {
   status: string;
@@ -514,13 +594,6 @@ export interface MetaRefreshControl {
   malformedCount: number;
   refreshOnlyCount: number;
   entries: MetaRefreshEntry[];
-}
-export interface MetaRefreshEntry {
-  rawValue: NullableString;
-  status: string;
-  delaySeconds: number | null;
-  targetUrl: NullableString;
-  resolvedTargetUrl: NullableString;
 }
 export interface CategoryScores {
   reachability: number;
@@ -588,14 +661,14 @@ export interface SurfaceSummary {
   structuredDataKinds: string[];
 }
 export interface XRobotsTag {
-  value: NullableString;
+  value?: NullableString;
   blocksIndexing: boolean;
 }
 export interface CanonicalSelfReferenceControl {
   status: string;
   expectsSelfReference: boolean;
-  finalUrl: NullableString;
-  resolvedCanonicalUrl: NullableString;
+  finalUrl?: NullableString;
+  resolvedCanonicalUrl?: NullableString;
 }
 export interface IndexabilityVerdict {
   verdict: IndexabilityVerdictLabel;

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.io.InputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -153,6 +154,40 @@ class AuditReportSignerTests {
         assertThatThrownBy(() -> validator.validateReportPayload(payload))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid audit report");
+    }
+
+    @Test
+    void signerAcceptsCurrentWorkerFixtureWithExpandedMetadata() throws Exception {
+        AuditProperties auditProperties = new AuditProperties();
+        auditProperties.setReportSigningSecret("test-signing-secret");
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        AuditReportSigner signer = new AuditReportSigner(
+                auditProperties,
+                objectMapper,
+                new AuditContractSchemaValidator(objectMapper)
+        );
+
+        try (InputStream fixtureStream = getClass().getResourceAsStream("/fixtures/linkedin-worker-result.json")) {
+            assertThat(fixtureStream).isNotNull();
+            SeoAuditResult result = objectMapper.readValue(fixtureStream, SeoAuditResult.class);
+            var roundTrippedResult = objectMapper.valueToTree(result);
+
+            assertThat(roundTrippedResult.at("/checks/21/metadata/canonicalControl/candidates/0/surface").asText())
+                    .isEqualTo("html");
+            assertThat(roundTrippedResult.at("/checks/28/metadata/alternateLanguageControl/annotations/0/hreflang").asText())
+                    .isEqualTo("de");
+            assertThat(roundTrippedResult.at("/rawSummary/alternateLanguageControl/groupedByLanguage/en/0/href").asText())
+                    .isEqualTo("https://www.linkedin.com/");
+            assertThat(roundTrippedResult.at("/rawSummary/robotsControl/targets/all/archive").asText())
+                    .isEqualTo("noarchive");
+
+            var report = signer.buildReport("audit_fixture", "https://example.com", result);
+            AuditReportSchema payload = objectMapper.readValue(report.reportJson(), AuditReportSchema.class);
+
+            assertThat(payload.getChecks()).isNotEmpty();
+            assertThat(payload.getRawSummary()).isNotNull();
+            assertThat(payload.getSignature().getValue()).isNotBlank();
+        }
     }
 
     private static CategoryScores categoryScores(
