@@ -19,7 +19,9 @@ import {
   buildCategoryScoreModels,
   formatConnectionLabel,
   isIssueCheck,
+  isNotApplicableCheck,
   isPassedCheck,
+  isSystemErrorCheck,
 } from "./view-models";
 import type { AuditSectionViewProps } from "./AuditSection.types";
 
@@ -169,6 +171,12 @@ export function useAuditSectionController(): AuditSectionViewProps {
   const reportChecks = Array.isArray(report?.checks) ? report.checks : [];
   const reportFindings = reportChecks.filter((check) => isIssueCheck(check.status));
   const reportPassedChecks = reportChecks.filter((check) => isPassedCheck(check.status));
+  const reportNotApplicableChecks = reportChecks.filter((check) =>
+    isNotApplicableCheck(check.status)
+  );
+  const reportSystemErrorChecks = reportChecks.filter((check) =>
+    isSystemErrorCheck(check.status)
+  );
   const liveChecks = events.filter((event) => event.type === "check");
   const liveFindings = liveChecks.filter((event) => isIssueCheck(event.checkStatus));
   const livePassedChecks = liveChecks.filter((event) =>
@@ -184,6 +192,14 @@ export function useAuditSectionController(): AuditSectionViewProps {
     typeof report?.summary?.passedCheckCount === "number"
       ? report.summary.passedCheckCount
       : reportPassedChecks.length;
+  const notApplicableCount =
+    typeof report?.summary?.notApplicableCount === "number"
+      ? report.summary.notApplicableCount
+      : reportNotApplicableChecks.length;
+  const systemErrorCount =
+    typeof report?.summary?.systemErrorCount === "number"
+      ? report.summary.systemErrorCount
+      : reportSystemErrorChecks.length;
   const hasAuditFailed = status === "FAILED";
   const isAuditSettled = Boolean(report) || status === "FAILED";
   const isAuditActive = Boolean(jobId) && !isAuditSettled;
@@ -400,10 +416,12 @@ export function useAuditSectionController(): AuditSectionViewProps {
       operationState: currentOperationState,
     },
     results: report
-      ? {
+        ? {
           reportScore,
           issueCount,
           passedCheckCount,
+          notApplicableCount,
+          systemErrorCount,
           categoryScores,
           topRecommendationHeroRow: topRecommendationHero,
           topRecommendationRows: topRecommendationRowsRest,

@@ -4,7 +4,7 @@
 - move from key string
 to explicit contract
 
-# Improve 11 things need your attention and 18 checks passed to blockers and other numbers too.
+# Improve 11 things need your attention and 18 checks passed to include other numbers such as not applicable or how many were skipped find better user wording or better desgin for mission control dashboard
 
 # BLOG-POST 5
 # How llm generates code that seems to work test passed - but is entirely fake

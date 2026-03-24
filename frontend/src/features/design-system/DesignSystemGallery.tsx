@@ -464,6 +464,8 @@ export function DesignSystemGallery() {
             reportScore={61}
             issueCount={4}
             passedCheckCount={11}
+            notApplicableCount={3}
+            systemErrorCount={1}
             onScrollToIssues={() => undefined}
             onScrollToFamilies={() => undefined}
           />

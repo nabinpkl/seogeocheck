@@ -12,6 +12,8 @@ export function AuditResultsSection({
   reportScore,
   issueCount,
   passedCheckCount,
+  notApplicableCount,
+  systemErrorCount,
   categoryScores,
   topRecommendationHeroRow,
   topRecommendationRows,
@@ -27,6 +29,8 @@ export function AuditResultsSection({
         reportScore={reportScore}
         issueCount={issueCount}
         passedCheckCount={passedCheckCount}
+        notApplicableCount={notApplicableCount}
+        systemErrorCount={systemErrorCount}
         onScrollToIssues={onScrollToIssues}
         onScrollToFamilies={onScrollToFamilies}
       />

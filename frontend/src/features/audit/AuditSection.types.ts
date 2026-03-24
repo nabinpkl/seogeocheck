@@ -18,6 +18,8 @@ export type AuditResultsSectionProps = {
   reportScore: number;
   issueCount: number;
   passedCheckCount: number;
+  notApplicableCount: number;
+  systemErrorCount: number;
   categoryScores: AuditCategoryScoreModel[];
   topRecommendationHeroRow: AuditCheckRowModel | null;
   topRecommendationRows: AuditCheckRowModel[];
