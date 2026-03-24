@@ -64,6 +64,10 @@ In modern languages, this is called a **Discriminated Union** (or sealed classes
 
 ---
 
+# Escape Route 3 : AJV, Json schema, And schema validation
+
+
+
 ### So, which poison do you pick?
 
 Don't let anyone tell you that "Polymorphism is always better." That's textbook nonsense. Choose the tool for the job.
@@ -80,58 +84,3 @@ Don't let anyone tell you that "Polymorphism is always better." That's textbook 
 
 When you kill the `metadata` junk drawer, you are trading "easy" for "predictable." The God Object gives you a predictable structure. Variants give you a predictable reality. 
 
-# Modeling with java
-```java
-
-
-{
-  type:"paypal",
-  "email"
-}
-or
-{
-  type:"card"
-  "cardnumber"
-}
-
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
-// 1. The Bouncer Rules
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME, 
-    include = JsonTypeInfo.As.PROPERTY, 
-    property = "type"  // This is the ID/Discriminator field in your JSON
-)
-// 2. The Guest List
-@JsonSubTypes({
-    @JsonSubTypes.Type(value = PayPalPayment.class, name = "paypal"),
-    @JsonSubTypes.Type(value = CardPayment.class, name = "card")
-})
-// 3. The Sealed Contract
-public sealed interface Payment permits PayPalPayment, CardPayment {
-    String id(); // The common root identity
-}
-
-// 4. The Strict Variants (Using Records for immutability)
-public record PayPalPayment(
-    String id, 
-    String email
-) implements Payment {}
-
-public record CardPayment(
-    String id, 
-    String lastFour, 
-    String expirationDate
-) implements Payment {}
-
-```
-```java
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-ObjectMapper mapper = new ObjectMapper()
-    // THIS is the magic switch that rejects impossible states
-    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
-
-    ```

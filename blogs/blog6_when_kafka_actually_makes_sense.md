@@ -1,5 +1,7 @@
 # An Event Happened. Cool. Why Are You Reaching For Kafka?
 
+How to emit logs to the client/user where workers does the heavy task we only need a architecture to emit light notifications type events to the user / progress event.
+
 There is a very modern architectural reflex that goes like this:
 
 - I have events
