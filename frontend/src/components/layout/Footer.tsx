@@ -3,8 +3,8 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { PageShell } from "@/components/ui/PageShell";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { PageShell } from "@/components/ui/page-shell";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { UNDER_CONSTRUCTION_PATH } from "@/lib/routes";
 
 export function Footer() {

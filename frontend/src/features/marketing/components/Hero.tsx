@@ -9,7 +9,7 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { PageShell } from "@/components/ui/PageShell";
+import { PageShell } from "@/components/ui/page-shell";
 import { AuditSection } from "@/features/audit/AuditSection";
 
 export function Hero() {

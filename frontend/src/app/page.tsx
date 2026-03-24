@@ -3,9 +3,9 @@
 import * as React from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Hero } from "@/features/marketing/Hero";
-import { Features } from "@/features/marketing/Features";
-import { CTABanner } from "@/features/marketing/CTABanner";
+import { Hero } from "@/features/marketing/components/Hero";
+import { Features } from "@/features/marketing/components/Features";
+import { CTABanner } from "@/features/marketing/components/CTABanner";
 
 export default function Page() {
   return (

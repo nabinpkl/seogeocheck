@@ -8,8 +8,8 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { PageShell } from "@/components/ui/PageShell";
-import { SectionHeading } from "@/components/ui/SectionHeading";
+import { PageShell } from "@/components/ui/page-shell";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 export function Features() {
   return (

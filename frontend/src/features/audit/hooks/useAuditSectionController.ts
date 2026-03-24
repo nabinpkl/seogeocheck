@@ -22,8 +22,8 @@ import {
   isNotApplicableCheck,
   isPassedCheck,
   isSystemErrorCheck,
-} from "./view-models";
-import type { AuditSectionViewProps } from "./AuditSection.types";
+} from "../lib/view-models";
+import type { AuditSectionViewProps } from "../types/section";
 
 async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
   const response = await fetch(reportUrl, {

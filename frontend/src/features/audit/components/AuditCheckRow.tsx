@@ -2,7 +2,7 @@ import * as React from "react";
 import { ChevronRight, CheckCircle2, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EvidenceTag, SeverityBadge } from "./primitives";
-import type { AuditCheckRowModel } from "./models";
+import type { AuditCheckRowModel } from "../types/models";
 
 const rowToneClasses = {
   issue: {

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StatusPill, SurfaceCard } from "./primitives";
-import type { AuditHeaderModel } from "./models";
+import type { AuditHeaderModel } from "../types/models";
 
 type AuditStatusHeaderProps = {
   model: AuditHeaderModel;
@@ -11,6 +11,8 @@ export function AuditStatusHeader({
   model,
   actions,
 }: AuditStatusHeaderProps) {
+  const TitleIcon = model.titleIcon;
+
   return (
     <SurfaceCard>
       <div className="flex flex-wrap items-center gap-3">
@@ -38,7 +40,7 @@ export function AuditStatusHeader({
       </div>
 
       <div className="mt-6 flex items-center gap-3 text-slate-900">
-        {model.titleIcon}
+        <TitleIcon className={model.titleIconClassName} />
         <p
           className={
             model.titleTone === "critical"

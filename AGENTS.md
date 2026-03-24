@@ -105,7 +105,9 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 ### Frontend Design System Rules
 - `frontend/src/components/ui` is the source-owned primitive layer. Keep it generic and product-agnostic.
 - `frontend/src/features/*` owns domain-specific TSX, controllers, and view-model shaping. Use `frontend/src/features/audit` for audit UI and `frontend/src/features/marketing` for homepage marketing sections.
+- Feature folder convention: use concern folders when a feature grows, with `components/` for feature UI and optional `hooks/`, `lib/`, and `types/` only when that feature needs them. Do not create empty placeholder folders just for symmetry.
 - `frontend/src/components/layout` owns only global site chrome such as the navbar and footer.
+- Frontend filename convention: keep route files and `components/ui/*` module paths lowercase, while feature and layout React component files stay PascalCase. Hooks and utility modules should remain lowercase.
 - For new or intentionally rewritten screens, do **not** introduce fresh ad hoc button, input, textarea, badge, card, separator, skeleton, progress, dialog, sheet, tab, tooltip, or accordion patterns when an existing `components/ui` primitive or composition fits.
 - When actively refactoring an existing screen, migrate matching ad hoc controls and shells onto `components/ui` primitives or shared compositions instead of preserving raw one-off markup.
 - Use the hidden dev-only gallery route at `/internal/design-system` during local development for visual QA of `components/ui` primitives and feature-owned compositions.

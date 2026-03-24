@@ -4,8 +4,8 @@ import { ArrowLeft, Construction } from "lucide-react";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { PageShell } from "@/components/ui/PageShell";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageShell } from "@/components/ui/page-shell";
 
 export const metadata: Metadata = {
   title: "Oops, Under Construction | SEOGEO",

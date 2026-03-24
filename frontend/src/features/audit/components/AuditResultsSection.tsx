@@ -6,7 +6,7 @@ import { AuditChecksSection } from "./AuditChecksSection";
 import { AuditFamilyChecklistSection } from "./AuditFamilyChecklistSection";
 import { AuditResultActions } from "./AuditResultActions";
 import { AuditScoreHero } from "./AuditScoreHero";
-import type { AuditResultsSectionProps } from "./AuditSection.types";
+import type { AuditResultsSectionProps } from "../types/section";
 
 export function AuditResultsSection({
   reportScore,

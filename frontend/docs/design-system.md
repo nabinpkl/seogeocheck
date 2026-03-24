@@ -8,7 +8,9 @@
 ## Layering Contract
 - `ui/*`: shadcn-based primitives with stable variant props and no SEOGEO-specific copy, iconography, or layout assumptions.
 - `features/*`: domain-owned TSX, controllers, and feature-specific view-model shaping.
+- Feature structure: use `components/` for feature-owned UI, and add `hooks/`, `lib/`, or `types/` only when the feature actually has those concerns. Small features do not need empty sibling folders.
 - `layout/*`: global chrome only.
+- File naming: keep `ui/*` module paths lowercase, keep feature and layout React component files PascalCase, and keep hooks or utility modules lowercase.
 - Existing screens under active refactor must migrate matching ad hoc controls and shells to `ui/*` instead of preserving raw one-off primitives.
 
 ## Tokens

@@ -51,18 +51,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { EmptyState, EmptyStateAction } from "@/components/ui/EmptyState";
-import { MetricCard } from "@/components/ui/MetricCard";
-import { PageShell } from "@/components/ui/PageShell";
-import { SectionHeading } from "@/components/ui/SectionHeading";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { AuditCallout } from "@/features/audit/AuditCallout";
-import { AuditCategoryScoreGrid } from "@/features/audit/AuditCategoryScoreGrid";
-import { AuditCheckRow } from "@/features/audit/AuditCheckRow";
-import { AuditProgressSidebar } from "@/features/audit/AuditProgressSidebar";
-import { AuditResultActions } from "@/features/audit/AuditResultActions";
-import { AuditScoreHero } from "@/features/audit/AuditScoreHero";
-import { AuditStatusHeader } from "@/features/audit/AuditStatusHeader";
+import { EmptyState, EmptyStateAction } from "@/components/ui/empty-state";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageShell } from "@/components/ui/page-shell";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { AuditCallout } from "@/features/audit/components/AuditCallout";
+import { AuditCategoryScoreGrid } from "@/features/audit/components/AuditCategoryScoreGrid";
+import { AuditCheckRow } from "@/features/audit/components/AuditCheckRow";
+import { AuditProgressSidebar } from "@/features/audit/components/AuditProgressSidebar";
+import { AuditResultActions } from "@/features/audit/components/AuditResultActions";
+import { AuditScoreHero } from "@/features/audit/components/AuditScoreHero";
+import { AuditStatusHeader } from "@/features/audit/components/AuditStatusHeader";
 import {
   Activity,
   AlertTriangle,
@@ -80,7 +80,8 @@ export function DesignSystemGallery() {
     targetUrlHref: "https://seogeocheck.com",
     title: "Visibility Analysis & Search Intelligence Report",
     titleTone: "default" as const,
-    titleIcon: <ShieldCheck className="h-5 w-5 text-primary" />,
+    titleIcon: ShieldCheck,
+    titleIconClassName: "h-5 w-5 text-primary",
     errorMessage: null,
   };
 

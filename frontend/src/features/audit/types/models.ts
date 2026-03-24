@@ -1,4 +1,4 @@
-import * as React from "react";
+import type { LucideIcon } from "lucide-react";
 
 export type AuditTone =
   | "neutral"
@@ -72,6 +72,7 @@ export type AuditHeaderModel = {
   targetUrlHref: string | null;
   title: string;
   titleTone: "default" | "success" | "critical";
-  titleIcon: React.ReactNode;
+  titleIcon: LucideIcon;
+  titleIconClassName: string;
   errorMessage: string | null;
 };

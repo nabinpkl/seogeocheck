@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PageShell } from "@/components/ui/PageShell";
+import { PageShell } from "@/components/ui/page-shell";
 import { UNDER_CONSTRUCTION_PATH } from "@/lib/routes";
 
 export function CTABanner() {

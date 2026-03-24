@@ -62,73 +62,25 @@ function buildOutcomeHeadline(args: {
   const { issueCount, passedCheckCount, systemErrorCount, totalCheckCount } = args;
 
   if (totalCheckCount === 0) {
-    return "No tracked checks were returned in this report.";
+    return "No checks were returned for this page.";
   }
 
   if (issueCount > 0) {
-    return `${issueCount} ${pluralize(issueCount, "check")} need action before this page is fully dialed in.`;
+    return "Fix a few signals to get this page fully dialed in.";
   }
 
   if (systemErrorCount > 0) {
-    return `No issues were flagged, but ${systemErrorCount} ${pluralize(systemErrorCount, "check")} still need review.`;
+    return "No issues flagged — a few checks still need a second look.";
   }
 
   if (passedCheckCount > 0) {
-    return `Core signals look healthy across this audit.`;
+    return "Looking clean. Core signals are healthy.";
   }
 
-  return "This audit finished without any flagged issues.";
+  return "Audit complete — no issues found.";
 }
 
-function buildOutcomeSummary(args: {
-  issueCount: number;
-  passedCheckCount: number;
-  notApplicableCount: number;
-  systemErrorCount: number;
-  totalCheckCount: number;
-}) {
-  const {
-    issueCount,
-    passedCheckCount,
-    notApplicableCount,
-    systemErrorCount,
-    totalCheckCount,
-  } = args;
-
-  if (totalCheckCount === 0) {
-    return "Run the audit again to refresh the technical breakdown for this page.";
-  }
-
-  const parts: string[] = [];
-
-  if (passedCheckCount > 0) {
-    parts.push(`${passedCheckCount} ${pluralize(passedCheckCount, "check")} passed`);
-  }
-
-  if (notApplicableCount > 0) {
-    parts.push(
-      `${notApplicableCount} ${pluralize(notApplicableCount, "check")} ${notApplicableCount === 1 ? "was" : "were"} not relevant for this page`
-    );
-  }
-
-  if (systemErrorCount > 0) {
-    parts.push(
-      `${systemErrorCount} ${pluralize(systemErrorCount, "check")} still need manual review`
-    );
-  }
-
-  if (parts.length === 0) {
-    return issueCount > 0
-      ? `This run reviewed ${totalCheckCount} tracked checks, and every reviewed check surfaced a fix to work through.`
-      : `This run reviewed ${totalCheckCount} tracked checks with no additional detail to summarize.`;
-  }
-
-  if (issueCount === 0) {
-    return `This run reviewed ${totalCheckCount} tracked checks. ${parts.join(", ")}.`;
-  }
-
-  return `This run reviewed ${totalCheckCount} tracked checks. Alongside the flagged items, ${parts.join(", ")}.`;
-}
+/* Summary removed — the stat cards carry the full breakdown implicitly. */
 
 export function AuditScoreHero({
   reportScore,
@@ -146,13 +98,6 @@ export function AuditScoreHero({
   const headline = buildOutcomeHeadline({
     issueCount,
     passedCheckCount,
-    systemErrorCount,
-    totalCheckCount,
-  });
-  const summary = buildOutcomeSummary({
-    issueCount,
-    passedCheckCount,
-    notApplicableCount,
     systemErrorCount,
     totalCheckCount,
   });
@@ -197,6 +142,15 @@ export function AuditScoreHero({
       tone: "warning" as const,
     },
   ];
+  const visibleBreakdownCards = breakdownCards.filter((card) => card.count > 0);
+  const breakdownGridClassName =
+    visibleBreakdownCards.length >= 4
+      ? "grid-cols-1 md:grid-cols-2"
+      : visibleBreakdownCards.length === 3
+        ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+        : visibleBreakdownCards.length === 2
+          ? "grid-cols-1 md:grid-cols-2"
+          : "grid-cols-1";
 
   const strokeClassName =
     tone === "success"
@@ -273,19 +227,16 @@ export function AuditScoreHero({
         <div className="space-y-6">
           <div className="space-y-3">
             <SectionEyebrow className="text-slate-500">
-              Mission Control Snapshot
+              Audit Snapshot
             </SectionEyebrow>
             <h3 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
               {headline}
             </h3>
-            <p className="max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-              {summary}
-            </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {breakdownCards.map((card) => (
-              card.count > 0 && (
+          {visibleBreakdownCards.length > 0 ? (
+            <div className={cn("grid gap-3", breakdownGridClassName)}>
+              {visibleBreakdownCards.map((card) => (
               <div
                 key={card.label}
                 className={cn(
@@ -314,41 +265,50 @@ export function AuditScoreHero({
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{card.helper}</p>
               </div>
-            )))}
-          </div>
-
-          <div className="flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-white/85 p-5 shadow-sm shadow-slate-200/40 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
-                Audit Coverage
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Use the flagged checks for quick wins, then review the full checklist for
-                everything that passed, was not relevant, or still needs review.
-              </p>
+              ))}
             </div>
+          ) : null}
 
-            <div className="flex flex-wrap gap-3">
-              <Button
-                type="button"
-                size="lg"
-                className="min-w-[200px]"
-                onClick={primaryAction}
-              >
-                {primaryActionLabel}
-                <ArrowRight className="size-4" />
-              </Button>
-              {issueCount > 0 ? (
+          <div className="rounded-[1.75rem] border border-slate-200/80 bg-white/90 p-4 shadow-sm shadow-slate-200/40 sm:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                  {issueCount > 0 ? "Next Step" : "Review"}
+                </p>
+                <p className="max-w-2xl text-sm leading-6 text-slate-600">
+                  {issueCount > 0
+                    ? "Start with the flagged items, then explore the full checklist."
+                    : "Explore the full checklist for details."}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3 lg:justify-end">
                 <Button
                   type="button"
-                  variant="outline"
                   size="lg"
-                  className="min-w-[180px] bg-white/80"
-                  onClick={onScrollToFamilies}
+                  className={cn(
+                    "h-11 rounded-2xl border px-5",
+                    issueCount > 0
+                      ? "border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                      : "border-primary/15 bg-primary/5 text-primary hover:bg-primary/10"
+                  )}
+                  onClick={primaryAction}
                 >
-                  Open full checklist
+                  {primaryActionLabel}
+                  <ArrowRight className="size-4" />
                 </Button>
-              ) : null}
+                {issueCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="h-11 rounded-2xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    onClick={onScrollToFamilies}
+                  >
+                    Open full checklist
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

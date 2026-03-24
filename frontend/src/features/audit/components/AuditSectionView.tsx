@@ -8,7 +8,7 @@ import { AuditProgressSidebar } from "./AuditProgressSidebar";
 import { AuditResultActions } from "./AuditResultActions";
 import { AuditStatusHeader } from "./AuditStatusHeader";
 import { AuditResultsSection } from "./AuditResultsSection";
-import type { AuditSectionViewProps } from "./AuditSection.types";
+import type { AuditSectionViewProps } from "../types/section";
 
 export function AuditSectionView({
   inputRef,

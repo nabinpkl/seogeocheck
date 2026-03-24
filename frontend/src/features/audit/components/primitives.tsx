@@ -1,7 +1,7 @@
 import * as React from "react";
 import { LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AuditTone } from "./models";
+import type { AuditTone } from "../types/models";
 
 const toneClasses: Record<AuditTone, string> = {
   neutral: "border-slate-200 bg-slate-50 text-slate-600",

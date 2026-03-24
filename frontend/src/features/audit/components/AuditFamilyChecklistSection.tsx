@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { AuditFamilyChecklistGroupModel } from "./models";
+import type { AuditFamilyChecklistGroupModel } from "../types/models";
 import { AuditCheckRow } from "./AuditCheckRow";
 import { EmptyPanelState, MetaLabel, SurfaceCard } from "./primitives";
 

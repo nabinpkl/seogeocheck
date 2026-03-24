@@ -13,7 +13,7 @@ import type {
   AuditMessageSection,
   AuditStreamRowModel,
   AuditTone,
-} from "./models";
+} from "../types/models";
 
 const CATEGORY_LABELS: Record<string, string> = {
   reachability: "Reachability",
@@ -621,7 +621,8 @@ export function buildAuditHeaderModel(args: {
       targetUrlHref: effectiveTargetUrl || null,
       title: "Technical Audit Interrupted",
       titleTone: "critical",
-      titleIcon: <AlertCircle className="h-5 w-5 text-rose-500" />,
+      titleIcon: AlertCircle,
+      titleIconClassName: "h-5 w-5 text-rose-500",
       errorMessage: userFacingError,
     };
   }
@@ -634,7 +635,8 @@ export function buildAuditHeaderModel(args: {
       targetUrlHref: effectiveTargetUrl || null,
       title: "Finalizing Intelligence Data",
       titleTone: "default",
-      titleIcon: <ShieldCheck className="h-5 w-5 text-primary" />,
+      titleIcon: ShieldCheck,
+      titleIconClassName: "h-5 w-5 text-primary",
       errorMessage: userFacingError,
     };
   }
@@ -647,7 +649,8 @@ export function buildAuditHeaderModel(args: {
       targetUrlHref: effectiveTargetUrl || null,
       title: "Visibility Analysis & Search Intelligence Report",
       titleTone: "default",
-      titleIcon: <FileText className="h-5 w-5 text-primary" />,
+      titleIcon: FileText,
+      titleIconClassName: "h-5 w-5 text-primary",
       errorMessage: userFacingError,
     };
   }
@@ -659,7 +662,8 @@ export function buildAuditHeaderModel(args: {
     targetUrlHref: effectiveTargetUrl || null,
     title: "Reviewing Technical Search Signals",
     titleTone: "default",
-    titleIcon: <Radar className="h-5 w-5 text-primary" />,
+    titleIcon: Radar,
+    titleIconClassName: "h-5 w-5 text-primary",
     errorMessage: userFacingError,
   };
 }

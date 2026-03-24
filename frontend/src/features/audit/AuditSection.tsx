@@ -1,7 +1,7 @@
 "use client";
 
-import { AuditSectionView } from "./AuditSectionView";
-import { useAuditSectionController } from "./useAuditSectionController";
+import { AuditSectionView } from "./components/AuditSectionView";
+import { useAuditSectionController } from "./hooks/useAuditSectionController";
 
 export function AuditSection() {
   const viewProps = useAuditSectionController();

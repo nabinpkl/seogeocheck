@@ -1,7 +1,7 @@
 import * as React from "react";
 import { AuditCheckRow } from "./AuditCheckRow";
 import { EmptyPanelState, MetaLabel, SurfaceCard } from "./primitives";
-import type { AuditCheckRowModel } from "./models";
+import type { AuditCheckRowModel } from "../types/models";
 
 type AuditChecksSectionProps = {
   id: string;
