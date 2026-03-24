@@ -1,8 +1,8 @@
 import * as React from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { SectionEyebrow, StatusPill, SurfaceCard } from "./primitives";
+import { SurfaceCard } from "./primitives";
 
 type AuditScoreHeroProps = {
   reportScore: number;
@@ -14,42 +14,25 @@ type AuditScoreHeroProps = {
   onScrollToFamilies: () => void;
 };
 
-const breakdownToneClasses = {
-  critical: {
-    card: "border-rose-200 bg-rose-50/70",
-    number: "text-rose-600",
-    dot: "bg-rose-500",
-  },
-  success: {
-    card: "border-emerald-200 bg-emerald-50/70",
-    number: "text-emerald-600",
-    dot: "bg-emerald-500",
-  },
-  neutral: {
-    card: "border-slate-200 bg-slate-50/80",
-    number: "text-slate-700",
-    dot: "bg-slate-400",
-  },
-  warning: {
-    card: "border-amber-200 bg-amber-50/80",
-    number: "text-amber-600",
-    dot: "bg-amber-500",
-  },
+/* ── tone helpers ───────────────────────────────────────── */
+
+const dotColors = {
+  critical: "bg-rose-500",
+  success: "bg-emerald-500",
+  neutral: "bg-slate-300",
+  warning: "bg-amber-500",
 } as const;
 
-function pluralize(count: number, singular: string, plural = `${singular}s`) {
-  return count === 1 ? singular : plural;
-}
+const numberColors = {
+  critical: "text-rose-600",
+  success: "text-emerald-600",
+  neutral: "text-slate-500",
+  warning: "text-amber-600",
+} as const;
 
 function formatScoreLabel(tone: "success" | "info" | "critical") {
-  if (tone === "success") {
-    return "Strong Footing";
-  }
-
-  if (tone === "info") {
-    return "Room To Grow";
-  }
-
+  if (tone === "success") return "Strong Footing";
+  if (tone === "info") return "Room to Grow";
   return "Needs Attention";
 }
 
@@ -61,26 +44,14 @@ function buildOutcomeHeadline(args: {
 }) {
   const { issueCount, passedCheckCount, systemErrorCount, totalCheckCount } = args;
 
-  if (totalCheckCount === 0) {
-    return "No checks were returned for this page.";
-  }
-
-  if (issueCount > 0) {
-    return "Fix a few signals to get this page fully dialed in.";
-  }
-
-  if (systemErrorCount > 0) {
-    return "No issues flagged — a few checks still need a second look.";
-  }
-
-  if (passedCheckCount > 0) {
-    return "Looking clean. Core signals are healthy.";
-  }
-
+  if (totalCheckCount === 0) return "No checks were returned for this page.";
+  if (issueCount > 0) return "Fix a few signals to get this page fully dialed in.";
+  if (systemErrorCount > 0) return "No issues flagged — a few checks still need a second look.";
+  if (passedCheckCount > 0) return "Looking clean. Core signals are healthy.";
   return "Audit complete — no issues found.";
 }
 
-/* Summary removed — the stat cards carry the full breakdown implicitly. */
+/* ── component ──────────────────────────────────────────── */
 
 export function AuditScoreHero({
   reportScore,
@@ -101,56 +72,6 @@ export function AuditScoreHero({
     systemErrorCount,
     totalCheckCount,
   });
-  const primaryActionLabel =
-    issueCount > 0 ? "Review flagged checks" : "Open full checklist";
-  const primaryAction = issueCount > 0 ? onScrollToIssues : onScrollToFamilies;
-  const breakdownCards = [
-    {
-      label: "Needs action",
-      count: issueCount,
-      helper:
-        issueCount > 0
-          ? "Prioritize these fixes first."
-          : "No flagged checks in this run.",
-      tone: "critical" as const,
-    },
-    {
-      label: "Passing",
-      count: passedCheckCount,
-      helper:
-        passedCheckCount > 0
-          ? "Already in good shape."
-          : "No checks cleared yet.",
-      tone: "success" as const,
-    },
-    {
-      label: "Skipped",
-      count: notApplicableCount,
-      helper:
-        notApplicableCount > 0
-          ? "These checks were not evaluated."
-          : "All tracked checks applied.",
-      tone: "neutral" as const,
-    },
-    {
-      label: "Couldn't Perform",
-      count: systemErrorCount,
-      helper:
-        systemErrorCount > 0
-          ? "We couldn't perform these checks."
-          : "All checks were performed.",
-      tone: "warning" as const,
-    },
-  ];
-  const visibleBreakdownCards = breakdownCards.filter((card) => card.count > 0);
-  const breakdownGridClassName =
-    visibleBreakdownCards.length >= 4
-      ? "grid-cols-1 md:grid-cols-2"
-      : visibleBreakdownCards.length === 3
-        ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-        : visibleBreakdownCards.length === 2
-          ? "grid-cols-1 md:grid-cols-2"
-          : "grid-cols-1";
 
   const strokeClassName =
     tone === "success"
@@ -158,157 +79,142 @@ export function AuditScoreHero({
       : tone === "info"
         ? "text-primary"
         : "text-rose-500";
+  const toneLabelColor =
+    tone === "success"
+      ? "text-emerald-600"
+      : tone === "info"
+        ? "text-primary"
+        : "text-rose-600";
+
+  const circumference = 2 * Math.PI * 54;
+
+  const stats = [
+    { label: "needs action", count: issueCount, tone: "critical" as const },
+    { label: "passing", count: passedCheckCount, tone: "success" as const },
+    { label: "skipped", count: notApplicableCount, tone: "neutral" as const },
+    { label: "couldn't run", count: systemErrorCount, tone: "warning" as const },
+  ].filter((s) => s.count > 0);
 
   return (
     <SurfaceCard className="group/hub relative overflow-hidden p-0">
+      {/* ambient */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50/60 to-slate-100/80" />
-        <div className="absolute -left-12 top-1/3 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute -right-12 bottom-0 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50/40 to-slate-100/60" />
+        <div className="absolute -left-20 top-1/4 h-64 w-64 rounded-full bg-primary/[0.06] blur-[80px]" />
+        <div className="absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-emerald-400/[0.06] blur-[80px]" />
       </div>
 
-      <div className="relative grid gap-10 p-8 md:p-10 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-center lg:gap-12 lg:p-12">
-        <div className="flex flex-col items-center border-b border-slate-200/80 pb-10 text-center lg:border-b-0 lg:border-r lg:pb-0 lg:pr-12">
-          <SectionEyebrow className="mb-6 text-slate-500">
-            Visibility Score <span className="tracking-widest">(%)</span>
-          </SectionEyebrow>
+      <div className="relative p-6 md:p-8 lg:p-10">
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
 
-          <div className="group/score relative flex h-40 w-40 items-center justify-center font-mono md:h-48 md:w-48">
-            <svg
-              className="absolute inset-0 h-full w-full -rotate-90"
-              viewBox="0 0 160 160"
-            >
-              <circle
-                cx="80"
-                cy="80"
-                r="70"
-                fill="transparent"
-                stroke="currentColor"
-                strokeWidth="12"
-                className="text-slate-100"
-              />
-              <circle
-                cx="80"
-                cy="80"
-                r="70"
-                fill="transparent"
-                stroke="currentColor"
-                strokeWidth="12"
-                strokeDasharray={2 * Math.PI * 70}
-                strokeDashoffset={2 * Math.PI * 70 * (1 - reportScore / 100)}
-                className={cn(strokeClassName, "transition-all duration-1000 ease-out")}
-                strokeLinecap="round"
-              />
-            </svg>
+          {/* ── Score ring ────────────────────────────────── */}
+          <div className="flex shrink-0 flex-col items-center text-center">
+            <div className="group/score relative flex h-32 w-32 items-center justify-center font-mono md:h-36 md:w-36">
+              <svg
+                className="absolute inset-0 h-full w-full -rotate-90"
+                viewBox="0 0 120 120"
+              >
+                <circle
+                  cx="60" cy="60" r="54"
+                  fill="transparent"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  className="text-slate-100"
+                />
+                <circle
+                  cx="60" cy="60" r="54"
+                  fill="transparent"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference * (1 - reportScore / 100)}
+                  className={cn(strokeClassName, "transition-all duration-1000 ease-out")}
+                  strokeLinecap="round"
+                />
+              </svg>
 
-            <div className="flex flex-col items-center leading-none transition-transform duration-300 group-hover/score:scale-110">
-              <span className="text-6xl font-black tracking-tighter text-slate-900 md:text-7xl">
-                {reportScore}
-              </span>
-              <span className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                /100
-              </span>
+              {/* Number + /100 — both INSIDE the ring */}
+              <div className="flex flex-col items-center leading-none transition-transform duration-300 group-hover/score:scale-105">
+                <span className="text-5xl font-black tracking-tighter text-slate-900 md:text-[3.5rem]">
+                  {reportScore}
+                </span>
+                <span className="mt-1 text-[10px] font-bold tracking-[0.15em] text-slate-400">
+                  / 100
+                </span>
+              </div>
             </div>
+
+            {/* Tone label + check count — below the ring */}
+            <span className={cn("mt-2.5 text-xs font-bold tracking-wide", toneLabelColor)}>
+              {formatScoreLabel(tone)}
+            </span>
+            <span className="mt-0.5 text-[10px] font-medium text-slate-400">
+              {totalCheckCount} checks evaluated
+            </span>
           </div>
 
-          <StatusPill
-            tone={tone === "info" ? "info" : tone}
-            className="mt-8 border-white/70 bg-white/90 text-slate-700 shadow-sm"
-          >
-            {formatScoreLabel(tone)}
-          </StatusPill>
-
-          <p className="mt-4 max-w-[18rem] text-sm leading-6 text-slate-500">
-            Based on {totalCheckCount} tracked {pluralize(totalCheckCount, "check")} in
-            this audit run.
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <SectionEyebrow className="text-slate-500">
-              Audit Snapshot
-            </SectionEyebrow>
-            <h3 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+          {/* ── Content column ────────────────────────────── */}
+          <div className="min-w-0 flex-1 flex flex-col items-start gap-4">
+            {/* Headline */}
+            <h3 className="text-left text-2xl font-black leading-snug tracking-tight text-slate-950 md:text-3xl">
               {headline}
             </h3>
-          </div>
 
-          {visibleBreakdownCards.length > 0 ? (
-            <div className={cn("grid gap-3", breakdownGridClassName)}>
-              {visibleBreakdownCards.map((card) => (
-              <div
-                key={card.label}
-                className={cn(
-                  "rounded-3xl border p-5 shadow-sm shadow-slate-200/40",
-                  breakdownToneClasses[card.tone].card
-                )}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
-                    {card.label}
-                  </p>
-                  <span
-                    className={cn(
-                      "h-2.5 w-2.5 rounded-full",
-                      breakdownToneClasses[card.tone].dot
-                    )}
-                  />
-                </div>
-                <div
-                  className={cn(
-                    "mt-5 font-mono text-4xl font-black tracking-tighter md:text-5xl",
-                    breakdownToneClasses[card.tone].number
-                  )}
-                >
-                  {card.count}
-                </div>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{card.helper}</p>
+            {/* Stat strip — flat inline text, clearly data not buttons */}
+            {stats.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                {stats.map((stat) => (
+                  <span key={stat.label} className="flex items-center gap-1.5">
+                    <span
+                      className={cn("h-1.5 w-1.5 rounded-full", dotColors[stat.tone])}
+                    />
+                    <span
+                      className={cn(
+                        "font-mono text-sm font-black tabular-nums",
+                        numberColors[stat.tone]
+                      )}
+                    >
+                      {stat.count}
+                    </span>
+                    <span className="text-sm text-slate-500">
+                      {stat.label}
+                    </span>
+                  </span>
+                ))}
               </div>
-              ))}
-            </div>
-          ) : null}
+            ) : null}
 
-          <div className="rounded-[1.75rem] border border-slate-200/80 bg-white/90 p-4 shadow-sm shadow-slate-200/40 sm:p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
-                  {issueCount > 0 ? "Next Step" : "Review"}
-                </p>
-                <p className="max-w-2xl text-sm leading-6 text-slate-600">
-                  {issueCount > 0
-                    ? "Start with the flagged items, then explore the full checklist."
-                    : "Explore the full checklist for details."}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3 lg:justify-end">
-                <Button
-                  type="button"
-                  size="lg"
-                  className={cn(
-                    "h-11 rounded-2xl border px-5",
-                    issueCount > 0
-                      ? "border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100"
-                      : "border-primary/15 bg-primary/5 text-primary hover:bg-primary/10"
-                  )}
-                  onClick={primaryAction}
-                >
-                  {primaryActionLabel}
-                  <ArrowRight className="size-4" />
-                </Button>
-                {issueCount > 0 ? (
+            {/* CTA row — soft background, clearly interactive */}
+            <div className="flex items-center gap-3">
+              {issueCount > 0 ? (
+                <>
                   <Button
                     type="button"
-                    variant="outline"
-                    size="lg"
-                    className="h-11 rounded-2xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    onClick={onScrollToFamilies}
+                    onClick={onScrollToIssues}
+                    className="h-9 gap-1.5 rounded-xl border border-rose-200/60 bg-rose-50 px-4 text-sm font-bold text-rose-600 shadow-none hover:bg-rose-100 active:scale-[0.98]"
                   >
-                    Open full checklist
+                    Review flagged checks
+                    <ArrowRight className="size-3.5" />
                   </Button>
-                ) : null}
-              </div>
+                  <button
+                    type="button"
+                    onClick={onScrollToFamilies}
+                    className="group/link flex items-center gap-1 text-sm font-medium text-slate-400 transition-colors hover:text-slate-600"
+                  >
+                    Full checklist
+                    <ChevronRight className="size-3 text-slate-300 transition-transform group-hover/link:translate-x-0.5 group-hover/link:text-slate-500" />
+                  </button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={onScrollToFamilies}
+                  className="h-9 gap-1.5 rounded-xl border border-primary/15 bg-primary/5 px-4 text-sm font-bold text-primary shadow-none hover:bg-primary/10 active:scale-[0.98]"
+                >
+                  Open full checklist
+                  <ArrowRight className="size-3.5" />
+                </Button>
+              )}
             </div>
           </div>
         </div>

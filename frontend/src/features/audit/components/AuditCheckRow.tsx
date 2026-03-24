@@ -24,6 +24,13 @@ const iconToneClasses = {
   systemError: "text-amber-600",
 };
 
+const detailBorderClasses = {
+  issue: "border-rose-100/80",
+  passed: "border-emerald-100/80",
+  notApplicable: "border-slate-100",
+  systemError: "border-amber-100/80",
+};
+
 export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
   const isIssue = model.kind === "issue";
   const isPassed = model.kind === "passed";
@@ -55,6 +62,14 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
       : isNotApplicable
         ? iconToneClasses.neutral
         : iconToneClasses.systemError;
+
+  const detailBorder = isIssue
+    ? detailBorderClasses.issue
+    : isPassed
+      ? detailBorderClasses.passed
+      : isNotApplicable
+        ? detailBorderClasses.notApplicable
+        : detailBorderClasses.systemError;
 
   const statusIcon = isPassed ? (
     <CheckCircle2 className="h-4 w-4" />
@@ -120,7 +135,8 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
 
       <div
         className={cn(
-          "border-t border-slate-100 px-5 py-4 text-left text-sm",
+          "border-t px-5 py-5 text-left text-sm",
+          detailBorder,
           isIssue
             ? "text-slate-600"
             : isPassed
@@ -130,25 +146,34 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
                 : "text-amber-800"
         )}
       >
-        <div className="space-y-2">
+        <div className="space-y-3">
           {model.messageSections.map((section) => (
-            <p key={section.label}>
-              <span className="font-bold text-slate-900">{section.label}:</span>{" "}
-              {section.body}
-            </p>
+            <div key={section.label}>
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                {section.label}
+              </span>
+              <p className="mt-1 leading-relaxed">{section.body}</p>
+            </div>
           ))}
           {model.selector ? (
-            <p>
-              <span className="font-bold text-slate-900">Page area:</span>{" "}
-              <code className="break-all whitespace-pre-wrap rounded border border-slate-200 bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">
-                {model.selector}
-              </code>
-            </p>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                Page area
+              </span>
+              <p className="mt-1">
+                <code className="break-all whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs text-slate-700">
+                  {model.selector}
+                </code>
+              </p>
+            </div>
           ) : null}
           {model.metric ? (
-            <p>
-              <span className="font-semibold text-slate-900">Metric:</span> {model.metric}
-            </p>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                Metric
+              </span>
+              <p className="mt-1 font-mono text-xs tabular-nums">{model.metric}</p>
+            </div>
           ) : null}
         </div>
       </div>
