@@ -1,13 +1,22 @@
 import { createRequire } from "node:module";
+import { assertValidWorkerProgressEvent } from "../contracts/schemaValidation.js";
 
 const require = createRequire(import.meta.url);
-const { Kafka } = require("@confluentinc/kafka-javascript").KafkaJS;
 
 const KAFKA_BOOTSTRAP_SERVERS = process.env.KAFKA_BOOTSTRAP_SERVERS ?? "";
 const KAFKA_PROGRESS_TOPIC = process.env.KAFKA_PROGRESS_TOPIC ?? "seogeo.audit.progress.v1";
 const PRODUCER_ACKS_ALL = -1;
 
 let producerPromise = null;
+let kafkaConstructor = null;
+
+function getKafkaConstructor() {
+  if (!kafkaConstructor) {
+    kafkaConstructor = require("@confluentinc/kafka-javascript").KafkaJS.Kafka;
+  }
+
+  return kafkaConstructor;
+}
 
 export function createAuditProgressProducerConfig(bootstrapServers = KAFKA_BOOTSTRAP_SERVERS) {
   return {
@@ -23,6 +32,8 @@ export function createAuditProgressProducerConfig(bootstrapServers = KAFKA_BOOTS
 }
 
 export async function publishProgressEvent(producer, event, topic = KAFKA_PROGRESS_TOPIC) {
+  assertValidWorkerProgressEvent(event);
+
   await producer.send({
     topic,
     messages: [
@@ -39,6 +50,7 @@ async function connectProducer() {
     return null;
   }
 
+  const Kafka = getKafkaConstructor();
   const producer = new Kafka().producer(createAuditProgressProducerConfig());
 
   await producer.connect();

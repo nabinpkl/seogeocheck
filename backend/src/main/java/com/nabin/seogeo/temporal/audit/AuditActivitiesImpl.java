@@ -1,8 +1,8 @@
 package com.nabin.seogeo.temporal.audit;
 
+import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
-import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
 import com.nabin.seogeo.audit.service.AuditReportSigner;
@@ -10,8 +10,6 @@ import io.temporal.spring.boot.ActivityImpl;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
-import java.util.Map;
-
 @Component
 @ActivityImpl(taskQueues = "${seogeo.audit.task-queue}")
 public class AuditActivitiesImpl implements AuditActivities {
@@ -33,8 +31,8 @@ public class AuditActivitiesImpl implements AuditActivities {
     }
 
     @Override
-    public AuditEventRecord appendEvent(String jobId, String eventType, AuditStatus status, Map<String, Object> attributes) {
-        return auditPersistenceService.appendEvent(jobId, eventType, status, attributes);
+    public AuditEventRecord appendEvent(AuditStreamEventSchema event) {
+        return auditPersistenceService.appendEvent(event);
     }
 
     @Override

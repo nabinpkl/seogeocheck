@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.0.4'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.jsonschema2pojo' version '1.2.2'
 }
 
 group = 'com.nabin'
@@ -21,6 +22,7 @@ repositories {
 dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+	implementation 'com.networknt:json-schema-validator:2.0.1'
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -40,6 +42,41 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+sourceSets {
+	main {
+		resources {
+			srcDir '../schemas'
+		}
+		java {
+			srcDir layout.buildDirectory.dir('generated/sources/jsonschema2pojo/main/java')
+		}
+	}
+}
+
+jsonSchema2Pojo {
+	source = files(
+		'../schemas/audit/audit-report.schema.json',
+		'../schemas/audit/audit-stream-event.schema.json',
+		'../schemas/audit/audit-worker-progress-event.schema.json'
+	)
+	targetDirectory = file("${layout.buildDirectory.get().asFile}/generated/sources/jsonschema2pojo/main/java")
+	targetPackage = 'com.nabin.seogeo.audit.contract.generated'
+	annotationStyle = 'jackson2'
+	includeAdditionalProperties = false
+	includeConstructors = false
+	includeSetters = true
+	initializeCollections = false
+	generateBuilders = false
+	includeHashcodeAndEquals = true
+	includeToString = true
+	usePrimitives = false
+	useOptionalForGetters = false
+}
+
+tasks.named('compileJava') {
+	dependsOn tasks.named('generateJsonSchema2Pojo')
 }
 
 tasks.named('test') {

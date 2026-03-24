@@ -1,12 +1,11 @@
 package com.nabin.seogeo.audit.domain;
 
-import java.util.Map;
-
+import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
 public record AuditEventRecord(
         String jobId,
         long sequence,
         String eventType,
         AuditStatus status,
-        Map<String, Object> payload
+        AuditStreamEventSchema payload
 ) {
 }

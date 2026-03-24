@@ -164,8 +164,8 @@ services:
 
   seo-audit-worker:
     build:
-      context: ./seo-audit-worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: seo-audit-worker/Dockerfile
     container_name: seogeo-seo-audit-worker
     depends_on:
       temporal:
@@ -187,8 +187,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: seogeo-backend
     depends_on:
       postgresql:

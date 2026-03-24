@@ -1,11 +1,16 @@
 package com.nabin.seogeo.audit;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.generated.CategoryScores;
+import com.nabin.seogeo.audit.contract.generated.RawSummary;
+import com.nabin.seogeo.audit.contract.generated.ReportCheckMetadata;
 import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.SeoAuditCheck;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
+import com.nabin.seogeo.audit.service.AuditContractSchemaValidator;
 import com.nabin.seogeo.audit.service.AuditReportSigner;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.jupiter.api.Test;
 
 import java.time.OffsetDateTime;
@@ -13,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AuditReportSignerTests {
 
@@ -20,20 +26,19 @@ class AuditReportSignerTests {
         void reportSignatureIsDeterministicForTheSameInput() throws Exception {
         AuditProperties auditProperties = new AuditProperties();
         auditProperties.setReportSigningSecret("test-signing-secret");
-        AuditReportSigner signer = new AuditReportSigner(auditProperties, new com.fasterxml.jackson.databind.ObjectMapper());
+        ObjectMapper objectMapper = new ObjectMapper();
+        AuditReportSigner signer = new AuditReportSigner(
+                auditProperties,
+                objectMapper,
+                new AuditContractSchemaValidator(objectMapper)
+        );
 
         SeoAuditResult result = new SeoAuditResult(
                 "https://example.com",
                 "https://example.com/",
                 "At Risk",
                 88,
-                Map.of(
-                        "reachability", 100,
-                        "crawlability", 92,
-                        "indexability", 84,
-                        "contentVisibility", 88,
-                        "metadata", 91
-                ),
+                categoryScores(100, 92, 84, 88, 91, 100),
                 List.of(new SeoAuditCheck(
                         "document-title",
                         "Add a unique page title",
@@ -43,7 +48,7 @@ class AuditReportSignerTests {
                         null,
                         "head > title",
                         null,
-                        Map.of("score", 0)
+                        metadata("document_title", "source_html", (entry) -> entry.setLength(0))
                 ), new SeoAuditCheck(
                         "meta-description",
                         "Meta description is present",
@@ -53,7 +58,7 @@ class AuditReportSignerTests {
                         "Search engines can already read a summary for this page.",
                         "head > meta[name=\"description\"]",
                         null,
-                        Map.of("score", 100)
+                        metadata("meta_description", "source_html", (entry) -> entry.setLength(100))
                 ), new SeoAuditCheck(
                         "canonical-target-health",
                         "Canonical target health is not applicable yet",
@@ -63,7 +68,10 @@ class AuditReportSignerTests {
                         "A single valid canonical target is not available yet, so target health cannot be evaluated.",
                         "head > link[rel=\"canonical\"]",
                         "canonical-target-health",
-                        Map.of("score", 0)
+                        metadata("canonical_controls", "source_html", (entry) -> {
+                            entry.setReasonCode(ReportCheckMetadata.ReasonCode.fromValue("missing_prerequisite"));
+                            entry.setBlockedBy(List.of("canonical-signals"));
+                        })
                 ), new SeoAuditCheck(
                         "alternate-language-scan",
                         "Could not verify alternate language annotations",
@@ -73,9 +81,12 @@ class AuditReportSignerTests {
                         "The audit worker timed out while collecting alternate language headers.",
                         "head > link[rel=\"alternate\"]",
                         "alternate-language-annotations",
-                        Map.of("reasonCode", "timeout")
+                        metadata("alternate_language_controls", "source_html", (entry) -> {
+                            entry.setReasonCode(ReportCheckMetadata.ReasonCode.fromValue("timeout"));
+                            entry.setRetryable(true);
+                        })
                 )),
-                Map.of("worker", "seo-audit-worker")
+                rawSummary("seo-audit-worker")
         );
 
         OffsetDateTime generatedAt = OffsetDateTime.parse("2026-03-16T00:00:00Z");
@@ -91,17 +102,92 @@ class AuditReportSignerTests {
         assertThat(firstReport.reportJson()).contains("SEO_SIGNALS_SIGNED_AUDIT");
         assertThat(firstReport.reportJson()).contains("\"indexabilityVerdict\":\"At Risk\"");
 
-                ObjectMapper mapper = new ObjectMapper();
-                Map<String, Object> payload = mapper.readValue(
-                        firstReport.reportJson(),
-                        new TypeReference<>() {}
-                );
-                Object summaryNode = payload.get("summary");
-                assertThat(summaryNode).isInstanceOf(Map.class);
-                Map<?, ?> summary = (Map<?, ?>) summaryNode;
-                assertThat(summary.get("issueCount")).isEqualTo(1);
-                assertThat(summary.get("passedCheckCount")).isEqualTo(1);
-                assertThat(summary.get("notApplicableCount")).isEqualTo(1);
-                assertThat(summary.get("systemErrorCount")).isEqualTo(1);
+        AuditReportSchema payload = objectMapper.readValue(
+                firstReport.reportJson(),
+                AuditReportSchema.class
+        );
+        assertThat(payload.getSummary().getIssueCount()).isEqualTo(1);
+        assertThat(payload.getSummary().getPassedCheckCount()).isEqualTo(1);
+        assertThat(payload.getSummary().getNotApplicableCount()).isEqualTo(1);
+        assertThat(payload.getSummary().getSystemErrorCount()).isEqualTo(1);
+    }
+
+    @Test
+    void reportSchemaValidatorRejectsUndocumentedMetadataFields() throws Exception {
+        AuditProperties auditProperties = new AuditProperties();
+        auditProperties.setReportSigningSecret("test-signing-secret");
+        ObjectMapper objectMapper = new ObjectMapper();
+        AuditContractSchemaValidator validator = new AuditContractSchemaValidator(objectMapper);
+        AuditReportSigner signer = new AuditReportSigner(
+                auditProperties,
+                objectMapper,
+                validator
+        );
+
+        SeoAuditResult result = new SeoAuditResult(
+                "https://example.com",
+                "https://example.com/",
+                "Indexable",
+                100,
+                categoryScores(100, 100, 100, 100, 100, 100),
+                List.of(new SeoAuditCheck(
+                        "document-title",
+                        "Page title is present",
+                        "passed",
+                        null,
+                        null,
+                        "The page has a title.",
+                        "head > title",
+                        null,
+                        metadata("document_title", "source_html", (entry) -> entry.setLength(42))
+                )),
+                rawSummary("seo-audit-worker")
+        );
+
+        var report = signer.buildReport("audit_invalid", "https://example.com", result);
+        Map<String, Object> payload = objectMapper.readValue(report.reportJson(), new TypeReference<>() {});
+        @SuppressWarnings("unchecked")
+        Map<String, Object> metadata = (Map<String, Object>) ((Map<String, Object>) ((List<?>) payload.get("checks")).getFirst()).get("metadata");
+        metadata.put("unexpected", true);
+
+        assertThatThrownBy(() -> validator.validateReportPayload(payload))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid audit report");
+    }
+
+    private static CategoryScores categoryScores(
+            int reachability,
+            int crawlability,
+            int indexability,
+            int contentVisibility,
+            int metadata,
+            int discovery
+    ) {
+        CategoryScores scores = new CategoryScores();
+        scores.setReachability(reachability);
+        scores.setCrawlability(crawlability);
+        scores.setIndexability(indexability);
+        scores.setContentVisibility(contentVisibility);
+        scores.setMetadata(metadata);
+        scores.setDiscovery(discovery);
+        return scores;
+    }
+
+    private static RawSummary rawSummary(String worker) {
+        RawSummary summary = new RawSummary();
+        summary.setWorker(worker);
+        return summary;
+    }
+
+    private static ReportCheckMetadata metadata(
+            String problemFamily,
+            String evidenceSource,
+            java.util.function.Consumer<ReportCheckMetadata> customizer
+    ) {
+        ReportCheckMetadata metadata = new ReportCheckMetadata();
+        metadata.setProblemFamily(ReportCheckMetadata.ProblemFamily.fromValue(problemFamily));
+        metadata.setEvidenceSource(ReportCheckMetadata.EvidenceSource.fromValue(evidenceSource));
+        customizer.accept(metadata);
+        return metadata;
     }
 }

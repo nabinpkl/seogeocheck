@@ -1,5 +1,6 @@
 package com.nabin.seogeo.controllers;
 
+import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
 import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
@@ -90,29 +91,29 @@ public class AuditController {
     }
 
     @GetMapping("/{jobId}/report")
-    public ResponseEntity<Map<String, Object>> getReport(@PathVariable String jobId) {
+    public ResponseEntity<Object> getReport(@PathVariable String jobId) {
         AuditRunEntity run = auditPersistenceService.findRun(jobId)
                 .orElseThrow(() -> new AuditNotFoundException(jobId));
 
-        return auditPersistenceService.findReport(jobId)
-                .map(report -> ResponseEntity.ok(auditPersistenceService.readReportPayload(jobId)))
-                .orElseGet(() -> {
-                    if (run.getStatus() == AuditStatus.FAILED) {
-                        return ResponseEntity.ok(Map.of(
-                                "jobId", jobId,
-                                "status", AuditStatus.FAILED.name(),
-                                "message", run.getFailureMessage() == null
-                                        ? "The audit could not be completed."
-                                        : run.getFailureMessage()
-                        ));
-                    }
+        if (auditPersistenceService.findReport(jobId).isPresent()) {
+            return ResponseEntity.ok(auditPersistenceService.readReportPayload(jobId));
+        }
 
-                    return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
-                            "jobId", jobId,
-                            "status", run.getStatus().name(),
-                            "message", "Your final report is still being prepared."
-                    ));
-                });
+        if (run.getStatus() == AuditStatus.FAILED) {
+            return ResponseEntity.ok(Map.of(
+                    "jobId", jobId,
+                    "status", AuditStatus.FAILED.name(),
+                    "message", run.getFailureMessage() == null
+                            ? "The audit could not be completed."
+                            : run.getFailureMessage()
+            ));
+        }
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
+                "jobId", jobId,
+                "status", run.getStatus().name(),
+                "message", "Your final report is still being prepared."
+        ));
     }
 
     private long replayExistingEvents(String jobId, SseEmitter emitter, AtomicBoolean active) {
@@ -179,15 +180,15 @@ public class AuditController {
         return elapsedNanos >= auditProperties.getSseHeartbeatInterval().toNanos();
     }
 
-    private boolean isTerminalEvent(Map<String, Object> payload) {
-        Object type = payload.get("type");
-        return "complete".equals(type) || "error".equals(type);
+    private boolean isTerminalEvent(AuditStreamEventSchema payload) {
+        return payload.getType() == AuditStreamEventSchema.Type.COMPLETE
+                || payload.getType() == AuditStreamEventSchema.Type.ERROR;
     }
 
-    private void sendEvent(SseEmitter emitter, Map<String, Object> event, AtomicBoolean active) {
+    private void sendEvent(SseEmitter emitter, AuditStreamEventSchema event, AtomicBoolean active) {
         try {
             emitter.send(SseEmitter.event()
-                    .id(String.valueOf(event.get("eventId")))
+                    .id(event.getEventId())
                     .data(event));
         } catch (IOException ioException) {
             active.set(false);

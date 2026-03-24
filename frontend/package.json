@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "generate:audit-types": "node ./scripts/generate-audit-types.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -35,6 +36,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.1.6",
+    "json-schema-to-typescript": "^15.0.4",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3"
   }

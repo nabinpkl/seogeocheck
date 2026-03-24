@@ -1,15 +1,17 @@
 package com.nabin.seogeo.audit.domain;
 
+import com.nabin.seogeo.audit.contract.generated.CategoryScores;
+import com.nabin.seogeo.audit.contract.generated.RawSummary;
+
 import java.util.List;
-import java.util.Map;
 
 public record SeoAuditResult(
         String requestedUrl,
         String finalUrl,
         String indexabilityVerdict,
         int score,
-        Map<String, Integer> categoryScores,
+        CategoryScores categoryScores,
         List<SeoAuditCheck> checks,
-        Map<String, Object> rawSummary
+        RawSummary rawSummary
 ) {
 }

@@ -24,9 +24,16 @@ test("publishProgressEvent sends keyed JSON messages without send-level acks", a
   await publishProgressEvent(
     producer,
     {
+      schemaVersion: 1,
       jobId: "audit_123",
       eventId: "audit_123:stage:source_capture_complete",
+      producer: "seo-audit-worker",
       eventType: "status",
+      status: "STREAMING",
+      emittedAt: "2026-03-24T12:00:00.000Z",
+      message: "Captured source HTML",
+      stage: "source_capture_complete",
+      progress: 25,
     },
     "seogeo.audit.progress.v1"
   );
@@ -37,9 +44,16 @@ test("publishProgressEvent sends keyed JSON messages without send-level acks", a
       {
         key: "audit_123",
         value: JSON.stringify({
+          schemaVersion: 1,
           jobId: "audit_123",
           eventId: "audit_123:stage:source_capture_complete",
+          producer: "seo-audit-worker",
           eventType: "status",
+          status: "STREAMING",
+          emittedAt: "2026-03-24T12:00:00.000Z",
+          message: "Captured source HTML",
+          stage: "source_capture_complete",
+          progress: 25,
         }),
       },
     ],

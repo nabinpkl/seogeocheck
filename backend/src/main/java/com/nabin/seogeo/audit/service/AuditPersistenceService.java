@@ -1,8 +1,9 @@
 package com.nabin.seogeo.audit.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
@@ -17,32 +18,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.LinkedHashMap;
+import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class AuditPersistenceService {
 
-    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
-    };
-
     private final AuditRunRepository auditRunRepository;
     private final AuditEventRepository auditEventRepository;
     private final AuditReportRepository auditReportRepository;
     private final ObjectMapper objectMapper;
+    private final AuditContractSchemaValidator auditContractSchemaValidator;
 
     public AuditPersistenceService(
             AuditRunRepository auditRunRepository,
             AuditEventRepository auditEventRepository,
             AuditReportRepository auditReportRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            AuditContractSchemaValidator auditContractSchemaValidator
     ) {
         this.auditRunRepository = auditRunRepository;
         this.auditEventRepository = auditEventRepository;
         this.auditReportRepository = auditReportRepository;
         this.objectMapper = objectMapper;
+        this.auditContractSchemaValidator = auditContractSchemaValidator;
     }
 
     @Transactional
@@ -87,73 +87,64 @@ public class AuditPersistenceService {
     }
 
     @Transactional
-    public AuditEventRecord appendEvent(String jobId, String eventType, AuditStatus status, Map<String, Object> attributes) {
-        AuditRunEntity run = getRunOrThrow(jobId);
-        long nextSequence = auditEventRepository.findMaxSequenceByJobId(jobId) + 1;
+    public AuditEventRecord appendEvent(AuditStreamEventSchema event) {
+        AuditRunEntity run = getRunOrThrow(event.getJobId());
+        long nextSequence = auditEventRepository.findMaxSequenceByJobId(event.getJobId()) + 1;
         OffsetDateTime timestamp = OffsetDateTime.now();
-
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("jobId", jobId);
-        payload.put("eventId", String.valueOf(nextSequence));
-        payload.put("timestamp", timestamp.toString());
-        payload.put("type", eventType);
-        payload.put("status", status.name());
-        payload.putAll(attributes);
+        AuditStreamEventSchema payload = materializeStreamEvent(event, nextSequence, timestamp);
+        auditContractSchemaValidator.validateStreamEventPayload(payload);
 
         AuditEventEntity entity = new AuditEventEntity();
-        entity.setJobId(jobId);
+        entity.setJobId(payload.getJobId());
         entity.setSequence(nextSequence);
-        entity.setEventType(eventType);
-        entity.setStatus(status);
+        entity.setEventType(payload.getType().value());
+        entity.setStatus(AuditStatus.valueOf(payload.getStatus().value()));
         entity.setPayloadJson(writeJson(payload));
         entity.setCreatedAt(timestamp);
         auditEventRepository.save(entity);
 
-        if ("status".equals(eventType) && status == AuditStatus.STREAMING) {
+        if (payload.getType() == AuditStreamEventSchema.Type.STATUS
+                && payload.getStatus() == AuditStreamEventSchema.Status.STREAMING) {
             run.setStatus(AuditStatus.STREAMING);
             auditRunRepository.save(run);
         }
 
-        return new AuditEventRecord(jobId, nextSequence, eventType, status, payload);
+        return new AuditEventRecord(
+                payload.getJobId(),
+                nextSequence,
+                payload.getType().value(),
+                AuditStatus.valueOf(payload.getStatus().value()),
+                payload
+        );
     }
 
     @Transactional
     public AuditEventRecord appendProjectedEvent(
-            String jobId,
-            String sourceEventId,
-            String eventType,
-            AuditStatus status,
-            Map<String, Object> attributes,
+            AuditStreamEventSchema event,
             OffsetDateTime emittedAt,
             String sourceTopic,
             Integer sourcePartition,
             Long sourceOffset
     ) {
-        Optional<AuditEventEntity> existing = auditEventRepository.findBySourceEventId(sourceEventId);
+        Optional<AuditEventEntity> existing = auditEventRepository.findBySourceEventId(event.getSourceEventId());
         if (existing.isPresent()) {
             return toRecord(existing.orElseThrow());
         }
 
-        AuditRunEntity run = getRunOrThrow(jobId);
-        long nextSequence = auditEventRepository.findMaxSequenceByJobId(jobId) + 1;
+        AuditRunEntity run = getRunOrThrow(event.getJobId());
+        long nextSequence = auditEventRepository.findMaxSequenceByJobId(event.getJobId()) + 1;
         OffsetDateTime timestamp = emittedAt == null ? OffsetDateTime.now() : emittedAt;
-
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("jobId", jobId);
-        payload.put("eventId", String.valueOf(nextSequence));
-        payload.put("timestamp", timestamp.toString());
-        payload.put("type", eventType);
-        payload.put("status", status.name());
-        payload.putAll(attributes);
+        AuditStreamEventSchema payload = materializeStreamEvent(event, nextSequence, timestamp);
+        auditContractSchemaValidator.validateStreamEventPayload(payload);
 
         AuditEventEntity entity = new AuditEventEntity();
-        entity.setJobId(jobId);
+        entity.setJobId(payload.getJobId());
         entity.setSequence(nextSequence);
-        entity.setEventType(eventType);
-        entity.setStatus(status);
+        entity.setEventType(payload.getType().value());
+        entity.setStatus(AuditStatus.valueOf(payload.getStatus().value()));
         entity.setPayloadJson(writeJson(payload));
         entity.setCreatedAt(timestamp);
-        entity.setSourceEventId(sourceEventId);
+        entity.setSourceEventId(payload.getSourceEventId());
         entity.setSourceTopic(sourceTopic);
         entity.setSourcePartition(sourcePartition);
         entity.setSourceOffset(sourceOffset);
@@ -161,17 +152,24 @@ public class AuditPersistenceService {
         try {
             auditEventRepository.save(entity);
         } catch (DataIntegrityViolationException exception) {
-            return auditEventRepository.findBySourceEventId(sourceEventId)
+            return auditEventRepository.findBySourceEventId(event.getSourceEventId())
                     .map(this::toRecord)
                     .orElseThrow(() -> exception);
         }
 
-        if ("status".equals(eventType) && status == AuditStatus.STREAMING) {
+        if (payload.getType() == AuditStreamEventSchema.Type.STATUS
+                && payload.getStatus() == AuditStreamEventSchema.Status.STREAMING) {
             run.setStatus(AuditStatus.STREAMING);
             auditRunRepository.save(run);
         }
 
-        return new AuditEventRecord(jobId, nextSequence, eventType, status, payload);
+        return new AuditEventRecord(
+                payload.getJobId(),
+                nextSequence,
+                payload.getType().value(),
+                AuditStatus.valueOf(payload.getStatus().value()),
+                payload
+        );
     }
 
     @Transactional(readOnly = true)
@@ -234,10 +232,10 @@ public class AuditPersistenceService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> readReportPayload(String jobId) {
+    public AuditReportSchema readReportPayload(String jobId) {
         AuditReportRecord report = findReport(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Report not found for audit " + jobId));
-        return readJson(report.reportJson());
+        return readJson(report.reportJson(), AuditReportSchema.class);
     }
 
     private AuditRunEntity getRunOrThrow(String jobId) {
@@ -251,11 +249,37 @@ public class AuditPersistenceService {
                 entity.getSequence(),
                 entity.getEventType(),
                 entity.getStatus(),
-                readJson(entity.getPayloadJson())
+                readJson(entity.getPayloadJson(), AuditStreamEventSchema.class)
         );
     }
 
-    private String writeJson(Map<String, Object> payload) {
+    private AuditStreamEventSchema materializeStreamEvent(
+            AuditStreamEventSchema source,
+            long sequence,
+            OffsetDateTime timestamp
+    ) {
+        AuditStreamEventSchema payload = new AuditStreamEventSchema();
+        payload.setJobId(source.getJobId());
+        payload.setEventId(String.valueOf(sequence));
+        payload.setTimestamp(Date.from(timestamp.toInstant()));
+        payload.setType(source.getType());
+        payload.setStatus(source.getStatus());
+        payload.setMessage(source.getMessage());
+        payload.setStage(source.getStage());
+        payload.setProgress(source.getProgress());
+        payload.setRuleId(source.getRuleId());
+        payload.setCheckStatus(source.getCheckStatus());
+        payload.setSeverity(source.getSeverity());
+        payload.setInstruction(source.getInstruction());
+        payload.setDetail(source.getDetail());
+        payload.setSelector(source.getSelector());
+        payload.setMetric(source.getMetric());
+        payload.setProducer(source.getProducer());
+        payload.setSourceEventId(source.getSourceEventId());
+        return payload;
+    }
+
+    private String writeJson(Object payload) {
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
@@ -263,9 +287,9 @@ public class AuditPersistenceService {
         }
     }
 
-    private Map<String, Object> readJson(String payloadJson) {
+    private <T> T readJson(String payloadJson, Class<T> type) {
         try {
-            return objectMapper.readValue(payloadJson, MAP_TYPE);
+            return objectMapper.readValue(payloadJson, type);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Unable to read audit payload.", exception);
         }

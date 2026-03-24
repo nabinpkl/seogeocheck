@@ -95,7 +95,7 @@ function checkStatusRank(status?: string) {
   return 4;
 }
 
-export function toneForSeverity(severity?: string): AuditTone {
+export function toneForSeverity(severity?: string | null): AuditTone {
   switch (severity) {
     case "high":
       return "critical";
@@ -106,7 +106,7 @@ export function toneForSeverity(severity?: string): AuditTone {
   }
 }
 
-export function severityRank(severity?: string) {
+export function severityRank(severity?: string | null) {
   switch (severity) {
     case "high":
       return 0;
@@ -129,7 +129,7 @@ export function toneForScore(score: number): Exclude<AuditTone, "pending"> {
   return "critical";
 }
 
-export function formatSeverityLabel(severity?: string) {
+export function formatSeverityLabel(severity?: string | null) {
   switch (severity) {
     case "high":
       return "Critical";

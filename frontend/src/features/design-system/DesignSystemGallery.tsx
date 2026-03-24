@@ -93,9 +93,12 @@ export function DesignSystemGallery() {
     evidenceSourceLabel: "Source HTML",
     severityLabel: "Critical",
     tone: "critical" as const,
-    summaryLabel: "Recommended fix",
-    summary:
-      "Add a descriptive H1 to the canonical page response so search systems can identify the primary topic immediately.",
+    messageSections: [
+      {
+        label: "Recommended fix",
+        body: "Add a descriptive H1 to the canonical page response so search systems can identify the primary topic immediately.",
+      },
+    ],
     selector: "main > section:nth-child(1)",
     metric: "Heading coverage",
     isHero: true,
@@ -110,9 +113,12 @@ export function DesignSystemGallery() {
     evidenceSourceLabel: "Surface Comparison",
     severityLabel: "Passed",
     tone: "success" as const,
-    summaryLabel: "What is working",
-    summary:
-      "The HTML and rendered DOM both expose the same canonical URL, which reduces ambiguity for indexing systems.",
+    messageSections: [
+      {
+        label: "What is working",
+        body: "The HTML and rendered DOM both expose the same canonical URL, which reduces ambiguity for indexing systems.",
+      },
+    ],
     selector: "head > link[rel='canonical']",
     metric: "Canonical consistency",
   };

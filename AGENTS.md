@@ -79,6 +79,11 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - TanStack Query is the owner of the final report fetch, cache lifecycle, and stale/refetch behavior.
 - Transition from stream view to report view should clear or retire the ephemeral Zustand stream state once the final report is confirmed.
 
+### Schema-First Contract Rule
+- Signed audit reports, projected SSE payloads, and worker progress envelopes must be owned by shared JSON Schema documents under the repository-level `schemas/` directory.
+- Node/TypeScript runtimes validate those payloads with Ajv, while the Java tier validates the same schemas with a Java JSON Schema validator before persistence, projection, or signing.
+- Local TypeScript and Java wire models should be generated from the shared schemas rather than hand-maintained as separate sources of truth.
+
 ---
 
 ## 🛠️ TOOLING & CONSTRAINTS

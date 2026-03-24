@@ -5,6 +5,7 @@ import {
   createStageEvent,
   createWorkerErrorEvent,
 } from "./auditProgressEvents.js";
+import { assertValidWorkerProgressEvent } from "../contracts/schemaValidation.js";
 
 test("createStageEvent uses deterministic stage ids and progress", () => {
   const event = createStageEvent("audit_123", "source_capture_complete", "Collected source HTML signals.");
@@ -41,4 +42,22 @@ test("createWorkerErrorEvent emits a deterministic worker error envelope", () =>
   assert.equal(event.eventType, "error");
   assert.equal(event.status, "FAILED");
   assert.equal(event.message, "render failed");
+});
+
+test("worker progress schema rejects undocumented fields", () => {
+  assert.throws(
+    () =>
+      assertValidWorkerProgressEvent({
+        schemaVersion: 1,
+        eventId: "audit_123:stage:source_capture_complete",
+        jobId: "audit_123",
+        producer: "seo-audit-worker",
+        eventType: "status",
+        status: "STREAMING",
+        emittedAt: new Date().toISOString(),
+        message: "Collected source HTML signals.",
+        unexpected: true,
+      }),
+    /Invalid worker progress event payload/
+  );
 });

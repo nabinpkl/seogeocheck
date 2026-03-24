@@ -1,5 +1,6 @@
 package com.nabin.seogeo;
 
+import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
 import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.persistence.AuditEventRepository;
 import com.nabin.seogeo.audit.persistence.AuditRunRepository;
@@ -100,7 +101,7 @@ class SeoGeoApplicationTests {
 	}
 
 	@Test
-	void reportEventuallyReturnsVerifiedEvidence() throws InterruptedException {
+	void reportEventuallyReturnsVerifiedEvidence() throws Exception {
 		var startResult = restTestClient.post()
 				.uri("/audits")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -121,7 +122,9 @@ class SeoGeoApplicationTests {
 					.returnResult(Map.class);
 			reportStatus = HttpStatus.valueOf(reportResult.getStatus().value());
 			reportBody = reportResult.getResponseBody();
-			if (reportStatus == HttpStatus.OK) {
+			if (reportStatus == HttpStatus.OK
+					&& reportBody != null
+					&& "VERIFIED".equals(reportBody.get("status"))) {
 				break;
 			}
 			Thread.sleep(250);
@@ -129,16 +132,24 @@ class SeoGeoApplicationTests {
 
 		assertThat(reportBody).isNotNull();
 		assertThat(reportStatus).isEqualTo(HttpStatus.OK);
-		assertThat(reportBody).containsEntry("jobId", jobId);
-		assertThat(reportBody).containsEntry("status", "VERIFIED");
-		assertThat(reportBody).containsKey("signature");
-		assertThat(reportBody).containsEntry("reportType", "SEO_SIGNALS_SIGNED_AUDIT");
-		assertThat(reportBody).containsKey("checks");
-		assertThat(reportBody).containsKey("summary");
+		var verifiedReport = restTestClient.get()
+				.uri("/audits/{jobId}/report", jobId)
+				.exchange()
+				.expectStatus().isOk()
+				.returnResult(AuditReportSchema.class)
+				.getResponseBody();
+
+		assertThat(verifiedReport).isNotNull();
+		assertThat(verifiedReport.getJobId()).isEqualTo(jobId);
+		assertThat(verifiedReport.getStatus()).isEqualTo(AuditReportSchema.AuditStatus.VERIFIED);
+		assertThat(verifiedReport.getSignature()).isNotNull();
+		assertThat(verifiedReport.getReportType()).isEqualTo("SEO_SIGNALS_SIGNED_AUDIT");
+		assertThat(verifiedReport.getChecks()).isNotEmpty();
+		assertThat(verifiedReport.getSummary()).isNotNull();
 	}
 
 	@Test
-	void streamReplaysEventsInOrderAndCompletesAfterReportIsPersisted() throws InterruptedException {
+	void streamReplaysEventsInOrderAndCompletesAfterReportIsPersisted() throws Exception {
 		String jobId = startAudit("example.com");
 		awaitVerifiedReport(jobId);
 
@@ -161,10 +172,10 @@ class SeoGeoApplicationTests {
 				.uri("/audits/{jobId}/report", jobId)
 				.exchange()
 				.expectStatus().isOk()
-				.returnResult(Map.class);
+				.returnResult(AuditReportSchema.class);
 
 		assertThat(reportResult.getResponseBody()).isNotNull();
-		assertThat(reportResult.getResponseBody()).containsEntry("status", "VERIFIED");
+		assertThat(reportResult.getResponseBody().getStatus()).isEqualTo(AuditReportSchema.AuditStatus.VERIFIED);
 		assertThat(auditEventRepository.findByJobIdOrderBySequenceAsc(jobId))
 				.extracting(event -> event.getEventType())
 				.endsWith("complete");

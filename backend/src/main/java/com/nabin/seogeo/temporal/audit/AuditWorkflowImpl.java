@@ -1,5 +1,6 @@
 package com.nabin.seogeo.temporal.audit;
 
+import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
 import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import io.temporal.activity.ActivityOptions;
@@ -8,9 +9,7 @@ import io.temporal.failure.ActivityFailure;
 import io.temporal.failure.ApplicationFailure;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
-
 import java.time.Duration;
-import java.util.Map;
 
 @WorkflowImpl(taskQueues = "${seogeo.audit.task-queue}")
 public class AuditWorkflowImpl implements AuditWorkflow {
@@ -33,21 +32,31 @@ public class AuditWorkflowImpl implements AuditWorkflow {
             SeoSignalActivities seoSignalActivities = createSeoSignalActivities(request);
 
             auditActivities.createRun(request.jobId(), request.targetUrl(), request.requestedAt());
-            auditActivities.appendEvent(request.jobId(), "status", AuditStatus.QUEUED, Map.of(
-                    "message", "Audit accepted. Getting your site review ready."
+            auditActivities.appendEvent(streamEvent(
+                    request.jobId(),
+                    "status",
+                    AuditStatus.QUEUED,
+                    "Audit accepted. Getting your site review ready.",
+                    null
             ));
-            auditActivities.appendEvent(request.jobId(), "status", AuditStatus.STREAMING, Map.of(
-                    "message", "Reviewing your site's SEO signals.",
-                    "progress", 10
+            auditActivities.appendEvent(streamEvent(
+                    request.jobId(),
+                    "status",
+                    AuditStatus.STREAMING,
+                    "Reviewing your site's SEO signals.",
+                    10
             ));
 
             SeoAuditResult result = seoSignalActivities.runSeoAudit(request.jobId(), request.targetUrl());
 
             auditActivities.persistReport(auditActivities.buildSignedReport(request.jobId(), request.targetUrl(), result));
             auditActivities.markVerified(request.jobId());
-            auditActivities.appendEvent(request.jobId(), "complete", AuditStatus.COMPLETE, Map.of(
-                    "message", "Your site review is complete. Results are ready.",
-                    "progress", 100
+            auditActivities.appendEvent(streamEvent(
+                    request.jobId(),
+                    "complete",
+                    AuditStatus.COMPLETE,
+                    "Your site review is complete. Results are ready.",
+                    100
             ));
         } catch (Exception exception) {
             handleFailure(request.jobId(), exception);
@@ -72,13 +81,33 @@ public class AuditWorkflowImpl implements AuditWorkflow {
         String userMessage = toUserMessage(exception, internalMessage);
         try {
             auditActivities.markFailed(jobId, userMessage);
-            auditActivities.appendEvent(jobId, "error", AuditStatus.FAILED, Map.of(
-                    "message", userMessage
+            auditActivities.appendEvent(streamEvent(
+                    jobId,
+                    "error",
+                    AuditStatus.FAILED,
+                    userMessage,
+                    null
             ));
         } catch (Exception ignored) {
             Workflow.getLogger(AuditWorkflowImpl.class)
                     .error("Unable to persist audit failure for {}. Root cause: {}", jobId, internalMessage, ignored);
         }
+    }
+
+    private AuditStreamEventSchema streamEvent(
+            String jobId,
+            String eventType,
+            AuditStatus status,
+            String message,
+            Integer progress
+    ) {
+        AuditStreamEventSchema event = new AuditStreamEventSchema();
+        event.setJobId(jobId);
+        event.setType(AuditStreamEventSchema.Type.fromValue(eventType));
+        event.setStatus(AuditStreamEventSchema.Status.fromValue(status.name()));
+        event.setMessage(message);
+        event.setProgress(progress);
+        return event;
     }
 
     private String toUserMessage(Throwable failure, String internalMessage) {

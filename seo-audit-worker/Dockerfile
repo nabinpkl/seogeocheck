@@ -10,12 +10,13 @@ RUN corepack enable && \
     apt-get install -y build-essential python3 pkg-config procps && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /workspace/seo-audit-worker
 
-COPY package.json pnpm-lock.yaml ./
+COPY seo-audit-worker/package.json seo-audit-worker/pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile && \
     pnpm exec playwright install --with-deps chromium
 
-COPY src ./src
+COPY seo-audit-worker/src ./src
+COPY schemas ../schemas
 
 CMD ["pnpm", "start"]

@@ -3,6 +3,7 @@ package com.nabin.seogeo.audit.service;
 import com.nabin.seogeo.audit.persistence.AuditEventRepository;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -106,12 +107,44 @@ class AuditProgressKafkaListenerTests {
 
         kafkaTemplate.send("seogeo.audit.progress.v1", "audit_bad_payload", "{not-json").get();
 
-        ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(
-                dlqConsumer,
-                "seogeo.audit.progress.dlq.v1",
-                Duration.ofSeconds(10)
-        );
+        ConsumerRecord<String, String> record = awaitDlqRecord("audit_bad_payload");
         assertThat(record.value()).contains("{not-json");
+    }
+
+    @Test
+    void schemaInvalidKafkaPayloadsLandInTheDlq() throws Exception {
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("audit-progress-dlq-schema", "false", embeddedKafkaBroker);
+        dlqConsumer = new org.apache.kafka.clients.consumer.KafkaConsumer<>(
+                consumerProps,
+                new StringDeserializer(),
+                new StringDeserializer()
+        );
+        embeddedKafkaBroker.consumeFromAnEmbeddedTopic(dlqConsumer, "seogeo.audit.progress.dlq.v1");
+
+        kafkaTemplate.send(
+                "seogeo.audit.progress.v1",
+                "audit_bad_schema",
+                """
+                {"schemaVersion":1,"eventId":"audit_bad_schema:stage:source_capture_complete","jobId":"audit_bad_schema","producer":"seo-audit-worker","eventType":"status","status":"STREAMING","emittedAt":"2026-03-22T00:00:00Z","message":"Collected source HTML signals.","stage":"source_capture_complete","progress":25,"unexpected":true}
+                """
+        ).get();
+
+        ConsumerRecord<String, String> record = awaitDlqRecord("audit_bad_schema");
+        assertThat(record.value()).contains("\"unexpected\":true");
+    }
+
+    private ConsumerRecord<String, String> awaitDlqRecord(String expectedKey) {
+        long deadline = System.currentTimeMillis() + 10_000L;
+        while (System.currentTimeMillis() < deadline) {
+            ConsumerRecords<String, String> records = dlqConsumer.poll(Duration.ofMillis(500));
+            for (ConsumerRecord<String, String> record : records.records("seogeo.audit.progress.dlq.v1")) {
+                if (expectedKey.equals(record.key())) {
+                    return record;
+                }
+            }
+        }
+
+        throw new AssertionError("Timed out waiting for DLQ record for " + expectedKey);
     }
 
     private void awaitEventCount(String jobId, int expectedCount) throws InterruptedException {

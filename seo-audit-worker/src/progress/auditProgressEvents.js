@@ -1,3 +1,5 @@
+import { assertValidWorkerProgressEvent } from "../contracts/schemaValidation.js";
+
 const STAGE_PROGRESS = {
   source_capture_complete: 25,
   preflight_complete: 40,
@@ -11,7 +13,7 @@ function isoNow() {
 }
 
 export function createStageEvent(jobId, stage, message) {
-  return {
+  return assertValidWorkerProgressEvent({
     schemaVersion: 1,
     eventId: `${jobId}:stage:${stage}`,
     jobId,
@@ -22,11 +24,11 @@ export function createStageEvent(jobId, stage, message) {
     message,
     stage,
     progress: STAGE_PROGRESS[stage] ?? null,
-  };
+  });
 }
 
 export function createCheckEvent(jobId, check) {
-  return {
+  return assertValidWorkerProgressEvent({
     schemaVersion: 1,
     eventId: `${jobId}:rule:${check.id}`,
     jobId,
@@ -42,7 +44,7 @@ export function createCheckEvent(jobId, check) {
     detail: check.detail ?? null,
     selector: check.selector ?? null,
     metric: check.metric ?? null,
-  };
+  });
 }
 
 export function createWorkerErrorEvent(jobId, error) {
@@ -53,7 +55,7 @@ export function createWorkerErrorEvent(jobId, error) {
         ? error.message
         : "The SEO audit worker could not finish this step.";
 
-  return {
+  return assertValidWorkerProgressEvent({
     schemaVersion: 1,
     eventId: `${jobId}:error:worker`,
     jobId,
@@ -62,5 +64,5 @@ export function createWorkerErrorEvent(jobId, error) {
     status: "FAILED",
     emittedAt: isoNow(),
     message,
-  };
+  });
 }

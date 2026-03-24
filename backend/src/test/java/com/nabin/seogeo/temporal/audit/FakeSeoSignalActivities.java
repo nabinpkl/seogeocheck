@@ -1,6 +1,9 @@
 package com.nabin.seogeo.temporal.audit;
 
-import com.nabin.seogeo.audit.domain.AuditProgressEvent;
+import com.nabin.seogeo.audit.contract.generated.AuditWorkerProgressEventSchema;
+import com.nabin.seogeo.audit.contract.generated.CategoryScores;
+import com.nabin.seogeo.audit.contract.generated.RawSummary;
+import com.nabin.seogeo.audit.contract.generated.ReportCheckMetadata;
 import com.nabin.seogeo.audit.domain.SeoAuditCheck;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import com.nabin.seogeo.audit.service.AuditProgressProjectorService;
@@ -9,9 +12,9 @@ import io.temporal.spring.boot.ActivityImpl;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 
 @Profile("test")
 @Component
@@ -45,14 +48,11 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
             );
         }
 
-        project(jobId, new AuditProgressEvent(
-                1,
+        project(jobId, progressEvent(
                 jobId + ":stage:source_capture_complete",
                 jobId,
-                "seo-audit-worker",
                 "status",
                 "STREAMING",
-                OffsetDateTime.now(),
                 "Collected source HTML signals.",
                 "source_capture_complete",
                 25,
@@ -64,14 +64,11 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                 null,
                 null
         ));
-        project(jobId, new AuditProgressEvent(
-                1,
+        project(jobId, progressEvent(
                 jobId + ":rule:document-title",
                 jobId,
-                "seo-audit-worker",
                 "check",
                 "STREAMING",
-                OffsetDateTime.now(),
                 "Add a unique page title",
                 null,
                 null,
@@ -83,14 +80,11 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                 "head > title",
                 null
         ));
-        project(jobId, new AuditProgressEvent(
-                1,
+        project(jobId, progressEvent(
                 jobId + ":rule:primary-heading",
                 jobId,
-                "seo-audit-worker",
                 "check",
                 "STREAMING",
-                OffsetDateTime.now(),
                 "Strengthen the primary heading",
                 null,
                 null,
@@ -102,14 +96,11 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                 "body h1",
                 null
         ));
-        project(jobId, new AuditProgressEvent(
-                1,
+        project(jobId, progressEvent(
                 jobId + ":rule:meta-description",
                 jobId,
-                "seo-audit-worker",
                 "check",
                 "STREAMING",
-                OffsetDateTime.now(),
                 "Meta description is present",
                 null,
                 null,
@@ -127,13 +118,7 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                 targetUrl.endsWith("/") ? targetUrl : targetUrl + "/",
                 "At Risk",
                 86,
-                Map.of(
-                        "reachability", 100,
-                        "crawlability", 84,
-                        "indexability", 82,
-                        "contentVisibility", 83,
-                        "metadata", 91
-                ),
+                categoryScores(100, 84, 82, 83, 91, 100),
                 List.of(
                         new SeoAuditCheck(
                                 "document-title",
@@ -144,7 +129,7 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                                 null,
                                 "head > title",
                                 null,
-                                Map.of("score", 0)
+                                metadata("document_title", "source_html", (entry) -> entry.setLength(0))
                         ),
                         new SeoAuditCheck(
                                 "primary-heading",
@@ -155,7 +140,7 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                                 null,
                                 "body h1",
                                 null,
-                                Map.of("score", 42)
+                                metadata("heading_structure", "source_html", (entry) -> entry.setH1Count(0))
                         ),
                         new SeoAuditCheck(
                                 "meta-description",
@@ -166,17 +151,91 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                                 "The page already offers a summary snippet for search results.",
                                 "head > meta[name=\"description\"]",
                                 null,
-                                Map.of("score", 100)
+                                metadata("meta_description", "source_html", (entry) -> entry.setLength(100))
                         )
                 ),
-                Map.of(
-                        "worker", "fake-seo-audit-worker",
-                        "fetchTime", "2026-03-16T00:00:00Z"
-                )
+                rawSummary("seo-audit-worker")
         );
     }
 
-    private void project(String jobId, AuditProgressEvent event) {
+    private void project(String jobId, AuditWorkerProgressEventSchema event) {
         auditProgressProjectorService.project(event, "test-progress-topic", 0, 0L);
+    }
+
+    private static AuditWorkerProgressEventSchema progressEvent(
+            String eventId,
+            String jobId,
+            String eventType,
+            String status,
+            String message,
+            String stage,
+            Integer progress,
+            String ruleId,
+            String checkStatus,
+            String severity,
+            String instruction,
+            String detail,
+            String selector,
+            String metric
+    ) {
+        AuditWorkerProgressEventSchema event = new AuditWorkerProgressEventSchema();
+        event.setSchemaVersion(1);
+        event.setEventId(eventId);
+        event.setJobId(jobId);
+        event.setProducer("seo-audit-worker");
+        event.setEventType(AuditWorkerProgressEventSchema.EventType.fromValue(eventType));
+        event.setStatus(AuditWorkerProgressEventSchema.Status.fromValue(status));
+        event.setEmittedAt(Date.from(OffsetDateTime.now().toInstant()));
+        event.setMessage(message);
+        event.setStage(stage);
+        event.setProgress(progress);
+        event.setRuleId(ruleId);
+        if (checkStatus != null) {
+            event.setCheckStatus(AuditWorkerProgressEventSchema.CheckStatus.fromValue(checkStatus));
+        }
+        if (severity != null) {
+            event.setSeverity(AuditWorkerProgressEventSchema.Severity.fromValue(severity));
+        }
+        event.setInstruction(instruction);
+        event.setDetail(detail);
+        event.setSelector(selector);
+        event.setMetric(metric);
+        return event;
+    }
+
+    private static CategoryScores categoryScores(
+            int reachability,
+            int crawlability,
+            int indexability,
+            int contentVisibility,
+            int metadata,
+            int discovery
+    ) {
+        CategoryScores scores = new CategoryScores();
+        scores.setReachability(reachability);
+        scores.setCrawlability(crawlability);
+        scores.setIndexability(indexability);
+        scores.setContentVisibility(contentVisibility);
+        scores.setMetadata(metadata);
+        scores.setDiscovery(discovery);
+        return scores;
+    }
+
+    private static RawSummary rawSummary(String worker) {
+        RawSummary summary = new RawSummary();
+        summary.setWorker(worker);
+        return summary;
+    }
+
+    private static ReportCheckMetadata metadata(
+            String problemFamily,
+            String evidenceSource,
+            java.util.function.Consumer<ReportCheckMetadata> customizer
+    ) {
+        ReportCheckMetadata metadata = new ReportCheckMetadata();
+        metadata.setProblemFamily(ReportCheckMetadata.ProblemFamily.fromValue(problemFamily));
+        metadata.setEvidenceSource(ReportCheckMetadata.EvidenceSource.fromValue(evidenceSource));
+        customizer.accept(metadata);
+        return metadata;
     }
 }

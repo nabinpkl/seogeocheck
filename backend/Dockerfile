@@ -1,12 +1,13 @@
 # Stage 1: Build stage
 FROM eclipse-temurin:25-jdk AS build
-WORKDIR /app
+WORKDIR /workspace/backend
 
 # Copy gradle wrapper and build files
-COPY gradle/ gradle/
-COPY gradlew .
-COPY settings.gradle .
-COPY build.gradle .
+COPY backend/gradle/ gradle/
+COPY backend/gradlew .
+COPY backend/settings.gradle .
+COPY backend/build.gradle .
+COPY schemas/ ../schemas/
 
 # Give execution permission to gradlew
 RUN chmod +x gradlew
@@ -15,7 +16,7 @@ RUN chmod +x gradlew
 RUN ./gradlew dependencies --no-daemon || true
 
 # Copy source code
-COPY src/ src/
+COPY backend/src/ src/
 
 # Build the application
 RUN ./gradlew build -x test --no-daemon
@@ -25,7 +26,7 @@ FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
 # Copy the built jar from the build stage
-COPY --from=build /app/build/libs/*.jar app.jar
+COPY --from=build /workspace/backend/build/libs/*.jar app.jar
 
 # Expose the application port
 EXPOSE 8080

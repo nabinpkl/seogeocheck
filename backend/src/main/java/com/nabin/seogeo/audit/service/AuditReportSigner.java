@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.generated.ReportCheck;
+import com.nabin.seogeo.audit.contract.generated.ReportSummary;
+import com.nabin.seogeo.audit.contract.generated.Signature;
 import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
-import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.domain.SeoAuditCheck;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import org.springframework.stereotype.Service;
@@ -16,11 +19,10 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.util.Date;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class AuditReportSigner {
@@ -30,13 +32,21 @@ public class AuditReportSigner {
     private final AuditProperties auditProperties;
     private final ObjectMapper objectMapper;
     private final ObjectMapper canonicalMapper;
+    private final AuditContractSchemaValidator auditContractSchemaValidator;
 
-    public AuditReportSigner(AuditProperties auditProperties, ObjectMapper objectMapper) {
+    public AuditReportSigner(
+            AuditProperties auditProperties,
+            ObjectMapper objectMapper,
+            AuditContractSchemaValidator auditContractSchemaValidator
+    ) {
         this.auditProperties = auditProperties;
-        this.objectMapper = objectMapper;
+        this.objectMapper = objectMapper.copy()
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        this.auditContractSchemaValidator = auditContractSchemaValidator;
         this.canonicalMapper = JsonMapper.builder()
                 .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
                 .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .build();
     }
 
@@ -50,8 +60,8 @@ public class AuditReportSigner {
             SeoAuditResult result,
             OffsetDateTime generatedAt
     ) {
-        List<Map<String, Object>> checks = result.checks().stream()
-                .map(this::toCheckPayload)
+        List<ReportCheck> checks = result.checks().stream()
+                .map(this::toReportCheck)
                 .toList();
         long issueCount = result.checks().stream()
                 .filter(check -> "issue".equals(check.status()))
@@ -71,37 +81,38 @@ public class AuditReportSigner {
                 .map(SeoAuditCheck::label)
                 .orElse("No major issues detected");
 
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("score", result.score());
-        summary.put("status", AuditStatus.VERIFIED.name());
-        summary.put("indexabilityVerdict", result.indexabilityVerdict());
-        summary.put("targetUrl", targetUrl);
-        summary.put("issueCount", issueCount);
-        summary.put("passedCheckCount", passedCheckCount);
-        summary.put("notApplicableCount", notApplicableCount);
-        summary.put("systemErrorCount", systemErrorCount);
-        summary.put("topIssue", topIssue);
+        ReportSummary summary = new ReportSummary();
+        summary.setScore(result.score());
+        summary.setStatus(AuditReportSchema.AuditStatus.VERIFIED);
+        summary.setIndexabilityVerdict(toVerdictLabel(result.indexabilityVerdict()));
+        summary.setTargetUrl(targetUrl);
+        summary.setIssueCount(Math.toIntExact(issueCount));
+        summary.setPassedCheckCount(Math.toIntExact(passedCheckCount));
+        summary.setNotApplicableCount(Math.toIntExact(notApplicableCount));
+        summary.setSystemErrorCount(Math.toIntExact(systemErrorCount));
+        summary.setTopIssue(topIssue);
 
-        Map<String, Object> report = new LinkedHashMap<>();
-        report.put("jobId", jobId);
-        report.put("status", AuditStatus.VERIFIED.name());
-        report.put("generatedAt", generatedAt.toString());
-        report.put("targetUrl", targetUrl);
-        report.put("reportType", "SEO_SIGNALS_SIGNED_AUDIT");
-        report.put("indexabilityVerdict", result.indexabilityVerdict());
-        report.put("summary", summary);
-        report.put("checks", checks);
-        report.put("categories", result.categoryScores());
-        report.put("rawSummary", result.rawSummary());
+        AuditReportSchema report = new AuditReportSchema();
+        report.setJobId(jobId);
+        report.setStatus(AuditReportSchema.AuditStatus.VERIFIED);
+        report.setGeneratedAt(Date.from(generatedAt.toInstant()));
+        report.setTargetUrl(targetUrl);
+        report.setReportType("SEO_SIGNALS_SIGNED_AUDIT");
+        report.setIndexabilityVerdict(toVerdictLabel(result.indexabilityVerdict()));
+        report.setSummary(summary);
+        report.setChecks(checks);
+        report.setCategories(result.categoryScores());
+        report.setRawSummary(result.rawSummary());
 
         String canonicalJson = writeCanonicalJson(report);
         String signatureValue = sign(canonicalJson);
 
-        Map<String, Object> signature = new LinkedHashMap<>();
-        signature.put("present", true);
-        signature.put("algorithm", HMAC_SHA_256);
-        signature.put("value", signatureValue);
-        report.put("signature", signature);
+        Signature signature = new Signature();
+        signature.setPresent(true);
+        signature.setAlgorithm(HMAC_SHA_256);
+        signature.setValue(signatureValue);
+        report.setSignature(signature);
+        auditContractSchemaValidator.validateReportPayload(report);
 
         return new AuditReportRecord(
                 jobId,
@@ -112,30 +123,34 @@ public class AuditReportSigner {
         );
     }
 
-    private Map<String, Object> toCheckPayload(SeoAuditCheck check) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("id", check.id());
-        payload.put("label", check.label());
-        payload.put("status", check.status());
+    private ReportCheck toReportCheck(SeoAuditCheck check) {
+        ReportCheck payload = new ReportCheck();
+        payload.setId(check.id());
+        payload.setLabel(check.label());
+        payload.setStatus(ReportCheck.CheckStatus.fromValue(check.status()));
         if (check.severity() != null && !check.severity().isBlank()) {
-            payload.put("severity", check.severity());
+            payload.setSeverity(check.severity());
         }
         if (check.instruction() != null && !check.instruction().isBlank()) {
-            payload.put("instruction", check.instruction());
+            payload.setInstruction(check.instruction());
         }
         if (check.detail() != null && !check.detail().isBlank()) {
-            payload.put("detail", check.detail());
+            payload.setDetail(check.detail());
         }
         if (check.selector() != null && !check.selector().isBlank()) {
-            payload.put("selector", check.selector());
+            payload.setSelector(check.selector());
         }
         if (check.metric() != null && !check.metric().isBlank()) {
-            payload.put("metric", check.metric());
+            payload.setMetric(check.metric());
         }
-        if (check.metadata() != null && !check.metadata().isEmpty()) {
-            payload.put("metadata", check.metadata());
+        if (check.metadata() != null) {
+            payload.setMetadata(check.metadata());
         }
         return payload;
+    }
+
+    private AuditReportSchema.IndexabilityVerdictLabel toVerdictLabel(String verdict) {
+        return AuditReportSchema.IndexabilityVerdictLabel.fromValue(verdict);
     }
 
     private int severityRank(SeoAuditCheck check) {
@@ -164,7 +179,7 @@ public class AuditReportSigner {
         }
     }
 
-    private String writeCanonicalJson(Map<String, Object> payload) {
+    private String writeCanonicalJson(Object payload) {
         try {
             return canonicalMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
@@ -172,7 +187,7 @@ public class AuditReportSigner {
         }
     }
 
-    private String writeJson(Map<String, Object> payload) {
+    private String writeJson(Object payload) {
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {

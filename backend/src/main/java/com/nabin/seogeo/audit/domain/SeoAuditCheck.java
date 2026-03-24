@@ -1,6 +1,6 @@
 package com.nabin.seogeo.audit.domain;
 
-import java.util.Map;
+import com.nabin.seogeo.audit.contract.generated.ReportCheckMetadata;
 
 public record SeoAuditCheck(
         String id,
@@ -11,6 +11,6 @@ public record SeoAuditCheck(
         String detail,
         String selector,
         String metric,
-        Map<String, Object> metadata
+        ReportCheckMetadata metadata
 ) {
 }

@@ -2,8 +2,7 @@ package com.nabin.seogeo.audit.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nabin.seogeo.audit.config.KafkaProgressProperties;
-import com.nabin.seogeo.audit.domain.AuditProgressEvent;
+import com.nabin.seogeo.audit.contract.generated.AuditWorkerProgressEventSchema;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
@@ -14,13 +13,16 @@ public class AuditProgressKafkaListener {
 
     private final ObjectMapper objectMapper;
     private final AuditProgressProjectorService auditProgressProjectorService;
+    private final AuditContractSchemaValidator auditContractSchemaValidator;
 
     public AuditProgressKafkaListener(
             ObjectMapper objectMapper,
-            AuditProgressProjectorService auditProgressProjectorService
+            AuditProgressProjectorService auditProgressProjectorService,
+            AuditContractSchemaValidator auditContractSchemaValidator
     ) {
         this.objectMapper = objectMapper;
         this.auditProgressProjectorService = auditProgressProjectorService;
+        this.auditContractSchemaValidator = auditContractSchemaValidator;
     }
 
     @KafkaListener(
@@ -30,7 +32,8 @@ public class AuditProgressKafkaListener {
     )
     public void onMessage(ConsumerRecord<String, String> record, Acknowledgment acknowledgment)
             throws JsonProcessingException {
-        AuditProgressEvent event = objectMapper.readValue(record.value(), AuditProgressEvent.class);
+        auditContractSchemaValidator.validateWorkerProgressEventJson(record.value());
+        AuditWorkerProgressEventSchema event = objectMapper.readValue(record.value(), AuditWorkerProgressEventSchema.class);
         auditProgressProjectorService.project(
                 event,
                 record.topic(),
