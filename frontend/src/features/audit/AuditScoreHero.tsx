@@ -179,21 +179,21 @@ export function AuditScoreHero({
       tone: "success" as const,
     },
     {
-      label: "Not relevant",
+      label: "Skipped",
       count: notApplicableCount,
       helper:
         notApplicableCount > 0
-          ? "These checks do not apply here."
+          ? "These checks were not evaluated."
           : "All tracked checks applied.",
       tone: "neutral" as const,
     },
     {
-      label: "Needs review",
+      label: "Couldn't Perform",
       count: systemErrorCount,
       helper:
         systemErrorCount > 0
-          ? "Automatic verification did not finish."
-          : "Automatic verification completed.",
+          ? "We couldn't perform these checks."
+          : "All checks were performed.",
       tone: "warning" as const,
     },
   ];
@@ -285,6 +285,7 @@ export function AuditScoreHero({
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {breakdownCards.map((card) => (
+              card.count > 0 && (
               <div
                 key={card.label}
                 className={cn(
@@ -313,7 +314,7 @@ export function AuditScoreHero({
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{card.helper}</p>
               </div>
-            ))}
+            )))}
           </div>
 
           <div className="flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-white/85 p-5 shadow-sm shadow-slate-200/40 sm:flex-row sm:items-center sm:justify-between">
