@@ -2,9 +2,15 @@ import { buildSeoAuditResultFromEvaluation, evaluateSeoAudit } from "../normaliz
 
 export { buildSeoAuditResultFromEvaluation };
 
-export function evaluateAudit({ sourceInput, renderedInput = null, renderedError = null }) {
+export function evaluateAudit({
+  sourceInput,
+  sitewideInput = null,
+  renderedInput = null,
+  renderedError = null,
+}) {
   return evaluateSeoAudit({
     ...sourceInput,
+    sitewide: sitewideInput,
     renderedDom: renderedInput,
     renderedError:
       renderedError instanceof Error
@@ -15,10 +21,16 @@ export function evaluateAudit({ sourceInput, renderedInput = null, renderedError
   });
 }
 
-export function buildAuditResult({ sourceInput, renderedInput = null, renderedError = null }) {
+export function buildAuditResult({
+  sourceInput,
+  sitewideInput = null,
+  renderedInput = null,
+  renderedError = null,
+}) {
   return buildSeoAuditResultFromEvaluation(
     evaluateAudit({
       sourceInput,
+      sitewideInput,
       renderedInput,
       renderedError,
     })

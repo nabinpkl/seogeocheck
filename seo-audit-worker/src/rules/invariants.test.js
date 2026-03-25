@@ -10,6 +10,7 @@ test("registry exposes the canonical packs in product order", () => {
       "reachability",
       "crawlability",
       "indexability",
+      "sitewide",
       "contentVisibility",
       "metadata",
       "discovery",
@@ -45,6 +46,6 @@ test("discovery scoring rules declare numeric score weights", () => {
 test("active packs only include packs with registered rules", () => {
   assert.deepEqual(
     ACTIVE_PACKS.map((pack) => pack.id),
-    ["reachability", "crawlability", "indexability", "contentVisibility", "metadata"]
+    ["reachability", "crawlability", "indexability", "sitewide", "contentVisibility", "metadata"]
   );
 });

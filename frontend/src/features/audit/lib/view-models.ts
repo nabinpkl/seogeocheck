@@ -19,6 +19,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   reachability: "Reachability",
   crawlability: "Crawlability",
   indexability: "Indexability",
+  sitewide: "Sitewide",
   contentVisibility: "Content Visibility",
   metadata: "Metadata",
   discovery: "Discovery",
@@ -28,6 +29,7 @@ const CATEGORY_ORDER = [
   "reachability",
   "crawlability",
   "indexability",
+  "sitewide",
   "contentVisibility",
   "metadata",
   "discovery",
@@ -60,6 +62,9 @@ const PROBLEM_FAMILY_LABELS: Record<string, string> = {
   meta_viewport: "Meta Viewport",
   favicon: "Favicon",
   head_hygiene: "Head Hygiene",
+  sitewide_foundations: "Sitewide Foundations",
+  sitewide_sitemaps: "Sitewide Sitemaps",
+  sitewide_sample_coverage: "Sitewide Sample Coverage",
   general_hygiene: "General Hygiene",
 };
 

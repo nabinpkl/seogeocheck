@@ -34,6 +34,9 @@ export type ProblemFamily =
   | 'social_open_graph'
   | 'social_twitter'
   | 'social_url_hygiene'
+  | 'sitewide_foundations'
+  | 'sitewide_sample_coverage'
+  | 'sitewide_sitemaps'
   | 'source-visible-text'
   | 'source_link_presence'
   | 'structured_data'
@@ -211,6 +214,7 @@ export interface ReportCheckMetadata {
   metaRefreshControl?: MetaRefreshControl;
   robotsTxt?: RobotsTxt;
   redirectChain?: RedirectChain;
+  sitewide?: SitewideSummary;
 }
 export interface RobotsSameTargetConflict {
   target: string;
@@ -596,10 +600,95 @@ export interface MetaRefreshControl {
   refreshOnlyCount: number;
   entries: MetaRefreshEntry[];
 }
+export interface SitewideSummary {
+  siteRootUrl: string;
+  preferredOrigin?: NullableString;
+  hostVariants: SitewideHostVariant[];
+  robotsTxt: SitewideRobotsTxt;
+  sitemap: SitewideSitemap;
+  sampledUrls: SitewideSampledUrl[];
+  sampleCoverage: SitewideSampleCoverage;
+}
+export interface SitewideHostVariant {
+  requestedUrl: string;
+  finalUrl?: NullableString;
+  finalOrigin?: NullableString;
+  status: string;
+  statusCode?: NullableInteger;
+  redirectCount: number;
+  isReachable: boolean;
+  isHtmlResponse: boolean;
+  robotsTxtAllowsCrawl?: NullableBoolean;
+  effectiveIndexing?: NullableString;
+  error?: NullableString;
+}
+export interface SitewideRobotsTxt {
+  status: string;
+  allowsCrawl?: NullableBoolean;
+  evaluatedUserAgent?: NullableString;
+  matchedDirective?: NullableString;
+  matchedPattern?: NullableString;
+  fetchStatusCode?: NullableInteger;
+  url?: NullableString;
+  finalUrl?: NullableString;
+  error?: NullableString;
+  declaredSitemapUrls: string[];
+}
+export interface SitewideSitemap {
+  status: string;
+  discoveryMethod: 'robots_txt' | 'fallback' | 'none';
+  declaredSitemapUrls: string[];
+  fallbackSitemapUrl?: NullableString;
+  processedSitemapCount: number;
+  discoveredUrlCount: number;
+  sameOriginUrlCount: number;
+  fetchedSitemaps: SitewideFetchedSitemap[];
+  discoveredUrls: string[];
+}
+export interface SitewideFetchedSitemap {
+  url: string;
+  finalUrl?: NullableString;
+  statusCode?: NullableInteger;
+  contentType?: NullableString;
+  status: string;
+  kind?: NullableString;
+  discoveredUrlCount: number;
+  sameOriginUrlCount: number;
+  error?: NullableString;
+}
+export interface SitewideSampledUrl {
+  url: string;
+  source: 'site_root' | 'current_page' | 'sitemap' | 'homepage_link';
+  finalUrl?: NullableString;
+  status: string;
+  statusCode?: NullableInteger;
+  redirectCount: number;
+  isReachable: boolean;
+  isHtmlResponse: boolean;
+  robotsTxtAllowsCrawl?: NullableBoolean;
+  effectiveIndexing?: NullableString;
+  indexable: boolean;
+  hasTitle: boolean;
+  hasMetaDescription: boolean;
+  hasValidCanonical: boolean;
+}
+export interface SitewideSampleCoverage {
+  sampledUrlCount: number;
+  indexableUrlCount: number;
+  titleCoverageCount: number;
+  metaDescriptionCoverageCount: number;
+  canonicalCoverageCount: number;
+  minimumPassingRatio: number;
+  indexableCoverageRatio: number;
+  titleCoverageRatio: number;
+  metaDescriptionCoverageRatio: number;
+  canonicalCoverageRatio: number;
+}
 export interface CategoryScores {
   reachability: number;
   crawlability: number;
   indexability: number;
+  sitewide: number;
   contentVisibility: number;
   metadata: number;
   discovery: number;
@@ -639,6 +728,7 @@ export interface RawSummary {
   structuredDataControl?: StructuredDataControl;
   robotsTxt?: RobotsTxt;
   redirectChain?: RedirectChain;
+  sitewide?: null | SitewideSummary;
   indexabilityVerdict?: IndexabilityVerdict;
   scoring?: AuditScoring;
   renderedDom?: null | SurfaceSummary;
@@ -695,6 +785,7 @@ export interface AuditScoringCategories {
   reachability: AuditScoringCategoryBreakdown;
   crawlability: AuditScoringCategoryBreakdown;
   indexability: AuditScoringCategoryBreakdown;
+  sitewide: AuditScoringCategoryBreakdown;
   contentVisibility: AuditScoringCategoryBreakdown;
   metadata: AuditScoringCategoryBreakdown;
   discovery: AuditScoringCategoryBreakdown;

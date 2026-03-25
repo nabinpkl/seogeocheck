@@ -170,14 +170,21 @@ export function evaluateSeoAudit(input) {
         finalUrl: input.renderedDom.finalUrl ?? sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
       })
     : null;
-  const sourceChecks = SORTED_RULES.map((rule) => toSourceCheck(rule, sourceFacts));
+  const sourceChecks = SORTED_RULES
+    .filter((rule) => rule.packId !== "sitewide")
+    .map((rule) => toSourceCheck(rule, sourceFacts));
+  const sitewideChecks = input.sitewide
+    ? SORTED_RULES
+        .filter((rule) => rule.packId === "sitewide")
+        .map((rule) => toSourceCheck(rule, input.sitewide))
+    : [];
   const comparison = compareSurfaces({
     sourceFacts,
     renderedFacts,
     renderedError: input.renderedError,
   });
-  const checks = [...sourceChecks, ...comparison.checks];
-  const scoringChecks = [...sourceChecks, ...comparison.scoringChecks];
+  const checks = [...sourceChecks, ...sitewideChecks, ...comparison.checks];
+  const scoringChecks = [...sourceChecks, ...sitewideChecks, ...comparison.scoringChecks];
   const indexabilityVerdict = deriveIndexabilityVerdict(sourceFacts);
   const scoring = buildWeightedScoreBreakdown(scoringChecks);
   const categoryScores = Object.fromEntries(
@@ -191,12 +198,14 @@ export function evaluateSeoAudit(input) {
     sourceFacts,
     renderedFacts,
     sourceChecks,
+    sitewideChecks,
     comparison,
     checks,
     scoringChecks,
     indexabilityVerdict,
     scoring,
     categoryScores,
+    sitewide: input.sitewide ?? null,
   };
 }
 
@@ -209,6 +218,7 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
     indexabilityVerdict,
     scoring,
     categoryScores,
+    sitewide,
   } = evaluation;
   const sortedChecks = sortChecks(checks);
 
@@ -271,6 +281,7 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
       structuredDataControl: sourceFacts.structuredDataControl,
       robotsTxt: sourceFacts.robotsTxt,
       redirectChain: sourceFacts.redirectChain,
+      sitewide,
       indexabilityVerdict,
       scoring,
       renderedDom: renderedFacts

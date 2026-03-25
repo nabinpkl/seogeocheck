@@ -101,10 +101,11 @@ test("buildWeightedScoreBreakdown excludes unverifiable checks from score and lo
 
   assert.equal(scoring.categories.contentVisibility.score, 100);
   assert.equal(scoring.categories.contentVisibility.confidence, 71);
+  assert.equal(scoring.categories.sitewide.confidence, 0);
   assert.equal(scoring.categories.discovery.score, 0);
   assert.equal(scoring.categories.discovery.confidence, 0);
   assert.equal(scoring.overall.score, 100);
-  assert.equal(scoring.overall.confidence, 91);
+  assert.equal(scoring.overall.confidence, 76);
   assert.equal(
     scoring.rules.find((rule) => rule.ruleId === "body-image-alt")?.exclusionReason,
     "not_applicable"

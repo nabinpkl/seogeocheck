@@ -1,7 +1,8 @@
 export const CATEGORY_WEIGHTS = {
-  reachability: 20,
-  crawlability: 25,
-  indexability: 25,
+  reachability: 15,
+  crawlability: 20,
+  indexability: 20,
+  sitewide: 15,
   contentVisibility: 15,
   metadata: 10,
   discovery: 5,

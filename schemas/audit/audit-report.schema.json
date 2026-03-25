@@ -112,6 +112,9 @@
         "social_open_graph",
         "social_twitter",
         "social_url_hygiene",
+        "sitewide_foundations",
+        "sitewide_sample_coverage",
+        "sitewide_sitemaps",
         "source-visible-text",
         "source_link_presence",
         "structured_data",
@@ -183,6 +186,7 @@
         "reachability",
         "crawlability",
         "indexability",
+        "sitewide",
         "contentVisibility",
         "metadata",
         "discovery"
@@ -191,6 +195,7 @@
         "reachability": { "type": "integer", "minimum": 0, "maximum": 100 },
         "crawlability": { "type": "integer", "minimum": 0, "maximum": 100 },
         "indexability": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "sitewide": { "type": "integer", "minimum": 0, "maximum": 100 },
         "contentVisibility": { "type": "integer", "minimum": 0, "maximum": 100 },
         "metadata": { "type": "integer", "minimum": 0, "maximum": 100 },
         "discovery": { "type": "integer", "minimum": 0, "maximum": 100 }
@@ -245,6 +250,7 @@
         "reachability",
         "crawlability",
         "indexability",
+        "sitewide",
         "contentVisibility",
         "metadata",
         "discovery"
@@ -253,6 +259,7 @@
         "reachability": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
         "crawlability": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
         "indexability": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
+        "sitewide": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
         "contentVisibility": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
         "metadata": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
         "discovery": { "$ref": "#/$defs/auditScoringCategoryBreakdown" }
@@ -1204,6 +1211,184 @@
         "unknownSignals": { "type": "array", "items": { "type": "string" } }
       }
     },
+    "sitewideHostVariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestedUrl",
+        "status",
+        "redirectCount",
+        "isReachable",
+        "isHtmlResponse"
+      ],
+      "properties": {
+        "requestedUrl": { "type": "string", "minLength": 1 },
+        "finalUrl": { "$ref": "#/$defs/nullableString" },
+        "finalOrigin": { "$ref": "#/$defs/nullableString" },
+        "status": { "type": "string" },
+        "statusCode": { "$ref": "#/$defs/nullableInteger" },
+        "redirectCount": { "type": "integer", "minimum": 0 },
+        "isReachable": { "type": "boolean" },
+        "isHtmlResponse": { "type": "boolean" },
+        "robotsTxtAllowsCrawl": { "$ref": "#/$defs/nullableBoolean" },
+        "effectiveIndexing": { "$ref": "#/$defs/nullableString" },
+        "error": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "sitewideRobotsTxt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "declaredSitemapUrls"],
+      "properties": {
+        "status": { "type": "string" },
+        "allowsCrawl": { "$ref": "#/$defs/nullableBoolean" },
+        "evaluatedUserAgent": { "$ref": "#/$defs/nullableString" },
+        "matchedDirective": { "$ref": "#/$defs/nullableString" },
+        "matchedPattern": { "$ref": "#/$defs/nullableString" },
+        "fetchStatusCode": { "$ref": "#/$defs/nullableInteger" },
+        "url": { "$ref": "#/$defs/nullableString" },
+        "finalUrl": { "$ref": "#/$defs/nullableString" },
+        "error": { "$ref": "#/$defs/nullableString" },
+        "declaredSitemapUrls": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "sitewideFetchedSitemap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "status", "discoveredUrlCount", "sameOriginUrlCount"],
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "finalUrl": { "$ref": "#/$defs/nullableString" },
+        "statusCode": { "$ref": "#/$defs/nullableInteger" },
+        "contentType": { "$ref": "#/$defs/nullableString" },
+        "status": { "type": "string" },
+        "kind": { "$ref": "#/$defs/nullableString" },
+        "discoveredUrlCount": { "type": "integer", "minimum": 0 },
+        "sameOriginUrlCount": { "type": "integer", "minimum": 0 },
+        "error": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "sitewideSitemap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "discoveryMethod",
+        "declaredSitemapUrls",
+        "processedSitemapCount",
+        "discoveredUrlCount",
+        "sameOriginUrlCount",
+        "fetchedSitemaps",
+        "discoveredUrls"
+      ],
+      "properties": {
+        "status": { "type": "string" },
+        "discoveryMethod": { "type": "string", "enum": ["robots_txt", "fallback", "none"] },
+        "declaredSitemapUrls": { "type": "array", "items": { "type": "string" } },
+        "fallbackSitemapUrl": { "$ref": "#/$defs/nullableString" },
+        "processedSitemapCount": { "type": "integer", "minimum": 0 },
+        "discoveredUrlCount": { "type": "integer", "minimum": 0 },
+        "sameOriginUrlCount": { "type": "integer", "minimum": 0 },
+        "fetchedSitemaps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sitewideFetchedSitemap" }
+        },
+        "discoveredUrls": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "sitewideSampledUrl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "source",
+        "status",
+        "redirectCount",
+        "isReachable",
+        "isHtmlResponse",
+        "indexable",
+        "hasTitle",
+        "hasMetaDescription",
+        "hasValidCanonical"
+      ],
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "enum": ["site_root", "current_page", "sitemap", "homepage_link"] },
+        "finalUrl": { "$ref": "#/$defs/nullableString" },
+        "status": { "type": "string" },
+        "statusCode": { "$ref": "#/$defs/nullableInteger" },
+        "redirectCount": { "type": "integer", "minimum": 0 },
+        "isReachable": { "type": "boolean" },
+        "isHtmlResponse": { "type": "boolean" },
+        "robotsTxtAllowsCrawl": { "$ref": "#/$defs/nullableBoolean" },
+        "effectiveIndexing": { "$ref": "#/$defs/nullableString" },
+        "indexable": { "type": "boolean" },
+        "hasTitle": { "type": "boolean" },
+        "hasMetaDescription": { "type": "boolean" },
+        "hasValidCanonical": { "type": "boolean" }
+      }
+    },
+    "sitewideSampleCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampledUrlCount",
+        "indexableUrlCount",
+        "titleCoverageCount",
+        "metaDescriptionCoverageCount",
+        "canonicalCoverageCount",
+        "minimumPassingRatio",
+        "indexableCoverageRatio",
+        "titleCoverageRatio",
+        "metaDescriptionCoverageRatio",
+        "canonicalCoverageRatio"
+      ],
+      "properties": {
+        "sampledUrlCount": { "type": "integer", "minimum": 0 },
+        "indexableUrlCount": { "type": "integer", "minimum": 0 },
+        "titleCoverageCount": { "type": "integer", "minimum": 0 },
+        "metaDescriptionCoverageCount": { "type": "integer", "minimum": 0 },
+        "canonicalCoverageCount": { "type": "integer", "minimum": 0 },
+        "minimumPassingRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "indexableCoverageRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "titleCoverageRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "metaDescriptionCoverageRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "canonicalCoverageRatio": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "sitewideSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "siteRootUrl",
+        "hostVariants",
+        "robotsTxt",
+        "sitemap",
+        "sampledUrls",
+        "sampleCoverage"
+      ],
+      "properties": {
+        "siteRootUrl": { "type": "string", "minLength": 1 },
+        "preferredOrigin": { "$ref": "#/$defs/nullableString" },
+        "hostVariants": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sitewideHostVariant" }
+        },
+        "robotsTxt": { "$ref": "#/$defs/sitewideRobotsTxt" },
+        "sitemap": { "$ref": "#/$defs/sitewideSitemap" },
+        "sampledUrls": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sitewideSampledUrl" }
+        },
+        "sampleCoverage": { "$ref": "#/$defs/sitewideSampleCoverage" }
+      }
+    },
     "reportCheckMetadata": {
       "type": "object",
       "additionalProperties": false,
@@ -1369,7 +1554,8 @@
         "canonicalTargetControl": { "$ref": "#/$defs/canonicalTargetControl" },
         "metaRefreshControl": { "$ref": "#/$defs/metaRefreshControl" },
         "robotsTxt": { "$ref": "#/$defs/robotsTxt" },
-        "redirectChain": { "$ref": "#/$defs/redirectChain" }
+        "redirectChain": { "$ref": "#/$defs/redirectChain" },
+        "sitewide": { "$ref": "#/$defs/sitewideSummary" }
       }
     },
     "reportCheck": {
@@ -1441,6 +1627,12 @@
         "structuredDataControl": { "$ref": "#/$defs/structuredDataControl" },
         "robotsTxt": { "$ref": "#/$defs/robotsTxt" },
         "redirectChain": { "$ref": "#/$defs/redirectChain" },
+        "sitewide": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/sitewideSummary" }
+          ]
+        },
         "indexabilityVerdict": { "$ref": "#/$defs/indexabilityVerdict" },
         "scoring": { "$ref": "#/$defs/auditScoring" },
         "renderedDom": {

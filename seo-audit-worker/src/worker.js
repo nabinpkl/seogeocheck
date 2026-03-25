@@ -6,6 +6,10 @@ import { collectRenderedDomSignals } from "./audit/collectRenderedDomSignals.js"
 import { createAuditPhaseConfig, getAuditStorageRoot } from "./audit/crawlerStorage.js";
 import { collectIndexabilityPreflight } from "./audit/indexabilityPreflight.js";
 import { collectSourceHtmlSignals } from "./audit/collectPageSignals.js";
+import {
+  collectSitewideSignals,
+  discoverSitewideContext,
+} from "./audit/collectSitewideSignals.js";
 import { toSeoAuditFailure } from "./errors.js";
 import {
   createCheckEvent,
@@ -116,6 +120,30 @@ async function runSeoAudit(jobId, targetUrl) {
       createStageEvent(jobId, "preflight_complete", "Checked crawl and canonical prerequisites.")
     );
 
+    const sitewideDiscovery = await discoverSitewideContext({
+      finalUrl: sourceSignals.finalUrl,
+      currentPageSourceAnchors: sourceSignals.sourceAnchors,
+    });
+    await emitProgressEvent(
+      createStageEvent(
+        jobId,
+        "sitewide_discovery_complete",
+        "Resolved sitewide foundations, robots.txt, and sitemap discovery."
+      )
+    );
+
+    const sitewideSignals = await collectSitewideSignals({
+      currentPageFinalUrl: sourceSignals.finalUrl,
+      discovery: sitewideDiscovery,
+    });
+    await emitProgressEvent(
+      createStageEvent(
+        jobId,
+        "sitewide_sampling_complete",
+        "Evaluated a sitewide sample of URLs."
+      )
+    );
+
     let renderedSignals = null;
     let renderedError = null;
 
@@ -144,10 +172,14 @@ async function runSeoAudit(jobId, targetUrl) {
         ...sourceSignals,
         ...preflight,
       },
+      sitewideInput: sitewideSignals,
       renderedInput: renderedSignals,
       renderedError,
     });
     for (const check of evaluation.sourceChecks) {
+      await emitProgressEvent(createCheckEvent(jobId, check));
+    }
+    for (const check of evaluation.sitewideChecks) {
       await emitProgressEvent(createCheckEvent(jobId, check));
     }
     for (const check of evaluation.comparison.checks) {

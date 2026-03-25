@@ -1,11 +1,13 @@
 import { reachabilityRules } from "./reachability.js";
 import { crawlabilityRules } from "./crawlability.js";
+import { sitewideRules } from "./sitewide.js";
 import { contentRules } from "./content.js";
 import { metadataRules } from "./metadata.js";
 
 const REGISTERED_RULES = [
   ...reachabilityRules,
   ...crawlabilityRules,
+  ...sitewideRules,
   ...contentRules,
   ...metadataRules,
 ].map((rule) => ({
@@ -17,6 +19,7 @@ const PACK_DEFINITIONS = [
   { id: "reachability", label: "Reachability", weight: 1 },
   { id: "crawlability", label: "Crawlability", weight: 1 },
   { id: "indexability", label: "Indexability", weight: 1 },
+  { id: "sitewide", label: "Sitewide", weight: 1 },
   { id: "contentVisibility", label: "Content Visibility", weight: 1 },
   { id: "metadata", label: "Metadata", weight: 1 },
   { id: "discovery", label: "Discovery", weight: 1 },

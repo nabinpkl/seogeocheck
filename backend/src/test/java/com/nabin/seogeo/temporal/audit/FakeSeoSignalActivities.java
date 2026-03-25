@@ -118,7 +118,7 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
                 targetUrl.endsWith("/") ? targetUrl : targetUrl + "/",
                 "At Risk",
                 86,
-                categoryScores(100, 84, 82, 83, 91, 100),
+                categoryScores(100, 84, 82, 88, 83, 91, 100),
                 List.of(
                         new SeoAuditCheck(
                                 "document-title",
@@ -207,6 +207,7 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
             int reachability,
             int crawlability,
             int indexability,
+            int sitewide,
             int contentVisibility,
             int metadata,
             int discovery
@@ -215,6 +216,7 @@ public class FakeSeoSignalActivities implements SeoSignalActivities {
         scores.setReachability(reachability);
         scores.setCrawlability(crawlability);
         scores.setIndexability(indexability);
+        scores.setSitewide(sitewide);
         scores.setContentVisibility(contentVisibility);
         scores.setMetadata(metadata);
         scores.setDiscovery(discovery);

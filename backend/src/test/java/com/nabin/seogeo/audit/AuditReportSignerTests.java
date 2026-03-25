@@ -39,7 +39,7 @@ class AuditReportSignerTests {
                 "https://example.com/",
                 "At Risk",
                 88,
-                categoryScores(100, 92, 84, 88, 91, 100),
+                categoryScores(100, 92, 84, 90, 88, 91, 100),
                 List.of(new SeoAuditCheck(
                         "document-title",
                         "Add a unique page title",
@@ -130,7 +130,7 @@ class AuditReportSignerTests {
                 "https://example.com/",
                 "Indexable",
                 100,
-                categoryScores(100, 100, 100, 100, 100, 100),
+                categoryScores(100, 100, 100, 100, 100, 100, 100),
                 List.of(new SeoAuditCheck(
                         "document-title",
                         "Page title is present",
@@ -221,7 +221,7 @@ class AuditReportSignerTests {
                         "earnedWeight": 5,
                         "availableWeight": 5,
                         "totalPossibleWeight": 5,
-                        "categoryWeight": 20
+                        "categoryWeight": 15
                       },
                       "crawlability": {
                         "score": 70,
@@ -229,7 +229,7 @@ class AuditReportSignerTests {
                         "earnedWeight": 7,
                         "availableWeight": 10,
                         "totalPossibleWeight": 10,
-                        "categoryWeight": 25
+                        "categoryWeight": 20
                       },
                       "indexability": {
                         "score": 100,
@@ -237,7 +237,15 @@ class AuditReportSignerTests {
                         "earnedWeight": 5,
                         "availableWeight": 5,
                         "totalPossibleWeight": 5,
-                        "categoryWeight": 25
+                        "categoryWeight": 20
+                      },
+                      "sitewide": {
+                        "score": 100,
+                        "confidence": 0,
+                        "earnedWeight": 0,
+                        "availableWeight": 0,
+                        "totalPossibleWeight": 0,
+                        "categoryWeight": 15
                       },
                       "contentVisibility": {
                         "score": 100,
@@ -299,7 +307,7 @@ class AuditReportSignerTests {
                 "https://example.com/",
                 "At Risk",
                 78,
-                categoryScores(100, 70, 100, 100, 70, 50),
+                categoryScores(100, 70, 100, 100, 100, 70, 50),
                 List.of(
                         new SeoAuditCheck(
                                 "low-impact-high-issue",
@@ -338,6 +346,7 @@ class AuditReportSignerTests {
             int reachability,
             int crawlability,
             int indexability,
+            int sitewide,
             int contentVisibility,
             int metadata,
             int discovery
@@ -346,6 +355,7 @@ class AuditReportSignerTests {
         scores.setReachability(reachability);
         scores.setCrawlability(crawlability);
         scores.setIndexability(indexability);
+        scores.setSitewide(sitewide);
         scores.setContentVisibility(contentVisibility);
         scores.setMetadata(metadata);
         scores.setDiscovery(discovery);

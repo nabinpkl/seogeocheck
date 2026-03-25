@@ -3,6 +3,8 @@ import { assertValidWorkerProgressEvent } from "../contracts/schemaValidation.js
 const STAGE_PROGRESS = {
   source_capture_complete: 25,
   preflight_complete: 40,
+  sitewide_discovery_complete: 50,
+  sitewide_sampling_complete: 55,
   rendered_capture_complete: 60,
   rendered_capture_unavailable: 60,
   finalizing_report: 90,
