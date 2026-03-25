@@ -106,8 +106,8 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
           <div className="truncate text-sm font-bold tracking-tight text-slate-900">
             {model.title}
           </div>
-          {model.evidenceSourceLabel ? (
-            <EvidenceTag>{model.evidenceSourceLabel}</EvidenceTag>
+          {model.packLabel ? (
+            <EvidenceTag>{model.packLabel}</EvidenceTag>
           ) : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -147,6 +147,16 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
         )}
       >
         <div className="space-y-3">
+          {model.evidenceSourceLabel ? (
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                Evidence source
+              </span>
+              <div className="mt-1">
+                <EvidenceTag>{model.evidenceSourceLabel}</EvidenceTag>
+              </div>
+            </div>
+          ) : null}
           {model.messageSections.map((section) => (
             <div key={section.label}>
               <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">

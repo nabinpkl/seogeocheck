@@ -337,6 +337,25 @@ export function formatEvidenceSource(evidenceSource?: string) {
   return evidenceSource.replaceAll("_", " ");
 }
 
+export function buildCheckCategoryLabelMap(report?: AuditReport | null) {
+  const rules = report?.rawSummary?.scoring?.rules;
+  const labels = new Map<string, string>();
+
+  if (!Array.isArray(rules)) {
+    return labels;
+  }
+
+  for (const rule of rules) {
+    if (typeof rule?.ruleId !== "string" || typeof rule?.categoryId !== "string") {
+      continue;
+    }
+
+    labels.set(rule.ruleId, formatCategoryLabel(rule.categoryId));
+  }
+
+  return labels;
+}
+
 function normalizeProblemFamily(problemFamily?: string) {
   const trimmed = typeof problemFamily === "string" ? problemFamily.trim() : "";
   if (!trimmed) {
@@ -394,7 +413,8 @@ export function selectTopRecommendationChecks(checks: AuditReportCheck[]) {
 }
 
 export function buildFamilyChecklistGroups(
-  checks: AuditReportCheck[]
+  checks: AuditReportCheck[],
+  options?: { categoryLabelsByRuleId?: Map<string, string> }
 ): AuditFamilyChecklistGroupModel[] {
   if (checks.length === 0) {
     return [];
@@ -417,6 +437,12 @@ export function buildFamilyChecklistGroups(
           {
             ...check,
             id: check.id ?? `${familyKey}-${check.status ?? "unknown"}-${index}`,
+          },
+          {
+            packLabel:
+              typeof check.id === "string"
+                ? options?.categoryLabelsByRuleId?.get(check.id) ?? null
+                : null,
           },
           isIssueCheck(check.status)
             ? "issue"
@@ -469,8 +495,8 @@ export function buildFamilyChecklistGroups(
 
 export function buildAuditCheckRowModel(
   check: AuditReportCheck,
-  kind: AuditCheckKind,
-  options?: { isHero?: boolean }
+  options: { packLabel?: string | null; isHero?: boolean } | undefined,
+  kind: AuditCheckKind
 ): AuditCheckRowModel {
   const isIssue = kind === "issue";
   const isPassed = kind === "passed";
@@ -491,6 +517,7 @@ export function buildAuditCheckRowModel(
             : "Verification Needed"),
     problemFamily,
     problemFamilyLabel: formatProblemFamilyLabel(problemFamily),
+    packLabel: options?.packLabel ?? null,
     evidenceSourceLabel: formatEvidenceSource(check.metadata?.evidenceSource),
     severityLabel: isIssue
       ? formatSeverityLabel(check.severity)

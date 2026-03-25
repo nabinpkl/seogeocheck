@@ -21,6 +21,7 @@ export type AuditCheckRowModel = {
   title: string;
   problemFamily: string;
   problemFamilyLabel: string;
+  packLabel: string | null;
   evidenceSourceLabel: string | null;
   severityLabel: string | null;
   tone: AuditTone;

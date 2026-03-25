@@ -17,6 +17,11 @@ export function AuditFamilyChecklistSection({
           <SectionEyebrow className="text-white/50 tracking-[0.5em]">Detailed Analysis</SectionEyebrow>
           <div className="h-px flex-1 bg-slate-500/60" />
         </div>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-300/85">
+          Most checks below reflect non-rendered on-page SEO from the HTML response before
+          rendering. Expand any card to see whether the evidence came from Source HTML,
+          Rendered DOM, or Rendered Comparison.
+        </p>
       </div>
 
       {groups.length === 0 ? (
