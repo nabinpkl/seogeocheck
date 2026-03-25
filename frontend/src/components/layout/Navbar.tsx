@@ -33,10 +33,9 @@ export function Navbar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleLogoClick = () => {
-    if (pathname === "/") {
-      window.scrollTo(0, 0);
-    }
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.location.href = "/";
   };
 
   const isHome = pathname === "/";

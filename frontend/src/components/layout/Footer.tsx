@@ -8,13 +8,22 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { UNDER_CONSTRUCTION_PATH } from "@/lib/routes";
 
 export function Footer() {
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.location.href = "/";
+  };
+
   return (
     <footer className="relative z-10 border-t border-border bg-secondary/10">
       <PageShell className="py-20 pb-12">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-1">
+            <Link 
+              href="/" 
+              onClick={handleLogoClick}
+              className="flex items-center gap-1 transition-opacity hover:opacity-80"
+            >
               <Image 
                 src="/logo.png" 
                 alt="SEOGEO Logo" 
@@ -23,7 +32,7 @@ export function Footer() {
                 className="object-contain" 
               />
               <span className="font-display text-2xl font-bold tracking-tight uppercase">SEOGEO</span>
-            </div>
+            </Link>
             <p className="mt-6 max-w-sm text-lg leading-relaxed text-foreground/60">
               Helping businesses navigate the intersection of traditional search and generative AI.
             </p>
