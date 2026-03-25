@@ -22,11 +22,12 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - Prefer replacing incomplete or fake implementations outright instead of layering compatibility shims around them.
 - Backend, frontend, and worker contracts may evolve together within the same iteration when that produces a cleaner vertical slice.
 - Do **not** introduce versioned APIs, fallback paths, or compatibility bridges unless the task explicitly calls for them.
-- When planning or implementing, assume **no backward compatibility requirement** by default during this stage of the project.
 
 ---
 
 ## 🏗️ CORE ARCHITECTURE: DURABLE TIERED EXECUTION
+
+The sections below describe both the logical execution tiers and the deployment topology.
 
 ### Tier 1: The Orchestrator (Hardened Brain)
 - **Path:** `backend/`
@@ -42,23 +43,24 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - **Audit Messaging Contract:** For audit checks, `instruction` is the normative guidance or ideal state, while `detail` is the concrete evidence, blocker, or applicability reason. This applies to streamed events and persisted reports. `not_applicable` checks must still set `instruction` so the UI can explain what good would look like once the check becomes relevant.
 - **Rule Authoring Pattern:** SEO worker checks must be organized as `collect source HTML evidence -> derive source facts -> collect rendered DOM evidence -> compare surfaces -> evaluate rules -> score packs`. Shared evidence should be collected once per surface and reused across rules; source HTML remains authoritative for fix priority, while rendered evidence adds comparison context and render-dependency risk.
 
+### Current Deployment Topology (Current State)
+- **Backend Service (`backend/`):** Currently hosts both API responsibilities (audit start, SSE stream delivery, report retrieval) and Java workflow responsibilities (Temporal orchestration, persistence coordination, report signing).
+- **Node Worker Service (`seo-audit-worker/`):** Runs custom SEO-signal extraction and publishes structured worker progress events.
+
 ### Target Worker Topology
 - **API Tier:** Owns external HTTP contracts, audit initiation, SSE stream delivery, and final report retrieval.
-- **Java Worker Tier:** Owns Temporal workflow orchestration, persistence coordination, report signing, and Java-native extraction such as `jsoup`.
+- **Java Worker Tier:** Owns Temporal workflow orchestration, persistence coordination, report signing.
 - **Node Worker Tier:** Owns custom SEO-signal extraction and future specialized crawl/browser activities on dedicated Temporal task queues. Worker-originated progress should be emitted as structured events, not browser-facing streams.
-- **Current Slice:** The backend currently combines the API tier and Java worker tier, while the SEO audit worker runs as a dedicated Node Temporal worker on its own task queue with a dual-pass `source_html -> rendered_dom -> comparison` flow. In-flight worker progress is published to Kafka and projected by Java into the Postgres audit event log before SSE fan-out.
-- **Architecture Direction:** The active direction is `API + Java worker + Node worker`, with worker roles independently scalable and specialized crawl work executed through Temporal instead of HTTP wrappers.
-
 ---
 
 ## 🚀 PERSISTENCE & FLOW
 
 - **Temporal Agent:** Manages event history (External DB).
-- **Redis Agent:** Sliding Window rate-limiting; SSE Buffer.
+- **Redis Agent (Future):** Sliding Window rate-limiting; SSE Buffer.
 - **Postgres Agent:** System of Record (Audit Snapshots, User Credits).
 - **SSE Agent:** Unidirectional streaming (Java -> Next.js 16).
-- **Kafka Progress Bus (Current Slice):** Specialized workers publish structured progress events to Kafka. The Java tier consumes and projects them into the Postgres audit event log, preserving Java ownership of replay, ordering, and user-facing stream semantics.
-- **Momentum Pattern (Current Slice):** Momentum is implemented as an append-only Postgres event log with ordered replay and Loom-backed SSE tailing. Kafka is the upstream transport for worker progress, not the user-facing stream itself.
+- **Kafka Progress Bus:** Specialized workers publish structured progress events to Kafka. The Java tier consumes and projects them into the Postgres audit event log, preserving Java ownership of replay, ordering, and user-facing stream semantics.
+- **Momentum Pattern:** Momentum is implemented as an append-only Postgres event log with ordered replay and Loom-backed SSE tailing. Kafka is the upstream transport for worker progress, not the user-facing stream itself.
 - **Handshake Rule:** The terminal `complete` event must only be emitted after the final report is fully persisted so the frontend can safely switch from live stream state to canonical query state.
 
 ### Frontend-to-Backend Audit Contract
@@ -107,16 +109,21 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 - `frontend/src/features/*` owns domain-specific TSX, controllers, and view-model shaping. Use `frontend/src/features/audit` for audit UI and `frontend/src/features/marketing` for homepage marketing sections.
 - Feature folder convention: use concern folders when a feature grows, with `components/` for feature UI and optional `hooks/`, `lib/`, and `types/` only when that feature needs them. Do not create empty placeholder folders just for symmetry.
 - `frontend/src/components/layout` owns only global site chrome such as the navbar and footer.
-- Frontend filename convention: keep route files and `components/ui/*` module paths lowercase, while feature and layout React component files stay PascalCase. Hooks and utility modules should remain lowercase.
+- Frontend naming convention:
+   - Feature-owned and layout React component files use PascalCase.
+   - Hook files and hook symbols use camelCase with a required `use` prefix (example: `useAuditSectionController.ts`).
+   - shadcn/ui primitives and shared UI library modules under `frontend/src/components/ui` use kebab-case file names.
+   - Next.js App Router special files follow default Next.js conventions (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `route.ts`).
+- Export convention: named exports are the default across the frontend codebase. Use default exports only when required by Next.js file conventions.
 - For new or intentionally rewritten screens, do **not** introduce fresh ad hoc button, input, textarea, badge, card, separator, skeleton, progress, dialog, sheet, tab, tooltip, or accordion patterns when an existing `components/ui` primitive or composition fits.
 - When actively refactoring an existing screen, migrate matching ad hoc controls and shells onto `components/ui` primitives or shared compositions instead of preserving raw one-off markup.
 - Use the hidden dev-only gallery route at `/internal/design-system` during local development for visual QA of `components/ui` primitives and feature-owned compositions.
 
 ### Data Ownership Rules
-- **TanStack Query:** Exclusively owns data synchronized from the server.
-- **Zustand:** Exclusively owns client-side UI/user state.
-- **Server Actions:** Exclusively own privileged frontend-originating mutations that must not expose backend secrets to the browser.
-- **SSE Stream Payloads:** Live and transient until a signed report is persisted; keep them out of the durable query cache.
+- These ownership rules operationalize the Phase A/B/C contract above.
+- **TanStack Query:** Owns synchronized server data.
+- **Zustand:** Owns client-side UI/user state.
+- **SSE Stream Payloads:** Treat as transient interaction state until a signed report is persisted.
 
 ---
 
@@ -125,9 +132,9 @@ The SEOGEO system is designed to be consumed by both **Humans** and **AI Agents*
 1.  **Technical Jargon:** Do NOT expose backend implementation details (Temporal, Sidecars, etc.) in the user-facing UI.
 2.  **Safety:** Never run destructive commands (e.g., `rm -rf`) without explicit confirmation unless marked as safe.
 3.  **Documentation:** Always update `AGENTS.md` when introducing new core patterns.
-4.  **Libraries:** If version knowledge is stale, perform a web search for the latest documentation.
-6.  **Backward Compatibility:** Do not preserve old APIs, schemas, or behavior by default during iterative development. Favor the cleanest current vertical slice unless compatibility is explicitly requested.
-7.  **Fresh Docker Rebuild:** After every backend or worker code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build -d` from the repository root. (IMPORTANT: Do not run this on frontend only change.)
+4.  **Libraries:** If your version knowledge is stale, perform a web search for the latest documentation.
+5.  **Backward Compatibility:** Do not preserve old APIs, schemas, or behavior by default during iterative development. Favor the cleanest current vertical slice unless compatibility is explicitly requested.
+6.  **Fresh Docker Rebuild:** After every backend or worker code change, run `docker compose down --volumes` from the repository root. Once that finishes, run `docker compose up --build -d` from the repository root. (IMPORTANT: Do not run this on frontend only change.)
 
 ---
 
