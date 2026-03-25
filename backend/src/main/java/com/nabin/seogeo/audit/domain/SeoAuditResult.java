@@ -1,7 +1,7 @@
 package com.nabin.seogeo.audit.domain;
 
-import com.nabin.seogeo.audit.contract.generated.CategoryScores;
-import com.nabin.seogeo.audit.contract.generated.RawSummary;
+import com.nabin.seogeo.audit.contract.generated.AuditDiagnostics;
+import com.nabin.seogeo.audit.contract.generated.AuditScoring;
 
 import java.util.List;
 
@@ -10,8 +10,8 @@ public record SeoAuditResult(
         String finalUrl,
         String indexabilityVerdict,
         int score,
-        CategoryScores categoryScores,
+        AuditScoring scoring,
         List<SeoAuditCheck> checks,
-        RawSummary rawSummary
+        AuditDiagnostics auditDiagnostics
 ) {
 }

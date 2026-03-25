@@ -6,6 +6,7 @@ public record SeoAuditCheck(
         String id,
         String label,
         String status,
+        String category,
         String severity,
         String instruction,
         String detail,

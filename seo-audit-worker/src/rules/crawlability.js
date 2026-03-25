@@ -10,6 +10,20 @@ function formatConflictDetail(conflict) {
   return `${conflict.target} has conflicting ${conflict.field} directives: ${conflict.values.join(", ")}.`;
 }
 
+function canonicalTargetMetadata(control, extra = {}) {
+  return {
+    status: control.status ?? null,
+    targetUrl: control.targetUrl ?? null,
+    finalUrl: control.finalUrl ?? null,
+    redirectCount: control.redirectCount ?? 0,
+    reusedCurrentPageInspection: control.reusedCurrentPageInspection ?? false,
+    statusCode: control.inspection?.statusCode ?? null,
+    contentType: control.inspection?.contentType ?? null,
+    effectiveIndexing: control.robotsControl?.effectiveIndexing ?? null,
+    ...extra,
+  };
+}
+
 const robotsDirectiveConflicts = defineRule({
   id: "robots-directive-conflicts",
   label: "Robots Directive Conflicts",
@@ -593,7 +607,7 @@ const canonicalTargetHealth = defineRule({
         "A single valid canonical target is not available yet, so target health cannot be evaluated.",
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl,
+        canonicalTargetMetadata(facts.canonicalTargetControl),
         "Once one valid canonical target exists, it should resolve to a reachable, indexable HTML page."
       );
     }
@@ -605,7 +619,7 @@ const canonicalTargetHealth = defineRule({
         "The canonical target resolves to the current final page URL, so no separate target health issue was detected here.",
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl
+        canonicalTargetMetadata(facts.canonicalTargetControl)
       );
     }
 
@@ -631,7 +645,7 @@ const canonicalTargetHealth = defineRule({
           'head > link[rel="canonical"]',
           "canonical-target-health",
           {
-            ...facts.canonicalTargetControl,
+            ...canonicalTargetMetadata(facts.canonicalTargetControl),
             reasonCode,
             retryable: true,
           },
@@ -649,7 +663,7 @@ const canonicalTargetHealth = defineRule({
           : "The audit could not confidently verify the canonical target.",
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl
+        canonicalTargetMetadata(facts.canonicalTargetControl)
       );
     }
 
@@ -662,7 +676,7 @@ const canonicalTargetHealth = defineRule({
         `The declared canonical target redirects to ${facts.canonicalTargetControl.finalUrl}.`,
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl
+        canonicalTargetMetadata(facts.canonicalTargetControl)
       );
     }
 
@@ -675,7 +689,7 @@ const canonicalTargetHealth = defineRule({
         `The canonical target responded with content type ${facts.canonicalTargetControl.inspection?.contentType ?? "unknown"}.`,
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl
+        canonicalTargetMetadata(facts.canonicalTargetControl)
       );
     }
 
@@ -688,7 +702,7 @@ const canonicalTargetHealth = defineRule({
         `The canonical target responded with HTTP ${facts.canonicalTargetControl.inspection?.statusCode ?? "unknown"}.`,
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl
+        canonicalTargetMetadata(facts.canonicalTargetControl)
       );
     }
 
@@ -703,7 +717,7 @@ const canonicalTargetHealth = defineRule({
           : "robots.txt blocks the canonical target.",
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl
+        canonicalTargetMetadata(facts.canonicalTargetControl)
       );
     }
 
@@ -716,7 +730,7 @@ const canonicalTargetHealth = defineRule({
         `The canonical target currently resolves with effective indexing "${facts.canonicalTargetControl.robotsControl?.effectiveIndexing ?? "unknown"}".`,
         'head > link[rel="canonical"]',
         "canonical-target-health",
-        facts.canonicalTargetControl
+        canonicalTargetMetadata(facts.canonicalTargetControl)
       );
     }
 
@@ -726,7 +740,7 @@ const canonicalTargetHealth = defineRule({
       "The canonical target was reachable, HTML, and did not expose blocking crawl or indexing signals in this pass.",
       'head > link[rel="canonical"]',
       "canonical-target-health",
-      facts.canonicalTargetControl
+      canonicalTargetMetadata(facts.canonicalTargetControl)
     );
   },
 });

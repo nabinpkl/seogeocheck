@@ -158,7 +158,7 @@ function sortChecks(checks) {
       // 4. Label
       return left.label.localeCompare(right.label);
     })
-    .map(({ category, priority, relatedPacks, scoreWeight, ...check }) => check);
+    .map(({ priority, relatedPacks, scoreWeight, ...check }) => check);
 }
 
 export function evaluateSeoAudit(input) {
@@ -187,13 +187,6 @@ export function evaluateSeoAudit(input) {
   const scoringChecks = [...sourceChecks, ...sitewideChecks, ...comparison.scoringChecks];
   const indexabilityVerdict = deriveIndexabilityVerdict(sourceFacts);
   const scoring = buildWeightedScoreBreakdown(scoringChecks);
-  const categoryScores = Object.fromEntries(
-    Object.entries(scoring.categories).map(([categoryId, breakdown]) => [
-      categoryId,
-      breakdown.score,
-    ])
-  );
-
   return {
     sourceFacts,
     renderedFacts,
@@ -204,7 +197,6 @@ export function evaluateSeoAudit(input) {
     scoringChecks,
     indexabilityVerdict,
     scoring,
-    categoryScores,
     sitewide: input.sitewide ?? null,
   };
 }
@@ -217,7 +209,6 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
     comparison,
     indexabilityVerdict,
     scoring,
-    categoryScores,
     sitewide,
   } = evaluation;
   const sortedChecks = sortChecks(checks);
@@ -227,66 +218,36 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
     finalUrl: sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
     indexabilityVerdict: indexabilityVerdict.verdict,
     score: scoring.overall.score,
-    categoryScores,
+    scoring,
     checks: sortedChecks,
-    rawSummary: {
-      worker: "seo-audit-worker",
-      statusCode: sourceFacts.statusCode ?? null,
-      contentType: sourceFacts.contentType ?? null,
-      wordCount: sourceFacts.wordCount ?? 0,
-      capturePasses: renderedFacts ? ["source_html", "rendered_dom"] : ["source_html"],
-      sourceHtml: {
-        wordCount: sourceFacts.sourceWordCount,
-        sameOriginCrawlableLinkCount: sourceFacts.sameOriginCrawlableLinkCount,
-        nonCrawlableLinkCount: sourceFacts.nonCrawlableLinkCount,
-        emptyAnchorTextCount: sourceFacts.emptyAnchorTextCount,
-        genericAnchorTextCount: sourceFacts.genericAnchorTextCount,
-        metaRefreshTagCount: sourceFacts.metaRefreshTagCount,
-        headingOutlineCount: sourceFacts.headingOutlineCount,
-        headingHierarchySkipCount: sourceFacts.headingHierarchySkipCount,
-        emptyHeadingCount: sourceFacts.emptyHeadingCount,
-        repeatedHeadingCount: sourceFacts.repeatedHeadingCount,
-        linkedImageCount: sourceFacts.linkedImageCount,
-        linkedImageMissingAltCount: sourceFacts.linkedImageMissingAltCount,
-        bodyImageCount: sourceFacts.bodyImageCount,
-        eligibleBodyImageCount: sourceFacts.eligibleBodyImageCount,
-        bodyImageMissingAltCount: sourceFacts.bodyImageMissingAltCount,
-        structuredDataKinds: sourceFacts.structuredDataKinds,
+    auditDiagnostics: {
+      capture: {
+        worker: "seo-audit-worker",
+        statusCode: sourceFacts.statusCode ?? null,
+        contentType: sourceFacts.contentType ?? null,
+        capturePasses: renderedFacts ? ["source_html", "rendered_dom"] : ["source_html"],
       },
-      xRobotsTag: {
-        value: sourceFacts.xRobotsTag,
-        blocksIndexing: sourceFacts.blocksIndexingViaHeader,
-      },
-      robotsControl: sourceFacts.robotsControl,
-      canonicalControl: sourceFacts.canonicalControl,
-      canonicalSelfReferenceControl: sourceFacts.canonicalSelfReferenceControl,
-      canonicalTargetControl: sourceFacts.canonicalTargetControl,
-      metaRefreshControl: sourceFacts.metaRefreshControl,
-      alternateLanguageControl: sourceFacts.alternateLanguageControl,
-      linkDiscoveryControl: sourceFacts.linkDiscoveryControl,
-      internalLinkCoverageControl: sourceFacts.internalLinkCoverageControl,
-      titleControl: sourceFacts.titleControl,
-      metaDescriptionControl: sourceFacts.metaDescriptionControl,
-      headingControl: sourceFacts.headingControl,
-      headingQualityControl: sourceFacts.headingQualityControl,
-      bodyImageAltControl: sourceFacts.bodyImageAltControl,
-      soft404Control: sourceFacts.soft404Control,
-      langControl: sourceFacts.langControl,
-      socialMetadataControl: sourceFacts.socialMetadataControl,
-      socialUrlControl: sourceFacts.socialUrlControl,
-      metadataAlignmentControl: sourceFacts.metadataAlignmentControl,
-      robotsPreviewControl: sourceFacts.robotsPreviewControl,
-      viewportControl: sourceFacts.viewportControl,
-      faviconControl: sourceFacts.faviconControl,
-      headHygieneControl: sourceFacts.headHygieneControl,
-      structuredDataControl: sourceFacts.structuredDataControl,
-      robotsTxt: sourceFacts.robotsTxt,
-      redirectChain: sourceFacts.redirectChain,
-      sitewide,
-      indexabilityVerdict,
-      scoring,
-      renderedDom: renderedFacts
-        ? {
+      surfaces: {
+        sourceHtml: {
+          wordCount: sourceFacts.sourceWordCount,
+          sameOriginCrawlableLinkCount: sourceFacts.sameOriginCrawlableLinkCount,
+          nonCrawlableLinkCount: sourceFacts.nonCrawlableLinkCount,
+          emptyAnchorTextCount: sourceFacts.emptyAnchorTextCount,
+          genericAnchorTextCount: sourceFacts.genericAnchorTextCount,
+          metaRefreshTagCount: sourceFacts.metaRefreshTagCount,
+          headingOutlineCount: sourceFacts.headingOutlineCount,
+          headingHierarchySkipCount: sourceFacts.headingHierarchySkipCount,
+          emptyHeadingCount: sourceFacts.emptyHeadingCount,
+          repeatedHeadingCount: sourceFacts.repeatedHeadingCount,
+          linkedImageCount: sourceFacts.linkedImageCount,
+          linkedImageMissingAltCount: sourceFacts.linkedImageMissingAltCount,
+          bodyImageCount: sourceFacts.bodyImageCount,
+          eligibleBodyImageCount: sourceFacts.eligibleBodyImageCount,
+          bodyImageMissingAltCount: sourceFacts.bodyImageMissingAltCount,
+          structuredDataKinds: sourceFacts.structuredDataKinds,
+        },
+        renderedDom: renderedFacts
+          ? {
             wordCount: renderedFacts.sourceWordCount,
             sameOriginCrawlableLinkCount: renderedFacts.sameOriginCrawlableLinkCount,
             nonCrawlableLinkCount: renderedFacts.nonCrawlableLinkCount,
@@ -304,8 +265,48 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
             bodyImageMissingAltCount: renderedFacts.bodyImageMissingAltCount,
             structuredDataKinds: renderedFacts.structuredDataKinds,
           }
-        : null,
-      renderComparison: comparison.summary,
+          : null,
+        renderComparison: comparison.summary,
+      },
+      controls: {
+        xRobotsTag: {
+          value: sourceFacts.xRobotsTag,
+          blocksIndexing: sourceFacts.blocksIndexingViaHeader,
+        },
+        robotsControl: sourceFacts.robotsControl,
+        canonicalControl: sourceFacts.canonicalControl,
+        canonicalSelfReferenceControl: sourceFacts.canonicalSelfReferenceControl,
+        canonicalTargetControl: sourceFacts.canonicalTargetControl,
+        metaRefreshControl: sourceFacts.metaRefreshControl,
+        alternateLanguageControl: sourceFacts.alternateLanguageControl,
+        linkDiscoveryControl: sourceFacts.linkDiscoveryControl,
+        internalLinkCoverageControl: sourceFacts.internalLinkCoverageControl,
+        titleControl: sourceFacts.titleControl,
+        metaDescriptionControl: sourceFacts.metaDescriptionControl,
+        headingControl: sourceFacts.headingControl,
+        headingQualityControl: sourceFacts.headingQualityControl,
+        bodyImageAltControl: sourceFacts.bodyImageAltControl,
+        soft404Control: sourceFacts.soft404Control,
+        langControl: sourceFacts.langControl,
+        socialMetadataControl: sourceFacts.socialMetadataControl,
+        socialUrlControl: sourceFacts.socialUrlControl,
+        metadataAlignmentControl: sourceFacts.metadataAlignmentControl,
+        robotsPreviewControl: sourceFacts.robotsPreviewControl,
+        viewportControl: sourceFacts.viewportControl,
+        faviconControl: sourceFacts.faviconControl,
+        headHygieneControl: sourceFacts.headHygieneControl,
+        structuredDataControl: sourceFacts.structuredDataControl,
+        robotsTxt: sourceFacts.robotsTxt,
+        redirectChain: sourceFacts.redirectChain,
+      },
+      sitewide,
+      analysis: {
+        indexabilitySignals: {
+          blockingSignals: indexabilityVerdict.blockingSignals,
+          riskSignals: indexabilityVerdict.riskSignals,
+          unknownSignals: indexabilityVerdict.unknownSignals,
+        },
+      },
     },
   };
 }

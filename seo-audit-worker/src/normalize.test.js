@@ -91,30 +91,34 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
   assert.match(result.checks[0].instruction, /HTML response before rendering/i);
   assert.equal(result.checks[0].metadata?.evidenceSource, "source_html");
   assert.equal(result.checks[0].metadata?.problemFamily, "source-visible-text");
-  assert.deepEqual(result.rawSummary.capturePasses, ["source_html"]);
-  assert.equal(result.rawSummary.sourceHtml.sameOriginCrawlableLinkCount, 0);
-  assert.equal(result.rawSummary.indexabilityVerdict.verdict, "Unknown");
-  assert.equal(result.rawSummary.canonicalControl.status, "invalid");
-  assert.equal(result.rawSummary.canonicalSelfReferenceControl.status, "invalid");
-  assert.equal(result.rawSummary.canonicalTargetControl.status, "not_applicable");
-  assert.equal(result.rawSummary.titleControl.status, "too_short");
-  assert.equal(result.rawSummary.metaDescriptionControl.status, "missing");
-  assert.equal(result.rawSummary.headingControl.status, "multiple_and_skipped");
-  assert.equal(result.rawSummary.bodyImageAltControl.status, "missing_alt");
-  assert.equal(result.rawSummary.langControl.status, "invalid");
-  assert.equal(result.rawSummary.socialMetadataControl.status, "incomplete");
-  assert.equal(result.rawSummary.robotsPreviewControl.status, "clear");
-  assert.equal(result.rawSummary.viewportControl.status, "missing");
-  assert.equal(result.rawSummary.faviconControl.status, "missing");
-  assert.equal(result.rawSummary.headHygieneControl.status, "clear");
-  assert.equal(result.rawSummary.structuredDataControl.status, "none");
-  assert.equal(result.rawSummary.robotsControl.status, "clear");
-  assert.equal(result.rawSummary.robotsControl.hasNoarchiveDirective, true);
-  assert.equal(result.rawSummary.robotsControl.hasNotranslateDirective, true);
-  assert.equal(result.categoryScores.discovery, 0);
-  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 0);
-  assert.equal(result.rawSummary.sourceHtml.headingHierarchySkipCount, 1);
-  assert.equal(result.rawSummary.sourceHtml.bodyImageMissingAltCount, 1);
+  assert.deepEqual(result.auditDiagnostics.capture.capturePasses, ["source_html"]);
+  assert.equal(result.auditDiagnostics.surfaces.sourceHtml.sameOriginCrawlableLinkCount, 0);
+  assert.deepEqual(result.auditDiagnostics.analysis.indexabilitySignals.unknownSignals, [
+    "robots_txt_unconfirmed",
+    "redirect_chain_unconfirmed",
+  ]);
+  assert.equal(result.auditDiagnostics.controls.canonicalControl.status, "invalid");
+  assert.equal(result.auditDiagnostics.controls.canonicalSelfReferenceControl.status, "invalid");
+  assert.equal(result.auditDiagnostics.controls.canonicalTargetControl.status, "not_applicable");
+  assert.equal(result.auditDiagnostics.controls.titleControl.status, "too_short");
+  assert.equal(result.auditDiagnostics.controls.metaDescriptionControl.status, "missing");
+  assert.equal(result.auditDiagnostics.controls.headingControl.status, "multiple_and_skipped");
+  assert.equal(result.auditDiagnostics.controls.bodyImageAltControl.status, "missing_alt");
+  assert.equal(result.auditDiagnostics.controls.langControl.status, "invalid");
+  assert.equal(result.auditDiagnostics.controls.socialMetadataControl.status, "incomplete");
+  assert.equal(result.auditDiagnostics.controls.robotsPreviewControl.status, "clear");
+  assert.equal(result.auditDiagnostics.controls.viewportControl.status, "missing");
+  assert.equal(result.auditDiagnostics.controls.faviconControl.status, "missing");
+  assert.equal(result.auditDiagnostics.controls.headHygieneControl.status, "clear");
+  assert.equal(result.auditDiagnostics.controls.structuredDataControl.status, "none");
+  assert.equal(result.auditDiagnostics.controls.robotsControl.status, "clear");
+  assert.equal(result.auditDiagnostics.controls.robotsControl.hasNoarchiveDirective, true);
+  assert.equal(result.auditDiagnostics.controls.robotsControl.hasNotranslateDirective, true);
+  assert.equal(result.scoring.categories.discovery.score, 0);
+  assert.equal(result.scoring.categories.discovery.confidence, 0);
+  assert.equal(result.auditDiagnostics.surfaces.sourceHtml.headingHierarchySkipCount, 1);
+  assert.equal(result.auditDiagnostics.surfaces.sourceHtml.bodyImageMissingAltCount, 1);
+  assert.equal(result.checks[0].category, "contentVisibility");
   assert.equal(result.checks.some((check) => check.id === "document-title-quality"), true);
   assert.equal(result.checks.some((check) => check.id === "heading-structure"), true);
   assert.equal(result.checks.some((check) => check.id === "body-image-alt"), true);
@@ -449,13 +453,13 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
   });
 
   assert.equal(result.indexabilityVerdict, "Indexable");
-  assert.deepEqual(result.rawSummary.capturePasses, ["source_html", "rendered_dom"]);
-  assert.equal(result.rawSummary.renderedDom.wordCount, 150);
-  assert.equal(result.rawSummary.renderedDom.bodyImageCount, 0);
-  assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "medium");
-  assert.equal(result.rawSummary.indexabilityVerdict.verdict, "Indexable");
-  assert.equal(result.categoryScores.discovery, 98);
-  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 100);
+  assert.deepEqual(result.auditDiagnostics.capture.capturePasses, ["source_html", "rendered_dom"]);
+  assert.equal(result.auditDiagnostics.surfaces.renderedDom.wordCount, 150);
+  assert.equal(result.auditDiagnostics.surfaces.renderedDom.bodyImageCount, 0);
+  assert.equal(result.auditDiagnostics.surfaces.renderComparison.renderDependencyRisk, "medium");
+  assert.deepEqual(result.auditDiagnostics.analysis.indexabilitySignals.riskSignals, []);
+  assert.equal(result.scoring.categories.discovery.score, 98);
+  assert.equal(result.scoring.categories.discovery.confidence, 100);
   assert.equal(
     result.checks.some((check) => check.metadata?.evidenceSource === "surface_comparison"),
     true
@@ -582,11 +586,11 @@ test("normalizeSeoAuditResult classifies blocked and at-risk verdicts from index
   });
 
   assert.equal(blocked.indexabilityVerdict, "Blocked");
-  assert.deepEqual(blocked.rawSummary.indexabilityVerdict.blockingSignals, [
+  assert.deepEqual(blocked.auditDiagnostics.analysis.indexabilitySignals.blockingSignals, [
     "robots_directives_block_indexing",
   ]);
   assert.equal(atRisk.indexabilityVerdict, "At Risk");
-  assert.deepEqual(atRisk.rawSummary.indexabilityVerdict.riskSignals, [
+  assert.deepEqual(atRisk.auditDiagnostics.analysis.indexabilitySignals.riskSignals, [
     "canonical_points_to_different_url",
     "redirect_chain_is_long",
   ]);

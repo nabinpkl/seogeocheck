@@ -13,8 +13,8 @@
     "indexabilityVerdict",
     "summary",
     "checks",
-    "categories",
-    "rawSummary",
+    "scoring",
+    "auditDiagnostics",
     "signature"
   ],
   "properties": {
@@ -49,11 +49,11 @@
         "$ref": "#/$defs/reportCheck"
       }
     },
-    "categories": {
-      "$ref": "#/$defs/categoryScores"
+    "scoring": {
+      "$ref": "#/$defs/auditScoring"
     },
-    "rawSummary": {
-      "$ref": "#/$defs/rawSummary"
+    "auditDiagnostics": {
+      "$ref": "#/$defs/auditDiagnostics"
     },
     "signature": {
       "$ref": "#/$defs/signature"
@@ -71,6 +71,18 @@
     "severity": {
       "type": "string",
       "enum": ["high", "medium", "low"]
+    },
+    "auditCategoryId": {
+      "type": "string",
+      "enum": [
+        "reachability",
+        "crawlability",
+        "indexability",
+        "sitewide",
+        "contentVisibility",
+        "metadata",
+        "discovery"
+      ]
     },
     "evidenceSource": {
       "type": "string",
@@ -282,7 +294,7 @@
       ],
       "properties": {
         "ruleId": { "type": "string", "minLength": 1 },
-        "categoryId": { "type": "string", "minLength": 1 },
+        "categoryId": { "$ref": "#/$defs/auditCategoryId" },
         "status": { "$ref": "#/$defs/checkStatus" },
         "severity": {
           "oneOf": [
@@ -1095,6 +1107,7 @@
         "status": { "type": "string" },
         "targetUrl": { "$ref": "#/$defs/nullableString" },
         "finalUrl": { "$ref": "#/$defs/nullableString" },
+        "resolvedCanonicalUrl": { "$ref": "#/$defs/nullableString" },
         "redirectCount": { "type": "integer", "minimum": 0 },
         "reusedCurrentPageInspection": { "type": "boolean" },
         "inspection": {
@@ -1144,6 +1157,7 @@
         "timedRedirectCount": { "type": "integer", "minimum": 0 },
         "malformedCount": { "type": "integer", "minimum": 0 },
         "refreshOnlyCount": { "type": "integer", "minimum": 0 },
+        "redirectCount": { "type": "integer", "minimum": 0 },
         "entries": { "type": "array", "items": { "$ref": "#/$defs/metaRefreshEntry" } }
       }
     },
@@ -1623,18 +1637,6 @@
         "problematicFields": { "type": "array", "items": { "$ref": "#/$defs/duplicateFieldCount" } },
         "blocks": { "type": "array", "items": { "$ref": "#/$defs/structuredDataBlock" } },
         "duplicateHeadCounts": { "$ref": "#/$defs/duplicateHeadCounts" },
-        "inspection": {
-          "oneOf": [
-            { "type": "null" },
-            { "$ref": "#/$defs/urlInspection" }
-          ]
-        },
-        "robotsControl": {
-          "oneOf": [
-            { "type": "null" },
-            { "$ref": "#/$defs/robotsControl" }
-          ]
-        },
         "canonicalControl": { "$ref": "#/$defs/canonicalControl" },
         "alternateLanguageControl": { "$ref": "#/$defs/alternateLanguageControl" },
         "linkDiscoveryControl": { "$ref": "#/$defs/linkDiscoveryControl" },
@@ -1657,18 +1659,18 @@
         "canonicalTargetControl": { "$ref": "#/$defs/canonicalTargetControl" },
         "metaRefreshControl": { "$ref": "#/$defs/metaRefreshControl" },
         "robotsTxt": { "$ref": "#/$defs/robotsTxt" },
-        "redirectChain": { "$ref": "#/$defs/redirectChain" },
-        "sitewide": { "$ref": "#/$defs/sitewideSummary" }
+        "redirectChain": { "$ref": "#/$defs/redirectChain" }
       }
     },
     "reportCheck": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "label", "status"],
+      "required": ["id", "label", "status", "category"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "label": { "type": "string", "minLength": 1 },
         "status": { "$ref": "#/$defs/checkStatus" },
+        "category": { "$ref": "#/$defs/auditCategoryId" },
         "severity": {
           "oneOf": [
             { "type": "null" },
@@ -1690,21 +1692,68 @@
         "metadata": { "$ref": "#/$defs/reportCheckMetadata" }
       }
     },
-    "rawSummary": {
+    "auditDiagnosticsCapture": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["worker"],
+      "required": ["worker", "capturePasses"],
       "properties": {
         "worker": { "type": "string", "const": "seo-audit-worker" },
         "statusCode": { "$ref": "#/$defs/nullableInteger" },
         "contentType": { "$ref": "#/$defs/nullableString" },
-        "wordCount": { "type": "integer", "minimum": 0 },
         "capturePasses": {
           "type": "array",
           "items": { "$ref": "#/$defs/evidenceSource" },
           "minItems": 1
-        },
+        }
+      }
+    },
+    "auditDiagnosticsSurfaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceHtml", "renderComparison"],
+      "properties": {
         "sourceHtml": { "$ref": "#/$defs/surfaceSummary" },
+        "renderedDom": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/surfaceSummary" }
+          ]
+        },
+        "renderComparison": { "$ref": "#/$defs/renderComparison" }
+      }
+    },
+    "auditDiagnosticsControls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "xRobotsTag",
+        "robotsControl",
+        "canonicalControl",
+        "canonicalSelfReferenceControl",
+        "canonicalTargetControl",
+        "metaRefreshControl",
+        "alternateLanguageControl",
+        "linkDiscoveryControl",
+        "internalLinkCoverageControl",
+        "titleControl",
+        "metaDescriptionControl",
+        "headingControl",
+        "headingQualityControl",
+        "bodyImageAltControl",
+        "soft404Control",
+        "langControl",
+        "socialMetadataControl",
+        "socialUrlControl",
+        "metadataAlignmentControl",
+        "robotsPreviewControl",
+        "viewportControl",
+        "faviconControl",
+        "headHygieneControl",
+        "structuredDataControl",
+        "robotsTxt",
+        "redirectChain"
+      ],
+      "properties": {
         "xRobotsTag": { "$ref": "#/$defs/xRobotsTag" },
         "robotsControl": { "$ref": "#/$defs/robotsControl" },
         "canonicalControl": { "$ref": "#/$defs/canonicalControl" },
@@ -1730,22 +1779,42 @@
         "headHygieneControl": { "$ref": "#/$defs/headHygieneControl" },
         "structuredDataControl": { "$ref": "#/$defs/structuredDataControl" },
         "robotsTxt": { "$ref": "#/$defs/robotsTxt" },
-        "redirectChain": { "$ref": "#/$defs/redirectChain" },
+        "redirectChain": { "$ref": "#/$defs/redirectChain" }
+      }
+    },
+    "indexabilitySignals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockingSignals", "riskSignals", "unknownSignals"],
+      "properties": {
+        "blockingSignals": { "type": "array", "items": { "type": "string" } },
+        "riskSignals": { "type": "array", "items": { "type": "string" } },
+        "unknownSignals": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "auditDiagnosticsAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["indexabilitySignals"],
+      "properties": {
+        "indexabilitySignals": { "$ref": "#/$defs/indexabilitySignals" }
+      }
+    },
+    "auditDiagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capture", "surfaces", "controls", "analysis"],
+      "properties": {
+        "capture": { "$ref": "#/$defs/auditDiagnosticsCapture" },
+        "surfaces": { "$ref": "#/$defs/auditDiagnosticsSurfaces" },
+        "controls": { "$ref": "#/$defs/auditDiagnosticsControls" },
         "sitewide": {
           "oneOf": [
             { "type": "null" },
             { "$ref": "#/$defs/sitewideSummary" }
           ]
         },
-        "indexabilityVerdict": { "$ref": "#/$defs/indexabilityVerdict" },
-        "scoring": { "$ref": "#/$defs/auditScoring" },
-        "renderedDom": {
-          "oneOf": [
-            { "type": "null" },
-            { "$ref": "#/$defs/surfaceSummary" }
-          ]
-        },
-        "renderComparison": { "$ref": "#/$defs/renderComparison" }
+        "analysis": { "$ref": "#/$defs/auditDiagnosticsAnalysis" }
       }
     }
   }

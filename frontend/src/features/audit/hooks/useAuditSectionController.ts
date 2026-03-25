@@ -14,7 +14,6 @@ import { useAuditStore } from "@/store/use-audit-store";
 import {
   buildFamilyChecklistGroups,
   buildAuditCheckRowModel,
-  buildCheckCategoryLabelMap,
   buildAuditHeaderModel,
   buildAuditStreamRowModel,
   buildCategoryScoreModels,
@@ -186,10 +185,9 @@ export function useAuditSectionController(): AuditSectionViewProps {
   const reportScore =
     typeof report?.summary?.score === "number" ? report.summary.score : 0;
   const reportScoreConfidence =
-    typeof report?.rawSummary?.scoring?.overall?.confidence === "number"
-      ? report.rawSummary.scoring.overall.confidence
+    typeof report?.scoring?.overall?.confidence === "number"
+      ? report.scoring.overall.confidence
       : null;
-  const checkCategoryLabels = buildCheckCategoryLabelMap(report);
   const issueCount =
     typeof report?.summary?.issueCount === "number"
       ? report.summary.issueCount
@@ -351,17 +349,11 @@ export function useAuditSectionController(): AuditSectionViewProps {
           ...check,
           id: check.id ?? `${check.selector ?? "issue"}-${index}`,
         },
-        {
-          packLabel:
-            typeof check.id === "string" ? checkCategoryLabels.get(check.id) ?? null : null,
-        },
         "issue"
       )
     );
   const [topRecommendationHeroRow, ...topRecommendationRowsRest] = topRecommendationRows;
-  const familyGroups = buildFamilyChecklistGroups(reportChecks, {
-    categoryLabelsByRuleId: checkCategoryLabels,
-  });
+  const familyGroups = buildFamilyChecklistGroups(reportChecks);
   const headerModel = buildAuditHeaderModel({
     status,
     isPending,

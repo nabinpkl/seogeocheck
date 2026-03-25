@@ -9,6 +9,15 @@ function pluralize(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+function sitewideMetadata(sitewide, extra = {}) {
+  return {
+    targetUrl: sitewide.siteRootUrl ?? null,
+    finalUrl: sitewide.preferredOrigin ?? null,
+    fieldCount: Array.isArray(sitewide.sampledUrls) ? sitewide.sampledUrls.length : 0,
+    ...extra,
+  };
+}
+
 const siteHostCanonicalization = defineRule({
   id: "site-host-canonicalization",
   label: "Site Host Canonicalization",
@@ -28,15 +37,15 @@ const siteHostCanonicalization = defineRule({
         `The audit could not confirm redirect behavior for ${unavailableVariants.length} tested host or scheme variant${unavailableVariants.length === 1 ? "" : "s"}.`,
         "document",
         "site-host-canonicalization",
-        {
-          sitewide,
+        sitewideMetadata(sitewide, {
+          status: "unavailable",
           retryable: true,
           reasonCode: unavailableVariants.some((variant) =>
             String(variant.error ?? "").toLowerCase().includes("timeout")
           )
             ? "timeout"
             : "upstream_fetch_failed",
-        },
+        }),
         "Retry this audit to re-check host and scheme convergence."
       );
     }
@@ -51,7 +60,10 @@ const siteHostCanonicalization = defineRule({
         `Tested variants resolved to ${uniqueFinalOrigins.length} different final origins.`,
         "document",
         "site-host-canonicalization",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "split_origin",
+          fieldCount: uniqueFinalOrigins.length,
+        })
       );
     }
 
@@ -64,7 +76,9 @@ const siteHostCanonicalization = defineRule({
         `The preferred final origin is ${sitewide.preferredOrigin}.`,
         "document",
         "site-host-canonicalization",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "non_https_preference",
+        })
       );
     }
 
@@ -78,7 +92,10 @@ const siteHostCanonicalization = defineRule({
         `The variant ${longRedirectVariant.requestedUrl} took ${longRedirectVariant.redirectCount} redirects before reaching the final origin.`,
         "document",
         "site-host-canonicalization",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "long_redirect_chain",
+          redirectCount: longRedirectVariant.redirectCount,
+        })
       );
     }
 
@@ -88,7 +105,9 @@ const siteHostCanonicalization = defineRule({
       "The tested host and scheme variants converge to one preferred HTTPS origin without long redirect chains.",
       "document",
       "site-host-canonicalization",
-      { sitewide }
+      sitewideMetadata(sitewide, {
+        status: "clean",
+      })
     );
   },
 });
@@ -114,13 +133,14 @@ const siteRobotsTxtAvailability = defineRule({
           : "The audit could not confirm the root robots.txt response.",
         "robots.txt",
         "site-robots-txt-availability",
-        {
-          sitewide,
+        sitewideMetadata(sitewide, {
+          status: sitewide.robotsTxt.status,
+          statusCode: sitewide.robotsTxt.fetchStatusCode,
           retryable: true,
           reasonCode: String(sitewide.robotsTxt.error ?? "").toLowerCase().includes("timeout")
             ? "timeout"
             : "upstream_fetch_failed",
-        },
+        }),
         "Retry this audit to re-check the root robots.txt file."
       );
     }
@@ -136,7 +156,10 @@ const siteRobotsTxtAvailability = defineRule({
           : "The audit could not reach the root robots.txt file.",
         "robots.txt",
         "site-robots-txt-availability",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: sitewide.robotsTxt.status,
+          statusCode: sitewide.robotsTxt.fetchStatusCode,
+        })
       );
     }
 
@@ -146,7 +169,10 @@ const siteRobotsTxtAvailability = defineRule({
       "The site root exposes a reachable robots.txt file.",
       "robots.txt",
       "site-robots-txt-availability",
-      { sitewide }
+      sitewideMetadata(sitewide, {
+        status: sitewide.robotsTxt.status,
+        statusCode: sitewide.robotsTxt.fetchStatusCode,
+      })
     );
   },
 });
@@ -166,11 +192,11 @@ const siteSitemapHealth = defineRule({
         "The audit could not complete sitemap discovery or retrieval.",
         "sitemap.xml",
         "site-sitemap-health",
-        {
-          sitewide,
+        sitewideMetadata(sitewide, {
+          status: sitewide.sitemap.status,
           retryable: true,
           reasonCode: "upstream_fetch_failed",
-        },
+        }),
         "Retry this audit to re-check sitemap availability."
       );
     }
@@ -184,7 +210,10 @@ const siteSitemapHealth = defineRule({
         "The audit did not find a usable sitemap for this origin.",
         "sitemap.xml",
         "site-sitemap-health",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: sitewide.sitemap.status,
+          fieldCount: sitewide.sitemap.sameOriginUrlCount,
+        })
       );
     }
 
@@ -197,7 +226,10 @@ const siteSitemapHealth = defineRule({
         `Processed ${sitewide.sitemap.processedSitemapCount} sitemap file${sitewide.sitemap.processedSitemapCount === 1 ? "" : "s"}, but at least one declared sitemap was broken or invalid.`,
         "sitemap.xml",
         "site-sitemap-health",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: sitewide.sitemap.status,
+          fieldCount: sitewide.sitemap.processedSitemapCount,
+        })
       );
     }
 
@@ -210,7 +242,10 @@ const siteSitemapHealth = defineRule({
         `The sitemap yielded ${sitewide.sitemap.sameOriginUrlCount} same-origin HTML URL${sitewide.sitemap.sameOriginUrlCount === 1 ? "" : "s"}.`,
         "sitemap.xml",
         "site-sitemap-health",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: sitewide.sitemap.status,
+          fieldCount: sitewide.sitemap.sameOriginUrlCount,
+        })
       );
     }
 
@@ -220,7 +255,10 @@ const siteSitemapHealth = defineRule({
       `The sitewide pass discovered ${sitewide.sitemap.sameOriginUrlCount} same-origin HTML URL${sitewide.sitemap.sameOriginUrlCount === 1 ? "" : "s"} from sitemap data.`,
       "sitemap.xml",
       "site-sitemap-health",
-      { sitewide }
+      sitewideMetadata(sitewide, {
+        status: sitewide.sitemap.status,
+        fieldCount: sitewide.sitemap.sameOriginUrlCount,
+      })
     );
   },
 });
@@ -240,11 +278,11 @@ const siteSitemapRobotsAlignment = defineRule({
         "This check needs a discovered sitemap before robots.txt alignment can be evaluated.",
         "robots.txt, sitemap.xml",
         "site-sitemap-robots-alignment",
-        {
-          sitewide,
+        sitewideMetadata(sitewide, {
+          status: sitewide.sitemap.discoveryMethod,
           blockedBy: ["site-sitemap-health"],
           reasonCode: "missing_prerequisite",
-        },
+        }),
         "When a sitemap exists, robots.txt should declare at least one sitemap URL explicitly."
       );
     }
@@ -261,7 +299,10 @@ const siteSitemapRobotsAlignment = defineRule({
         "The audit found a sitemap via /sitemap.xml fallback rather than from robots.txt declarations.",
         "robots.txt, sitemap.xml",
         "site-sitemap-robots-alignment",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: sitewide.sitemap.discoveryMethod,
+          fieldCount: sitewide.robotsTxt.declaredSitemapUrls.length,
+        })
       );
     }
 
@@ -271,7 +312,10 @@ const siteSitemapRobotsAlignment = defineRule({
       "At least one sitemap URL was declared directly in robots.txt.",
       "robots.txt, sitemap.xml",
       "site-sitemap-robots-alignment",
-      { sitewide }
+      sitewideMetadata(sitewide, {
+        status: sitewide.sitemap.discoveryMethod,
+        fieldCount: sitewide.robotsTxt.declaredSitemapUrls.length,
+      })
     );
   },
 });
@@ -291,11 +335,11 @@ const siteSampleIndexability = defineRule({
         "The sitewide pass did not produce any sample URLs to evaluate.",
         "document",
         "site-sample-indexability",
-        {
-          sitewide,
+        sitewideMetadata(sitewide, {
+          status: "unavailable",
           retryable: true,
           reasonCode: "upstream_fetch_failed",
-        },
+        }),
         "Retry this audit to rebuild the sitewide sample set."
       );
     }
@@ -310,7 +354,11 @@ const siteSampleIndexability = defineRule({
         `${sitewide.sampleCoverage.indexableUrlCount} of ${sitewide.sampleCoverage.sampledUrlCount} sampled URLs were indexable (${percentLabel(ratio)}).`,
         "document",
         "site-sample-indexability",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "below_half",
+          fieldCount: sitewide.sampleCoverage.indexableUrlCount,
+          minimumRecommendedCount: sitewide.sampleCoverage.sampledUrlCount,
+        })
       );
     }
 
@@ -323,7 +371,11 @@ const siteSampleIndexability = defineRule({
         `${sitewide.sampleCoverage.indexableUrlCount} of ${sitewide.sampleCoverage.sampledUrlCount} sampled URLs were indexable (${percentLabel(ratio)}).`,
         "document",
         "site-sample-indexability",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "below_target",
+          fieldCount: sitewide.sampleCoverage.indexableUrlCount,
+          minimumRecommendedCount: sitewide.sampleCoverage.sampledUrlCount,
+        })
       );
     }
 
@@ -333,7 +385,11 @@ const siteSampleIndexability = defineRule({
       `${sitewide.sampleCoverage.indexableUrlCount} of ${sitewide.sampleCoverage.sampledUrlCount} sampled URLs met the sitewide indexability bar.`,
       "document",
       "site-sample-indexability",
-      { sitewide }
+      sitewideMetadata(sitewide, {
+        status: "healthy",
+        fieldCount: sitewide.sampleCoverage.indexableUrlCount,
+        minimumRecommendedCount: sitewide.sampleCoverage.sampledUrlCount,
+      })
     );
   },
 });
@@ -353,11 +409,11 @@ const siteSampleBasicsCoverage = defineRule({
         "The sitewide pass did not produce any sample URLs to evaluate.",
         "document",
         "site-sample-basics-coverage",
-        {
-          sitewide,
+        sitewideMetadata(sitewide, {
+          status: "unavailable",
           retryable: true,
           reasonCode: "upstream_fetch_failed",
-        },
+        }),
         "Retry this audit to rebuild the sitewide sample set."
       );
     }
@@ -378,7 +434,10 @@ const siteSampleBasicsCoverage = defineRule({
         `Title coverage is ${percentLabel(sitewide.sampleCoverage.titleCoverageRatio)}, meta description coverage is ${percentLabel(sitewide.sampleCoverage.metaDescriptionCoverageRatio)}, and canonical coverage is ${percentLabel(sitewide.sampleCoverage.canonicalCoverageRatio)}.`,
         "document",
         "site-sample-basics-coverage",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "below_half",
+          fieldCount: sitewide.sampleCoverage.sampledUrlCount,
+        })
       );
     }
 
@@ -391,7 +450,10 @@ const siteSampleBasicsCoverage = defineRule({
         `Title coverage is ${percentLabel(sitewide.sampleCoverage.titleCoverageRatio)}, meta description coverage is ${percentLabel(sitewide.sampleCoverage.metaDescriptionCoverageRatio)}, and canonical coverage is ${percentLabel(sitewide.sampleCoverage.canonicalCoverageRatio)}.`,
         "document",
         "site-sample-basics-coverage",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "below_target",
+          fieldCount: sitewide.sampleCoverage.sampledUrlCount,
+        })
       );
     }
 
@@ -401,7 +463,10 @@ const siteSampleBasicsCoverage = defineRule({
       "The sitewide sample maintained healthy title, meta description, and canonical coverage.",
       "document",
       "site-sample-basics-coverage",
-      { sitewide }
+      sitewideMetadata(sitewide, {
+        status: "healthy",
+        fieldCount: sitewide.sampleCoverage.sampledUrlCount,
+      })
     );
   },
 });
@@ -423,11 +488,11 @@ const siteSitemapUrlHygiene = defineRule({
         "This check needs sampled sitemap URLs before sitemap URL hygiene can be evaluated.",
         "sitemap.xml",
         "site-sitemap-url-hygiene",
-        {
-          sitewide,
+        sitewideMetadata(sitewide, {
+          status: "missing_prerequisite",
           reasonCode: "missing_prerequisite",
           blockedBy: ["site-sitemap-health"],
-        },
+        }),
         "A healthy sitemap points directly to indexable, canonical HTML URLs rather than redirects, broken pages, or noindex targets."
       );
     }
@@ -441,7 +506,10 @@ const siteSitemapUrlHygiene = defineRule({
         `The sampled sitemap URLs included ${pluralize(health.brokenUrlCount, "broken URL")} and ${pluralize(health.noindexUrlCount, "noindex URL")}.`,
         "sitemap.xml",
         "site-sitemap-url-hygiene",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "broken_or_noindex",
+          fieldCount: health.sampledSitemapUrlCount,
+        })
       );
     }
 
@@ -454,7 +522,10 @@ const siteSitemapUrlHygiene = defineRule({
         `The sampled sitemap URLs included ${pluralize(health.redirectedUrlCount, "redirecting URL")} and ${pluralize(health.nonCanonicalUrlCount, "non-canonical URL")}.`,
         "sitemap.xml",
         "site-sitemap-url-hygiene",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "redirect_or_noncanonical",
+          fieldCount: health.sampledSitemapUrlCount,
+        })
       );
     }
 
@@ -464,7 +535,10 @@ const siteSitemapUrlHygiene = defineRule({
       "The sampled sitemap URLs resolved as reachable canonical HTML pages without noindex directives.",
       "sitemap.xml",
       "site-sitemap-url-hygiene",
-      { sitewide }
+      sitewideMetadata(sitewide, {
+        status: "healthy",
+        fieldCount: health.sampledSitemapUrlCount,
+      })
     );
   },
 });
@@ -489,11 +563,11 @@ const siteDiscoveryAlignment = defineRule({
         "This check needs sampled sitemap URLs or internal discovery URLs before alignment can be evaluated.",
         "document",
         "site-discovery-alignment",
-        {
-          sitewide,
+        sitewideMetadata(sitewide, {
+          status: "missing_prerequisite",
           reasonCode: "missing_prerequisite",
           blockedBy: ["site-sitemap-health", "site-sample-indexability"],
-        },
+        }),
         "A healthy site keeps key internally discoverable URLs aligned with sitemap coverage."
       );
     }
@@ -517,7 +591,10 @@ const siteDiscoveryAlignment = defineRule({
         `${pluralize(alignment.sitemapUrlsMissingInternalDiscovery.length, "sampled sitemap URL")} lacked internal discovery support, and ${pluralize(alignment.internalUrlsMissingFromSitemap.length, "sampled internal URL")} were absent from sitemap coverage.`,
         "document",
         "site-discovery-alignment",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "misaligned",
+          fieldCount: mismatchCount,
+        })
       );
     }
 
@@ -530,7 +607,10 @@ const siteDiscoveryAlignment = defineRule({
         `${pluralize(alignment.sitemapUrlsMissingInternalDiscovery.length, "sampled sitemap URL")} lacked internal discovery support, and ${pluralize(alignment.internalUrlsMissingFromSitemap.length, "sampled internal URL")} were absent from sitemap coverage.`,
         "document",
         "site-discovery-alignment",
-        { sitewide }
+        sitewideMetadata(sitewide, {
+          status: "partial_alignment",
+          fieldCount: mismatchCount,
+        })
       );
     }
 
@@ -540,7 +620,10 @@ const siteDiscoveryAlignment = defineRule({
       "The bounded sample showed consistent overlap between sitemap coverage and internally discoverable URLs.",
       "document",
       "site-discovery-alignment",
-      { sitewide }
+      sitewideMetadata(sitewide, {
+        status: "aligned",
+        fieldCount: alignment.alignedUrlCount,
+      })
     );
   },
 });

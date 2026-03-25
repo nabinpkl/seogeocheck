@@ -17,7 +17,7 @@ const ajv = new Ajv2020({
 addFormats(ajv);
 
 const validateReport = ajv.compile(reportSchema);
-const rawSummarySchemaKeys = Object.keys(reportSchema.$defs.rawSummary.properties).sort();
+const auditDiagnosticsSchemaKeys = Object.keys(reportSchema.$defs.auditDiagnostics.properties).sort();
 
 function createSourceSignals(overrides = {}) {
   return {
@@ -121,8 +121,8 @@ function buildReportEnvelope(jobId, result) {
         result.checks.find((check) => check.status === "issue")?.label ?? "No major issues detected",
     },
     checks: result.checks,
-    categories: result.categoryScores,
-    rawSummary: result.rawSummary,
+    scoring: result.scoring,
+    auditDiagnostics: result.auditDiagnostics,
     signature: {
       present: true,
       algorithm: "HMAC-SHA256",
@@ -196,14 +196,14 @@ test("worker result stays compatible with the shared report schema across major 
   assertValidWrappedReport("rendered_error", renderedError);
 });
 
-test("worker rawSummary top-level keys stay aligned with the shared report schema", () => {
+test("worker auditDiagnostics top-level keys stay aligned with the shared report schema", () => {
   const result = buildAuditResult({
     sourceInput: createSourceSignals(),
   });
 
-  assert.deepEqual(Object.keys(result.rawSummary).sort(), rawSummarySchemaKeys);
-  assert.equal(result.categoryScores.discovery, 0);
-  assert.equal(result.rawSummary.scoring.model, "weighted_rule_scoring");
-  assert.equal(typeof result.rawSummary.scoring.overall.confidence, "number");
-  assert.equal(Array.isArray(result.rawSummary.scoring.rules), true);
+  assert.deepEqual(Object.keys(result.auditDiagnostics).sort(), auditDiagnosticsSchemaKeys);
+  assert.equal(result.scoring.categories.discovery.score, 0);
+  assert.equal(result.scoring.model, "weighted_rule_scoring");
+  assert.equal(typeof result.scoring.overall.confidence, "number");
+  assert.equal(Array.isArray(result.scoring.rules), true);
 });

@@ -99,15 +99,15 @@ test("buildAuditResult compares source and rendered signals and activates discov
     },
   });
 
-  assert.deepEqual(result.rawSummary.capturePasses, ["source_html", "rendered_dom"]);
+  assert.deepEqual(result.auditDiagnostics.capture.capturePasses, ["source_html", "rendered_dom"]);
   assert.equal(result.indexabilityVerdict, "At Risk");
-  assert.equal(result.rawSummary.renderedDom.wordCount, 220);
-  assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "high");
-  assert.equal(result.rawSummary.renderComparison.sourceOnlyCriticalIssues, 2);
-  assert.equal(result.rawSummary.renderComparison.renderedOnlySignals, 0);
-  assert.equal(result.rawSummary.renderComparison.mismatches, 1);
-  assert.equal(result.categoryScores.discovery, 65);
-  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 100);
+  assert.equal(result.auditDiagnostics.surfaces.renderedDom.wordCount, 220);
+  assert.equal(result.auditDiagnostics.surfaces.renderComparison.renderDependencyRisk, "high");
+  assert.equal(result.auditDiagnostics.surfaces.renderComparison.sourceOnlyCriticalIssues, 2);
+  assert.equal(result.auditDiagnostics.surfaces.renderComparison.renderedOnlySignals, 0);
+  assert.equal(result.auditDiagnostics.surfaces.renderComparison.mismatches, 1);
+  assert.equal(result.scoring.categories.discovery.score, 65);
+  assert.equal(result.scoring.categories.discovery.confidence, 100);
 
   const comparisonChecks = result.checks.filter(
     (check) => check.metadata?.evidenceSource === "surface_comparison"
@@ -132,10 +132,10 @@ test("buildAuditResult returns a partial result when the rendered pass fails", (
     renderedError: new Error("Rendered pass timed out after 10000ms"),
   });
 
-  assert.deepEqual(result.rawSummary.capturePasses, ["source_html"]);
+  assert.deepEqual(result.auditDiagnostics.capture.capturePasses, ["source_html"]);
   assert.equal(result.indexabilityVerdict, "Indexable");
-  assert.equal(result.rawSummary.renderedDom, null);
-  assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "unknown");
+  assert.equal(result.auditDiagnostics.surfaces.renderedDom, null);
+  assert.equal(result.auditDiagnostics.surfaces.renderComparison.renderDependencyRisk, "unknown");
 
   const comparisonWarning = result.checks.find(
     (check) => check.id === "rendered-pass-unavailable"
@@ -143,8 +143,8 @@ test("buildAuditResult returns a partial result when the rendered pass fails", (
   assert.equal(comparisonWarning?.status, "system_error");
   assert.equal(comparisonWarning?.severity, null);
   assert.equal(comparisonWarning?.metadata?.evidenceSource, "surface_comparison");
-  assert.equal(result.categoryScores.discovery, 0);
-  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 0);
+  assert.equal(result.scoring.categories.discovery.score, 0);
+  assert.equal(result.scoring.categories.discovery.confidence, 0);
 });
 
 test("buildAuditResult marks discovery as healthy when rendered comparison finds no gaps", () => {
@@ -161,10 +161,10 @@ test("buildAuditResult marks discovery as healthy when rendered comparison finds
     },
   });
 
-  assert.deepEqual(result.rawSummary.capturePasses, ["source_html", "rendered_dom"]);
-  assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "low");
-  assert.equal(result.categoryScores.discovery, 100);
-  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 100);
+  assert.deepEqual(result.auditDiagnostics.capture.capturePasses, ["source_html", "rendered_dom"]);
+  assert.equal(result.auditDiagnostics.surfaces.renderComparison.renderDependencyRisk, "low");
+  assert.equal(result.scoring.categories.discovery.score, 100);
+  assert.equal(result.scoring.categories.discovery.confidence, 100);
 
   const discoveryCheck = result.checks.find((check) => check.id === "rendered-visible-text");
 

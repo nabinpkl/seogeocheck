@@ -7,6 +7,14 @@
 export type AuditStatus = 'QUEUED' | 'STREAMING' | 'COMPLETE' | 'FAILED' | 'VERIFIED';
 export type IndexabilityVerdictLabel = 'Blocked' | 'Unknown' | 'At Risk' | 'Indexable';
 export type CheckStatus = 'issue' | 'passed' | 'not_applicable' | 'system_error';
+export type AuditCategoryId =
+  | 'reachability'
+  | 'crawlability'
+  | 'indexability'
+  | 'sitewide'
+  | 'contentVisibility'
+  | 'metadata'
+  | 'discovery';
 export type Severity = 'high' | 'medium' | 'low';
 export type EvidenceSource = 'source_html' | 'rendered_dom' | 'surface_comparison';
 export type ProblemFamily =
@@ -59,8 +67,8 @@ export interface AuditReport {
   indexabilityVerdict: IndexabilityVerdictLabel;
   summary: ReportSummary;
   checks: ReportCheck[];
-  categories: CategoryScores;
-  rawSummary: RawSummary;
+  scoring: AuditScoring;
+  auditDiagnostics: AuditDiagnostics;
   signature: Signature;
 }
 export interface ReportSummary {
@@ -78,6 +86,7 @@ export interface ReportCheck {
   id: string;
   label: string;
   status: CheckStatus;
+  category: AuditCategoryId;
   severity?: null | Severity;
   instruction?: string | null;
   detail?: string | null;
@@ -194,8 +203,6 @@ export interface ReportCheckMetadata {
   problematicFields?: DuplicateFieldCount[];
   blocks?: StructuredDataBlock[];
   duplicateHeadCounts?: DuplicateHeadCounts;
-  inspection?: null | UrlInspection;
-  robotsControl?: null | RobotsControl;
   canonicalControl?: CanonicalControl;
   alternateLanguageControl?: AlternateLanguageControl;
   linkDiscoveryControl?: LinkDiscoveryControl;
@@ -219,7 +226,6 @@ export interface ReportCheckMetadata {
   metaRefreshControl?: MetaRefreshControl;
   robotsTxt?: RobotsTxt;
   redirectChain?: RedirectChain;
-  sitewide?: SitewideSummary;
 }
 export interface RobotsSameTargetConflict {
   target: string;
@@ -316,98 +322,6 @@ export interface DuplicateHeadCounts {
   twitterTitle: number;
   twitterDescription: number;
   twitterImage: number;
-}
-export interface UrlInspection {
-  inspectedUrl?: NullableString;
-  status: string;
-  finalUrl?: NullableString;
-  statusCode?: NullableInteger;
-  contentType?: NullableString;
-  isReachable: boolean;
-  isHtmlResponse: boolean;
-  metaRobotsTags: string[];
-  googlebotRobotsTags: string[];
-  xRobotsTag?: NullableString;
-  xRobotsTagHeaders: string[];
-  headerCanonicalLinks: LinkAnnotation[];
-  headerAlternateLinks: LinkAnnotation[];
-  redirectChain: RedirectChain;
-  redirectCount: number;
-  robotsTxt: RobotsTxt;
-  reusedCurrentPageInspection: boolean;
-}
-export interface LinkAnnotation {
-  href?: NullableString;
-  rel?: NullableString;
-  hreflang?: NullableString;
-  media?: NullableString;
-  type?: NullableString;
-}
-export interface RedirectChain {
-  status: string;
-  totalRedirects: number;
-  finalUrlChanged: boolean;
-  finalUrl?: NullableString;
-  chain: RedirectStep[];
-  error?: NullableString;
-}
-export interface RedirectStep {
-  url: string;
-  statusCode?: NullableInteger;
-  location?: NullableString;
-}
-export interface RobotsTxt {
-  status: string;
-  allowsCrawl?: NullableBoolean;
-  evaluatedUserAgent?: NullableString;
-  matchedDirective?: NullableString;
-  matchedPattern?: NullableString;
-  fetchStatusCode?: NullableInteger;
-  url?: NullableString;
-  finalUrl?: NullableString;
-  error?: NullableString;
-}
-export interface RobotsControl {
-  status: string;
-  entries: RobotsDirectiveEntry[];
-  targets: {
-    [k: string]: RobotsTargetSummary;
-  };
-  sameTargetConflicts: RobotsSameTargetConflict[];
-  targetedOverrides: RobotsTargetedOverride[];
-  unsupportedTokens: string[];
-  malformedTokens: string[];
-  effectiveIndexing?: NullableString;
-  effectiveFollowing?: NullableString;
-  effectiveSnippet?: NullableString;
-  effectiveArchive?: NullableString;
-  effectiveTranslate?: NullableString;
-  effectiveMaxSnippet?: NullableString;
-  effectiveMaxImagePreview?: NullableString;
-  effectiveMaxVideoPreview?: NullableString;
-  effectiveTarget?: NullableString;
-  hasBlockingNoindex: boolean;
-  hasNoarchiveDirective: boolean;
-  hasNotranslateDirective: boolean;
-}
-export interface RobotsTargetSummary {
-  entries: RobotsDirectiveEntry[];
-  indexingValues: string[];
-  followingValues: string[];
-  snippetValues: string[];
-  archiveValues: string[];
-  translateValues: string[];
-  maxSnippetValues: string[];
-  maxImagePreviewValues: string[];
-  maxVideoPreviewValues: string[];
-  indexing?: NullableString;
-  following?: NullableString;
-  snippet?: NullableString;
-  archive?: NullableString;
-  translate?: NullableString;
-  maxSnippet?: NullableString;
-  maxImagePreview?: NullableString;
-  maxVideoPreview?: NullableString;
 }
 export interface CanonicalControl {
   status: string;
@@ -605,10 +519,103 @@ export interface CanonicalTargetControl {
   status: string;
   targetUrl?: NullableString;
   finalUrl?: NullableString;
+  resolvedCanonicalUrl?: NullableString;
   redirectCount: number;
   reusedCurrentPageInspection: boolean;
   inspection?: null | UrlInspection;
   robotsControl?: null | RobotsControl;
+}
+export interface UrlInspection {
+  inspectedUrl?: NullableString;
+  status: string;
+  finalUrl?: NullableString;
+  statusCode?: NullableInteger;
+  contentType?: NullableString;
+  isReachable: boolean;
+  isHtmlResponse: boolean;
+  metaRobotsTags: string[];
+  googlebotRobotsTags: string[];
+  xRobotsTag?: NullableString;
+  xRobotsTagHeaders: string[];
+  headerCanonicalLinks: LinkAnnotation[];
+  headerAlternateLinks: LinkAnnotation[];
+  redirectChain: RedirectChain;
+  redirectCount: number;
+  robotsTxt: RobotsTxt;
+  reusedCurrentPageInspection: boolean;
+}
+export interface LinkAnnotation {
+  href?: NullableString;
+  rel?: NullableString;
+  hreflang?: NullableString;
+  media?: NullableString;
+  type?: NullableString;
+}
+export interface RedirectChain {
+  status: string;
+  totalRedirects: number;
+  finalUrlChanged: boolean;
+  finalUrl?: NullableString;
+  chain: RedirectStep[];
+  error?: NullableString;
+}
+export interface RedirectStep {
+  url: string;
+  statusCode?: NullableInteger;
+  location?: NullableString;
+}
+export interface RobotsTxt {
+  status: string;
+  allowsCrawl?: NullableBoolean;
+  evaluatedUserAgent?: NullableString;
+  matchedDirective?: NullableString;
+  matchedPattern?: NullableString;
+  fetchStatusCode?: NullableInteger;
+  url?: NullableString;
+  finalUrl?: NullableString;
+  error?: NullableString;
+}
+export interface RobotsControl {
+  status: string;
+  entries: RobotsDirectiveEntry[];
+  targets: {
+    [k: string]: RobotsTargetSummary;
+  };
+  sameTargetConflicts: RobotsSameTargetConflict[];
+  targetedOverrides: RobotsTargetedOverride[];
+  unsupportedTokens: string[];
+  malformedTokens: string[];
+  effectiveIndexing?: NullableString;
+  effectiveFollowing?: NullableString;
+  effectiveSnippet?: NullableString;
+  effectiveArchive?: NullableString;
+  effectiveTranslate?: NullableString;
+  effectiveMaxSnippet?: NullableString;
+  effectiveMaxImagePreview?: NullableString;
+  effectiveMaxVideoPreview?: NullableString;
+  effectiveTarget?: NullableString;
+  hasBlockingNoindex: boolean;
+  hasNoarchiveDirective: boolean;
+  hasNotranslateDirective: boolean;
+}
+export interface RobotsTargetSummary {
+  entries: RobotsDirectiveEntry[];
+  indexingValues: string[];
+  followingValues: string[];
+  snippetValues: string[];
+  archiveValues: string[];
+  translateValues: string[];
+  maxSnippetValues: string[];
+  maxImagePreviewValues: string[];
+  maxVideoPreviewValues: string[];
+  indexing?: NullableString;
+  following?: NullableString;
+  snippet?: NullableString;
+  archive?: NullableString;
+  translate?: NullableString;
+  maxSnippet?: NullableString;
+  maxImagePreview?: NullableString;
+  maxVideoPreview?: NullableString;
 }
 export interface MetaRefreshControl {
   status: string;
@@ -617,7 +624,132 @@ export interface MetaRefreshControl {
   timedRedirectCount: number;
   malformedCount: number;
   refreshOnlyCount: number;
+  redirectCount?: number;
   entries: MetaRefreshEntry[];
+}
+export interface AuditScoring {
+  model: 'weighted_rule_scoring';
+  overall: AuditScoringSummary;
+  categories: AuditScoringCategories;
+  rules: AuditScoringRuleBreakdown[];
+}
+export interface AuditScoringSummary {
+  score: number;
+  confidence: number;
+  earnedWeight: number;
+  availableWeight: number;
+  totalPossibleWeight: number;
+}
+export interface AuditScoringCategories {
+  reachability: AuditScoringCategoryBreakdown;
+  crawlability: AuditScoringCategoryBreakdown;
+  indexability: AuditScoringCategoryBreakdown;
+  sitewide: AuditScoringCategoryBreakdown;
+  contentVisibility: AuditScoringCategoryBreakdown;
+  metadata: AuditScoringCategoryBreakdown;
+  discovery: AuditScoringCategoryBreakdown;
+}
+export interface AuditScoringCategoryBreakdown {
+  score: number;
+  confidence: number;
+  earnedWeight: number;
+  availableWeight: number;
+  totalPossibleWeight: number;
+  categoryWeight: number;
+}
+export interface AuditScoringRuleBreakdown {
+  ruleId: string;
+  categoryId: AuditCategoryId;
+  status: CheckStatus;
+  severity?: null | Severity;
+  ruleWeight: number;
+  earnedWeight: number;
+  includedInScore: boolean;
+  exclusionReason?: null | AuditScoringExclusionReason;
+  scoreImpact: number;
+}
+export interface AuditDiagnostics {
+  capture: AuditDiagnosticsCapture;
+  surfaces: AuditDiagnosticsSurfaces;
+  controls: AuditDiagnosticsControls;
+  sitewide?: null | SitewideSummary;
+  analysis: AuditDiagnosticsAnalysis;
+}
+export interface AuditDiagnosticsCapture {
+  worker: 'seo-audit-worker';
+  statusCode?: NullableInteger;
+  contentType?: NullableString;
+  /**
+   * @minItems 1
+   */
+  capturePasses: [EvidenceSource, ...EvidenceSource[]];
+}
+export interface AuditDiagnosticsSurfaces {
+  sourceHtml: SurfaceSummary;
+  renderedDom?: null | SurfaceSummary;
+  renderComparison: RenderComparison;
+}
+export interface SurfaceSummary {
+  wordCount: number;
+  sameOriginCrawlableLinkCount: number;
+  nonCrawlableLinkCount: number;
+  emptyAnchorTextCount: number;
+  genericAnchorTextCount: number;
+  metaRefreshTagCount: number;
+  headingOutlineCount: number;
+  headingHierarchySkipCount: number;
+  emptyHeadingCount: number;
+  repeatedHeadingCount: number;
+  linkedImageCount: number;
+  linkedImageMissingAltCount: number;
+  bodyImageCount: number;
+  eligibleBodyImageCount: number;
+  bodyImageMissingAltCount: number;
+  structuredDataKinds: string[];
+}
+export interface RenderComparison {
+  sourceOnlyCriticalIssues: number;
+  renderedOnlySignals: number;
+  mismatches: number;
+  renderDependencyRisk: 'unknown' | 'low' | 'medium' | 'high';
+}
+export interface AuditDiagnosticsControls {
+  xRobotsTag: XRobotsTag;
+  robotsControl: RobotsControl;
+  canonicalControl: CanonicalControl;
+  canonicalSelfReferenceControl: CanonicalSelfReferenceControl;
+  canonicalTargetControl: CanonicalTargetControl;
+  metaRefreshControl: MetaRefreshControl;
+  alternateLanguageControl: AlternateLanguageControl;
+  linkDiscoveryControl: LinkDiscoveryControl;
+  internalLinkCoverageControl: InternalLinkCoverageControl;
+  titleControl: TitleControl;
+  metaDescriptionControl: MetaDescriptionControl;
+  headingControl: HeadingControl;
+  headingQualityControl: HeadingQualityControl;
+  bodyImageAltControl: BodyImageAltControl;
+  soft404Control: Soft404Control;
+  langControl: LangControl;
+  socialMetadataControl: SocialMetadataControl;
+  socialUrlControl: SocialUrlControl;
+  metadataAlignmentControl: MetadataAlignmentControl;
+  robotsPreviewControl: RobotsPreviewControl;
+  viewportControl: ViewportControl;
+  faviconControl: FaviconControl;
+  headHygieneControl: HeadHygieneControl;
+  structuredDataControl: StructuredDataControl;
+  robotsTxt: RobotsTxt;
+  redirectChain: RedirectChain;
+}
+export interface XRobotsTag {
+  value?: NullableString;
+  blocksIndexing: boolean;
+}
+export interface CanonicalSelfReferenceControl {
+  status: string;
+  expectsSelfReference: boolean;
+  finalUrl?: NullableString;
+  resolvedCanonicalUrl?: NullableString;
 }
 export interface SitewideSummary {
   siteRootUrl: string;
@@ -728,137 +860,13 @@ export interface SitewideDiscoveryAlignment {
   sitemapUrlsMissingInternalDiscovery: string[];
   internalUrlsMissingFromSitemap: string[];
 }
-export interface CategoryScores {
-  reachability: number;
-  crawlability: number;
-  indexability: number;
-  sitewide: number;
-  contentVisibility: number;
-  metadata: number;
-  discovery: number;
+export interface AuditDiagnosticsAnalysis {
+  indexabilitySignals: IndexabilitySignals;
 }
-export interface RawSummary {
-  worker: 'seo-audit-worker';
-  statusCode?: NullableInteger;
-  contentType?: NullableString;
-  wordCount?: number;
-  /**
-   * @minItems 1
-   */
-  capturePasses?: [EvidenceSource, ...EvidenceSource[]];
-  sourceHtml?: SurfaceSummary;
-  xRobotsTag?: XRobotsTag;
-  robotsControl?: RobotsControl;
-  canonicalControl?: CanonicalControl;
-  canonicalSelfReferenceControl?: CanonicalSelfReferenceControl;
-  canonicalTargetControl?: CanonicalTargetControl;
-  metaRefreshControl?: MetaRefreshControl;
-  alternateLanguageControl?: AlternateLanguageControl;
-  linkDiscoveryControl?: LinkDiscoveryControl;
-  internalLinkCoverageControl?: InternalLinkCoverageControl;
-  titleControl?: TitleControl;
-  metaDescriptionControl?: MetaDescriptionControl;
-  headingControl?: HeadingControl;
-  headingQualityControl?: HeadingQualityControl;
-  bodyImageAltControl?: BodyImageAltControl;
-  soft404Control?: Soft404Control;
-  langControl?: LangControl;
-  socialMetadataControl?: SocialMetadataControl;
-  socialUrlControl?: SocialUrlControl;
-  metadataAlignmentControl?: MetadataAlignmentControl;
-  robotsPreviewControl?: RobotsPreviewControl;
-  viewportControl?: ViewportControl;
-  faviconControl?: FaviconControl;
-  headHygieneControl?: HeadHygieneControl;
-  structuredDataControl?: StructuredDataControl;
-  robotsTxt?: RobotsTxt;
-  redirectChain?: RedirectChain;
-  sitewide?: null | SitewideSummary;
-  indexabilityVerdict?: IndexabilityVerdict;
-  scoring?: AuditScoring;
-  renderedDom?: null | SurfaceSummary;
-  renderComparison?: RenderComparison;
-}
-export interface SurfaceSummary {
-  wordCount: number;
-  sameOriginCrawlableLinkCount: number;
-  nonCrawlableLinkCount: number;
-  emptyAnchorTextCount: number;
-  genericAnchorTextCount: number;
-  metaRefreshTagCount: number;
-  headingOutlineCount: number;
-  headingHierarchySkipCount: number;
-  emptyHeadingCount: number;
-  repeatedHeadingCount: number;
-  linkedImageCount: number;
-  linkedImageMissingAltCount: number;
-  bodyImageCount: number;
-  eligibleBodyImageCount: number;
-  bodyImageMissingAltCount: number;
-  structuredDataKinds: string[];
-}
-export interface XRobotsTag {
-  value?: NullableString;
-  blocksIndexing: boolean;
-}
-export interface CanonicalSelfReferenceControl {
-  status: string;
-  expectsSelfReference: boolean;
-  finalUrl?: NullableString;
-  resolvedCanonicalUrl?: NullableString;
-}
-export interface IndexabilityVerdict {
-  verdict: IndexabilityVerdictLabel;
+export interface IndexabilitySignals {
   blockingSignals: string[];
   riskSignals: string[];
   unknownSignals: string[];
-}
-export interface AuditScoring {
-  model: 'weighted_rule_scoring';
-  overall: AuditScoringSummary;
-  categories: AuditScoringCategories;
-  rules: AuditScoringRuleBreakdown[];
-}
-export interface AuditScoringSummary {
-  score: number;
-  confidence: number;
-  earnedWeight: number;
-  availableWeight: number;
-  totalPossibleWeight: number;
-}
-export interface AuditScoringCategories {
-  reachability: AuditScoringCategoryBreakdown;
-  crawlability: AuditScoringCategoryBreakdown;
-  indexability: AuditScoringCategoryBreakdown;
-  sitewide: AuditScoringCategoryBreakdown;
-  contentVisibility: AuditScoringCategoryBreakdown;
-  metadata: AuditScoringCategoryBreakdown;
-  discovery: AuditScoringCategoryBreakdown;
-}
-export interface AuditScoringCategoryBreakdown {
-  score: number;
-  confidence: number;
-  earnedWeight: number;
-  availableWeight: number;
-  totalPossibleWeight: number;
-  categoryWeight: number;
-}
-export interface AuditScoringRuleBreakdown {
-  ruleId: string;
-  categoryId: string;
-  status: CheckStatus;
-  severity?: null | Severity;
-  ruleWeight: number;
-  earnedWeight: number;
-  includedInScore: boolean;
-  exclusionReason?: null | AuditScoringExclusionReason;
-  scoreImpact: number;
-}
-export interface RenderComparison {
-  sourceOnlyCriticalIssues: number;
-  renderedOnlySignals: number;
-  mismatches: number;
-  renderDependencyRisk: 'unknown' | 'low' | 'medium' | 'high';
 }
 export interface Signature {
   present: true;

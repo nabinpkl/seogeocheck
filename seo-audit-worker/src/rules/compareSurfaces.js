@@ -354,17 +354,20 @@ export function compareSurfaces({ sourceFacts, renderedFacts, renderedError }) {
     return {
       checks: renderedError
         ? [
-            systemErrorCheck(
-              "rendered-pass-unavailable",
-              "Rendered DOM comparison was unavailable",
-              renderedError?.message ?? "The rendered DOM pass did not return comparable signals.",
-              "document",
-              "rendered-pass",
-              withDiscoveryMetadata({
-                reasonCode: renderedUnavailableReason(renderedError),
-                retryable: true,
-              }),
-              "Retry this audit to re-run the rendered DOM comparison."
+            buildDiscoveryCheck(
+              { scoreWeight: 0, priority: 0 },
+              systemErrorCheck(
+                "rendered-pass-unavailable",
+                "Rendered DOM comparison was unavailable",
+                renderedError?.message ?? "The rendered DOM pass did not return comparable signals.",
+                "document",
+                "rendered-pass",
+                {
+                  reasonCode: renderedUnavailableReason(renderedError),
+                  retryable: true,
+                },
+                "Retry this audit to re-run the rendered DOM comparison."
+              )
             ),
           ]
         : [],

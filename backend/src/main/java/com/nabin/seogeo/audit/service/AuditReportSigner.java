@@ -100,8 +100,8 @@ public class AuditReportSigner {
         report.setIndexabilityVerdict(toVerdictLabel(result.indexabilityVerdict()));
         report.setSummary(summary);
         report.setChecks(checks);
-        report.setCategories(result.categoryScores());
-        report.setRawSummary(result.rawSummary());
+        report.setScoring(result.scoring());
+        report.setAuditDiagnostics(result.auditDiagnostics());
 
         String canonicalJson = writeCanonicalJson(report);
         String signatureValue = sign(canonicalJson);
@@ -127,6 +127,7 @@ public class AuditReportSigner {
         payload.setId(check.id());
         payload.setLabel(check.label());
         payload.setStatus(ReportCheck.CheckStatus.fromValue(check.status()));
+        payload.setCategory(ReportCheck.AuditCategoryId.fromValue(check.category()));
         if (check.severity() != null && !check.severity().isBlank()) {
             payload.setSeverity(check.severity());
         }
@@ -168,7 +169,7 @@ public class AuditReportSigner {
             return "No major issues detected";
         }
 
-        Map<String, Double> scoreImpacts = extractScoreImpacts(result.rawSummary());
+        Map<String, Double> scoreImpacts = extractScoreImpacts(result.scoring());
         if (scoreImpacts.isEmpty()) {
             return issues.stream()
                     .min(Comparator.comparingInt(this::severityRank))
@@ -195,8 +196,8 @@ public class AuditReportSigner {
         return bestCheck != null ? bestCheck.label() : "No major issues detected";
     }
 
-    private Map<String, Double> extractScoreImpacts(Object rawSummary) {
-        JsonNode rulesNode = objectMapper.valueToTree(rawSummary).at("/scoring/rules");
+    private Map<String, Double> extractScoreImpacts(Object scoring) {
+        JsonNode rulesNode = objectMapper.valueToTree(scoring).at("/rules");
         if (!rulesNode.isArray()) {
             return Map.of();
         }

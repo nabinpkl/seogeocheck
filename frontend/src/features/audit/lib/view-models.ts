@@ -145,7 +145,7 @@ export function toneForScore(
 }
 
 function confidenceForCategory(
-  scoringCategories: AuditReport["rawSummary"]["scoring"] extends infer T
+  scoringCategories: AuditReport["scoring"] extends infer T
     ? T extends { categories: infer Categories }
       ? Categories | undefined
       : undefined
@@ -337,25 +337,6 @@ export function formatEvidenceSource(evidenceSource?: string) {
   return evidenceSource.replaceAll("_", " ");
 }
 
-export function buildCheckCategoryLabelMap(report?: AuditReport | null) {
-  const rules = report?.rawSummary?.scoring?.rules;
-  const labels = new Map<string, string>();
-
-  if (!Array.isArray(rules)) {
-    return labels;
-  }
-
-  for (const rule of rules) {
-    if (typeof rule?.ruleId !== "string" || typeof rule?.categoryId !== "string") {
-      continue;
-    }
-
-    labels.set(rule.ruleId, formatCategoryLabel(rule.categoryId));
-  }
-
-  return labels;
-}
-
 function normalizeProblemFamily(problemFamily?: string) {
   const trimmed = typeof problemFamily === "string" ? problemFamily.trim() : "";
   if (!trimmed) {
@@ -413,8 +394,7 @@ export function selectTopRecommendationChecks(checks: AuditReportCheck[]) {
 }
 
 export function buildFamilyChecklistGroups(
-  checks: AuditReportCheck[],
-  options?: { categoryLabelsByRuleId?: Map<string, string> }
+  checks: AuditReportCheck[]
 ): AuditFamilyChecklistGroupModel[] {
   if (checks.length === 0) {
     return [];
@@ -437,12 +417,6 @@ export function buildFamilyChecklistGroups(
           {
             ...check,
             id: check.id ?? `${familyKey}-${check.status ?? "unknown"}-${index}`,
-          },
-          {
-            packLabel:
-              typeof check.id === "string"
-                ? options?.categoryLabelsByRuleId?.get(check.id) ?? null
-                : null,
           },
           isIssueCheck(check.status)
             ? "issue"
@@ -495,8 +469,8 @@ export function buildFamilyChecklistGroups(
 
 export function buildAuditCheckRowModel(
   check: AuditReportCheck,
-  options: { packLabel?: string | null; isHero?: boolean } | undefined,
-  kind: AuditCheckKind
+  kind: AuditCheckKind,
+  options?: { isHero?: boolean }
 ): AuditCheckRowModel {
   const isIssue = kind === "issue";
   const isPassed = kind === "passed";
@@ -517,7 +491,7 @@ export function buildAuditCheckRowModel(
             : "Verification Needed"),
     problemFamily,
     problemFamilyLabel: formatProblemFamilyLabel(problemFamily),
-    packLabel: options?.packLabel ?? null,
+    packLabel: typeof check.category === "string" ? formatCategoryLabel(check.category) : null,
     evidenceSourceLabel: formatEvidenceSource(check.metadata?.evidenceSource),
     severityLabel: isIssue
       ? formatSeverityLabel(check.severity)
@@ -613,18 +587,18 @@ export function buildAuditStreamRowModel(event: AuditStreamEvent): AuditStreamRo
 }
 
 export function buildCategoryScoreModels(report?: AuditReport): AuditCategoryScoreModel[] {
-  if (!report?.categories) {
+  if (!report?.scoring?.categories) {
     return [];
   }
 
-  const scoringCategories = report.rawSummary?.scoring?.categories;
+  const scoringCategories = report.scoring.categories;
 
   return [
     ...CATEGORY_ORDER.filter((key) =>
-      Object.prototype.hasOwnProperty.call(report.categories, key)
+      Object.prototype.hasOwnProperty.call(scoringCategories, key)
     ).map((key) => {
       const score =
-        typeof report.categories?.[key] === "number" ? report.categories[key] : 0;
+        typeof scoringCategories?.[key]?.score === "number" ? scoringCategories[key].score : 0;
       const confidence = confidenceForCategory(scoringCategories, key);
 
       return {
@@ -634,13 +608,13 @@ export function buildCategoryScoreModels(report?: AuditReport): AuditCategorySco
         tone: toneForScore(score, { confidence }),
       };
     }),
-    ...Object.entries(report.categories)
+    ...Object.entries(scoringCategories)
       .filter(
         ([key]) => !CATEGORY_ORDER.includes(key as (typeof CATEGORY_ORDER)[number])
       )
       .map(([key, value]) => {
         const confidence = confidenceForCategory(scoringCategories, key);
-        const score = typeof value === "number" ? value : 0;
+        const score = typeof value?.score === "number" ? value.score : 0;
 
         return {
           key,
