@@ -15,16 +15,6 @@ import { AuditSection } from "@/features/audit/AuditSection";
 export function Hero() {
   return (
     <section className="relative -mt-16 pt-32 pb-16 lg:pt-40 lg:pb-24">
-      {/* Keep the hero art on a fixed canvas so it does not recrop when audit results expand. */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <Image
-          src="/hero-bg.png"
-          alt="Hero Background"
-          fill
-          priority
-          className="object-cover object-center"
-        />
-      </div>
       <div className="pointer-events-none absolute inset-0 z-10 bg-blue-950/95 backdrop-blur-[8px]" />
 
       <PageShell className="relative z-20 !px-6 !py-0">
@@ -88,6 +78,7 @@ export function Hero() {
                       src={`/illustrations/${item.label.toLowerCase()}.png`}
                       alt={item.title}
                       fill
+                      sizes="96px"
                       className="object-contain transition-transform group-hover/card:scale-110"
                     />
                   </div>
