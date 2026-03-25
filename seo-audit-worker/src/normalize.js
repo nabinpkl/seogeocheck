@@ -270,6 +270,7 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
       headingControl: sourceFacts.headingControl,
       headingQualityControl: sourceFacts.headingQualityControl,
       bodyImageAltControl: sourceFacts.bodyImageAltControl,
+      soft404Control: sourceFacts.soft404Control,
       langControl: sourceFacts.langControl,
       socialMetadataControl: sourceFacts.socialMetadataControl,
       socialUrlControl: sourceFacts.socialUrlControl,

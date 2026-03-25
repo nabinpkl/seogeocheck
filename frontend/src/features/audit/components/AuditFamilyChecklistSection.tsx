@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { AuditFamilyChecklistGroupModel } from "../types/models";
 import { AuditCheckRow } from "./AuditCheckRow";
-import { EmptyPanelState, MetaLabel, SurfaceCard } from "./primitives";
+import { EmptyPanelState, MetaLabel, SectionEyebrow, SurfaceCard } from "./primitives";
 
 type AuditFamilyChecklistSectionProps = {
   groups: AuditFamilyChecklistGroupModel[];
@@ -12,13 +12,11 @@ export function AuditFamilyChecklistSection({
 }: AuditFamilyChecklistSectionProps) {
   return (
     <section id="family-checklists" className="scroll-mt-24 space-y-4">
-      <div className="px-1 pb-1 pt-2">
-        <h3 className="text-2xl font-black tracking-tight text-slate-900">
-          SEO Signals Checklist
-        </h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Organized by SEO category.
-        </p>
+      <div className="px-2 py-8">
+        <div className="mb-4 flex items-center gap-4">
+          <SectionEyebrow className="text-white/50 tracking-[0.5em]">Detailed Analysis</SectionEyebrow>
+          <div className="h-px flex-1 bg-slate-500/60" />
+        </div>
       </div>
 
       {groups.length === 0 ? (

@@ -507,6 +507,8 @@ async function inspectSampleUrl(sample, fetchImpl) {
   let hasTitle = false;
   let hasMetaDescription = false;
   let hasValidCanonical = false;
+  let resolvedCanonicalUrl = null;
+  let canonicalMatchesFinalUrl = null;
 
   if (!inspectionUnavailable && isReachable && isHtmlResponse) {
     const htmlResponse = await fetchText(
@@ -523,6 +525,13 @@ async function inspectSampleUrl(sample, fetchImpl) {
       htmlResponse.finalUrl ?? inspection.finalUrl ?? sample.url,
       inspection.finalUrl ?? sample.url
     );
+    resolvedCanonicalUrl = canonicalControl.resolvedCanonicalUrl ?? null;
+    canonicalMatchesFinalUrl =
+      canonicalControl.consistency === "self"
+        ? true
+        : canonicalControl.consistency === "contradicts"
+          ? false
+          : null;
     hasValidCanonical =
       canonicalControl.status === "clear" && Boolean(canonicalControl.resolvedCanonicalUrl);
   }
@@ -545,10 +554,13 @@ async function inspectSampleUrl(sample, fetchImpl) {
     isHtmlResponse,
     robotsTxtAllowsCrawl: inspection.robotsTxt.allowsCrawl ?? null,
     effectiveIndexing: robotsControl.effectiveIndexing,
+    hasBlockingNoindex: robotsControl.hasBlockingNoindex === true,
     indexable,
     hasTitle,
     hasMetaDescription,
     hasValidCanonical,
+    resolvedCanonicalUrl,
+    canonicalMatchesFinalUrl,
   };
 }
 
@@ -571,6 +583,81 @@ function buildSampleCoverage(sampledUrls) {
     metaDescriptionCoverageRatio:
       sampledUrlCount === 0 ? 0 : metaDescriptionCoverageCount / sampledUrlCount,
     canonicalCoverageRatio: sampledUrlCount === 0 ? 0 : canonicalCoverageCount / sampledUrlCount,
+  };
+}
+
+function buildSitemapSampleHealth(sampledUrls) {
+  const sitemapSamples = sampledUrls.filter((sample) => sample.source === "sitemap");
+  const issueUrls = sitemapSamples
+    .map((sample) => {
+      const issueTypes = [];
+      const finalComparable = comparableUrl(sample.finalUrl);
+      const requestedComparable = comparableUrl(sample.url);
+
+      if (!sample.isReachable || !sample.isHtmlResponse) {
+        issueTypes.push("broken");
+      }
+      if (
+        sample.redirectCount > 0 ||
+        (finalComparable && requestedComparable && finalComparable !== requestedComparable)
+      ) {
+        issueTypes.push("redirected");
+      }
+      if (sample.hasBlockingNoindex) {
+        issueTypes.push("noindex");
+      }
+      if (sample.canonicalMatchesFinalUrl === false) {
+        issueTypes.push("non_canonical");
+      }
+
+      return issueTypes.length > 0
+        ? {
+            url: sample.url,
+            issueTypes,
+          }
+        : null;
+    })
+    .filter(Boolean);
+
+  const brokenUrlCount = issueUrls.filter((entry) => entry.issueTypes.includes("broken")).length;
+  const redirectedUrlCount = issueUrls.filter((entry) => entry.issueTypes.includes("redirected")).length;
+  const noindexUrlCount = issueUrls.filter((entry) => entry.issueTypes.includes("noindex")).length;
+  const nonCanonicalUrlCount = issueUrls.filter((entry) => entry.issueTypes.includes("non_canonical")).length;
+
+  return {
+    sampledSitemapUrlCount: sitemapSamples.length,
+    healthyUrlCount: sitemapSamples.length - issueUrls.length,
+    brokenUrlCount,
+    redirectedUrlCount,
+    noindexUrlCount,
+    nonCanonicalUrlCount,
+    issueUrls,
+  };
+}
+
+function buildDiscoveryAlignment(sampledUrls) {
+  const sitemapUrls = sampledUrls
+    .filter((sample) => sample.source === "sitemap")
+    .map((sample) => sample.url);
+  const discoveryUrls = sampledUrls
+    .filter((sample) => sample.source !== "sitemap")
+    .map((sample) => sample.url);
+  const sitemapSet = new Set(uniqueUrls(sitemapUrls));
+  const boundedDiscoveryUrls = uniqueUrls(discoveryUrls);
+  const sitemapUrlsMissingInternalDiscovery = uniqueUrls(
+    sitemapUrls.filter((url) => !boundedDiscoveryUrls.includes(url))
+  );
+  const internalUrlsMissingFromSitemap = uniqueUrls(
+    boundedDiscoveryUrls.filter((url) => !sitemapSet.has(url))
+  );
+  const alignedUrlCount = boundedDiscoveryUrls.filter((url) => sitemapSet.has(url)).length;
+
+  return {
+    sampledSitemapUrlCount: uniqueUrls(sitemapUrls).length,
+    sampledDiscoveryUrlCount: boundedDiscoveryUrls.length,
+    alignedUrlCount,
+    sitemapUrlsMissingInternalDiscovery,
+    internalUrlsMissingFromSitemap,
   };
 }
 
@@ -664,5 +751,7 @@ export async function collectSitewideSignals(
     sitemap: discovery.sitemap,
     sampledUrls,
     sampleCoverage: buildSampleCoverage(sampledUrls),
+    sitemapSampleHealth: buildSitemapSampleHealth(sampledUrls),
+    discoveryAlignment: buildDiscoveryAlignment(sampledUrls),
   };
 }

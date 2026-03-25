@@ -68,6 +68,15 @@ const DUPLICATE_HEAD_FIELDS = [
   "twitterDescription",
   "twitterImage",
 ];
+const SOFT_404_ERROR_PATTERNS = [
+  /\b404\b/i,
+  /\bnot found\b/i,
+  /\bpage not found\b/i,
+  /\berror\b/i,
+  /\bunavailable\b/i,
+  /\bdoesn['’]t exist\b/i,
+  /\bcouldn['’]t find\b/i,
+];
 
 function splitCommaDelimited(value) {
   if (!value) {
@@ -118,6 +127,19 @@ function tokenizeComparableText(value) {
       .split(/\s+/)
       .map((token) => token.trim())
       .filter((token) => token.length > 1 && !TOKEN_STOPWORDS.has(token))
+  );
+}
+
+function matchedSoft404Phrases(value) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return [];
+  }
+
+  return uniqueValues(
+    SOFT_404_ERROR_PATTERNS
+      .map((pattern) => normalized.match(pattern)?.[0]?.toLowerCase() ?? null)
+      .filter(Boolean)
   );
 }
 
@@ -822,6 +844,94 @@ export function buildBodyImageAltControl(bodyImages = []) {
       src: image.resolvedSrc ?? image.src ?? null,
       alt: image.alt ?? null,
     })),
+  };
+}
+
+export function buildSoft404Control({
+  statusCode,
+  isReachable,
+  isHtmlResponse,
+  title,
+  metaDescription,
+  headingOutline = [],
+  wordCount,
+  canonicalSelfReferenceControl,
+}) {
+  if (statusCode !== 200 || isReachable !== true || isHtmlResponse !== true) {
+    return {
+      status: "not_applicable",
+      wordCount: Number.isFinite(wordCount) ? Math.max(0, Math.round(wordCount)) : 0,
+      title: normalizeText(title),
+      firstH1Text: normalizeText(
+        headingOutline.find((heading) => heading?.level === 1)?.text ?? null
+      ),
+      matchedPhrases: [],
+      titleLooksLikeError: false,
+      headingLooksLikeError: false,
+      metaDescriptionLooksLikeError: false,
+      thinContent: false,
+      missingPrimarySignals: false,
+      canonicalContradicts: false,
+      signalCount: 0,
+    };
+  }
+
+  const normalizedWordCount = Number.isFinite(wordCount) ? Math.max(0, Math.round(wordCount)) : 0;
+  const normalizedTitle = normalizeText(title);
+  const normalizedMetaDescription = normalizeText(metaDescription);
+  const firstH1Text = normalizeText(headingOutline.find((heading) => heading?.level === 1)?.text ?? null);
+  const titleMatches = matchedSoft404Phrases(normalizedTitle);
+  const headingMatches = matchedSoft404Phrases(firstH1Text);
+  const metaDescriptionMatches = matchedSoft404Phrases(normalizedMetaDescription);
+  const matchedPhrases = uniqueValues([
+    ...titleMatches,
+    ...headingMatches,
+    ...metaDescriptionMatches,
+  ]);
+  const titleLooksLikeError = titleMatches.length > 0;
+  const headingLooksLikeError = headingMatches.length > 0;
+  const metaDescriptionLooksLikeError = metaDescriptionMatches.length > 0;
+  const thinContent = normalizedWordCount < 120;
+  const missingPrimarySignals = !normalizedTitle || !firstH1Text;
+  const canonicalContradicts = canonicalSelfReferenceControl?.status === "contradicts";
+  const errorSurfaceCount = [titleLooksLikeError, headingLooksLikeError, metaDescriptionLooksLikeError].filter(Boolean)
+    .length;
+  let status = "clear";
+
+  if (
+    errorSurfaceCount >= 2 ||
+    (matchedPhrases.length > 0 && thinContent) ||
+    (matchedPhrases.length > 0 && canonicalContradicts)
+  ) {
+    status = "likely";
+  } else if (
+    matchedPhrases.length > 0 ||
+    (thinContent && missingPrimarySignals) ||
+    (thinContent && canonicalContradicts)
+  ) {
+    status = "suspected";
+  }
+
+  return {
+    status,
+    wordCount: normalizedWordCount,
+    title: normalizedTitle,
+    firstH1Text,
+    matchedPhrases,
+    titleLooksLikeError,
+    headingLooksLikeError,
+    metaDescriptionLooksLikeError,
+    thinContent,
+    missingPrimarySignals,
+    canonicalContradicts,
+    signalCount: [
+      titleLooksLikeError,
+      headingLooksLikeError,
+      metaDescriptionLooksLikeError,
+      thinContent,
+      missingPrimarySignals,
+      canonicalContradicts,
+    ].filter(Boolean).length,
   };
 }
 

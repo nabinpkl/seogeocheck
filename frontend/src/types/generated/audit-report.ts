@@ -31,11 +31,14 @@ export type ProblemFamily =
   | 'robots_controls'
   | 'robots_preview'
   | 'robots_txt'
+  | 'soft_404'
   | 'social_open_graph'
   | 'social_twitter'
   | 'social_url_hygiene'
+  | 'sitewide_discovery_alignment'
   | 'sitewide_foundations'
   | 'sitewide_sample_coverage'
+  | 'sitewide_sitemap_hygiene'
   | 'sitewide_sitemaps'
   | 'source-visible-text'
   | 'source_link_presence'
@@ -151,6 +154,7 @@ export interface ReportCheckMetadata {
   sourceH1Count?: number;
   renderedH1Count?: number;
   effectiveIndexing?: NullableString;
+  effectiveFollowing?: NullableString;
   effectiveTarget?: NullableString;
   effectiveSnippet?: NullableString;
   effectiveArchive?: NullableString;
@@ -210,6 +214,7 @@ export interface ReportCheckMetadata {
   faviconControl?: FaviconControl;
   headHygieneControl?: HeadHygieneControl;
   structuredDataControl?: StructuredDataControl;
+  soft404Control?: Soft404Control;
   canonicalTargetControl?: CanonicalTargetControl;
   metaRefreshControl?: MetaRefreshControl;
   robotsTxt?: RobotsTxt;
@@ -582,6 +587,20 @@ export interface StructuredDataControl {
   missingTypeBlocks: number;
   blocks: StructuredDataBlock[];
 }
+export interface Soft404Control {
+  status: 'not_applicable' | 'clear' | 'suspected' | 'likely';
+  wordCount: number;
+  title?: NullableString;
+  firstH1Text?: NullableString;
+  matchedPhrases: string[];
+  titleLooksLikeError: boolean;
+  headingLooksLikeError: boolean;
+  metaDescriptionLooksLikeError: boolean;
+  thinContent: boolean;
+  missingPrimarySignals: boolean;
+  canonicalContradicts: boolean;
+  signalCount: number;
+}
 export interface CanonicalTargetControl {
   status: string;
   targetUrl?: NullableString;
@@ -608,6 +627,8 @@ export interface SitewideSummary {
   sitemap: SitewideSitemap;
   sampledUrls: SitewideSampledUrl[];
   sampleCoverage: SitewideSampleCoverage;
+  sitemapSampleHealth: SitewideSitemapSampleHealth;
+  discoveryAlignment: SitewideDiscoveryAlignment;
 }
 export interface SitewideHostVariant {
   requestedUrl: string;
@@ -667,10 +688,13 @@ export interface SitewideSampledUrl {
   isHtmlResponse: boolean;
   robotsTxtAllowsCrawl?: NullableBoolean;
   effectiveIndexing?: NullableString;
+  hasBlockingNoindex?: boolean;
   indexable: boolean;
   hasTitle: boolean;
   hasMetaDescription: boolean;
   hasValidCanonical: boolean;
+  resolvedCanonicalUrl?: NullableString;
+  canonicalMatchesFinalUrl?: NullableBoolean;
 }
 export interface SitewideSampleCoverage {
   sampledUrlCount: number;
@@ -683,6 +707,26 @@ export interface SitewideSampleCoverage {
   titleCoverageRatio: number;
   metaDescriptionCoverageRatio: number;
   canonicalCoverageRatio: number;
+}
+export interface SitewideSitemapSampleHealth {
+  sampledSitemapUrlCount: number;
+  healthyUrlCount: number;
+  brokenUrlCount: number;
+  redirectedUrlCount: number;
+  noindexUrlCount: number;
+  nonCanonicalUrlCount: number;
+  issueUrls: SitewideSitemapSampleIssue[];
+}
+export interface SitewideSitemapSampleIssue {
+  url: string;
+  issueTypes: ('broken' | 'redirected' | 'noindex' | 'non_canonical')[];
+}
+export interface SitewideDiscoveryAlignment {
+  sampledSitemapUrlCount: number;
+  sampledDiscoveryUrlCount: number;
+  alignedUrlCount: number;
+  sitemapUrlsMissingInternalDiscovery: string[];
+  internalUrlsMissingFromSitemap: string[];
 }
 export interface CategoryScores {
   reachability: number;
@@ -717,6 +761,7 @@ export interface RawSummary {
   headingControl?: HeadingControl;
   headingQualityControl?: HeadingQualityControl;
   bodyImageAltControl?: BodyImageAltControl;
+  soft404Control?: Soft404Control;
   langControl?: LangControl;
   socialMetadataControl?: SocialMetadataControl;
   socialUrlControl?: SocialUrlControl;

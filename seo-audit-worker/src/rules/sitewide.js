@@ -5,6 +5,10 @@ function percentLabel(value) {
   return `${Math.round(value * 100)}%`;
 }
 
+function pluralize(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 const siteHostCanonicalization = defineRule({
   id: "site-host-canonicalization",
   label: "Site Host Canonicalization",
@@ -402,6 +406,145 @@ const siteSampleBasicsCoverage = defineRule({
   },
 });
 
+const siteSitemapUrlHygiene = defineRule({
+  id: "site-sitemap-url-hygiene",
+  label: "Site Sitemap URL Hygiene",
+  packId: "sitewide",
+  scoreWeight: 3,
+  priority: 18,
+  problemFamily: "sitewide_sitemap_hygiene",
+  check: (sitewide) => {
+    const health = sitewide.sitemapSampleHealth;
+
+    if (health.sampledSitemapUrlCount === 0) {
+      return notApplicableCheck(
+        "site-sitemap-url-hygiene",
+        "Sitemap URL hygiene will be evaluated after sitemap URLs enter the sample",
+        "This check needs sampled sitemap URLs before sitemap URL hygiene can be evaluated.",
+        "sitemap.xml",
+        "site-sitemap-url-hygiene",
+        {
+          sitewide,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["site-sitemap-health"],
+        },
+        "A healthy sitemap points directly to indexable, canonical HTML URLs rather than redirects, broken pages, or noindex targets."
+      );
+    }
+
+    if (health.brokenUrlCount > 0 || health.noindexUrlCount > 0) {
+      return issueCheck(
+        "site-sitemap-url-hygiene",
+        "Sampled sitemap URLs include broken or noindex targets",
+        "high",
+        "Keep sitemap entries limited to reachable indexable canonical HTML URLs.",
+        `The sampled sitemap URLs included ${pluralize(health.brokenUrlCount, "broken URL")} and ${pluralize(health.noindexUrlCount, "noindex URL")}.`,
+        "sitemap.xml",
+        "site-sitemap-url-hygiene",
+        { sitewide }
+      );
+    }
+
+    if (health.redirectedUrlCount > 0 || health.nonCanonicalUrlCount > 0) {
+      return issueCheck(
+        "site-sitemap-url-hygiene",
+        "Sampled sitemap URLs are not clean canonical targets",
+        "medium",
+        "List only final canonical URLs in the sitemap instead of redirects or URLs canonically pointing elsewhere.",
+        `The sampled sitemap URLs included ${pluralize(health.redirectedUrlCount, "redirecting URL")} and ${pluralize(health.nonCanonicalUrlCount, "non-canonical URL")}.`,
+        "sitemap.xml",
+        "site-sitemap-url-hygiene",
+        { sitewide }
+      );
+    }
+
+    return passedCheck(
+      "site-sitemap-url-hygiene",
+      "Sampled sitemap URLs are clean",
+      "The sampled sitemap URLs resolved as reachable canonical HTML pages without noindex directives.",
+      "sitemap.xml",
+      "site-sitemap-url-hygiene",
+      { sitewide }
+    );
+  },
+});
+
+const siteDiscoveryAlignment = defineRule({
+  id: "site-discovery-alignment",
+  label: "Site Discovery Alignment",
+  packId: "sitewide",
+  scoreWeight: 2,
+  priority: 19,
+  problemFamily: "sitewide_discovery_alignment",
+  check: (sitewide) => {
+    const alignment = sitewide.discoveryAlignment;
+
+    if (
+      alignment.sampledSitemapUrlCount === 0 &&
+      alignment.sampledDiscoveryUrlCount === 0
+    ) {
+      return notApplicableCheck(
+        "site-discovery-alignment",
+        "Discovery alignment will be evaluated after the sample includes sitemap or internal URLs",
+        "This check needs sampled sitemap URLs or internal discovery URLs before alignment can be evaluated.",
+        "document",
+        "site-discovery-alignment",
+        {
+          sitewide,
+          reasonCode: "missing_prerequisite",
+          blockedBy: ["site-sitemap-health", "site-sample-indexability"],
+        },
+        "A healthy site keeps key internally discoverable URLs aligned with sitemap coverage."
+      );
+    }
+
+    const mismatchCount =
+      alignment.sitemapUrlsMissingInternalDiscovery.length +
+      alignment.internalUrlsMissingFromSitemap.length;
+    const denominator = Math.max(
+      alignment.sampledSitemapUrlCount,
+      alignment.sampledDiscoveryUrlCount,
+      1
+    );
+    const mismatchRatio = mismatchCount / denominator;
+
+    if (mismatchRatio >= 0.5 && mismatchCount > 0) {
+      return issueCheck(
+        "site-discovery-alignment",
+        "Sitemap coverage and internal discovery are misaligned",
+        "medium",
+        "Align sitemap entries and internal discovery paths so important URLs appear consistently in both signals.",
+        `${pluralize(alignment.sitemapUrlsMissingInternalDiscovery.length, "sampled sitemap URL")} lacked internal discovery support, and ${pluralize(alignment.internalUrlsMissingFromSitemap.length, "sampled internal URL")} were absent from sitemap coverage.`,
+        "document",
+        "site-discovery-alignment",
+        { sitewide }
+      );
+    }
+
+    if (mismatchCount > 0) {
+      return issueCheck(
+        "site-discovery-alignment",
+        "Sitemap and internal discovery are only partially aligned",
+        "low",
+        "Tighten sitemap coverage and internal discovery so important URLs are reinforced consistently.",
+        `${pluralize(alignment.sitemapUrlsMissingInternalDiscovery.length, "sampled sitemap URL")} lacked internal discovery support, and ${pluralize(alignment.internalUrlsMissingFromSitemap.length, "sampled internal URL")} were absent from sitemap coverage.`,
+        "document",
+        "site-discovery-alignment",
+        { sitewide }
+      );
+    }
+
+    return passedCheck(
+      "site-discovery-alignment",
+      "Sitemap and internal discovery are aligned on the sample",
+      "The bounded sample showed consistent overlap between sitemap coverage and internally discoverable URLs.",
+      "document",
+      "site-discovery-alignment",
+      { sitewide }
+    );
+  },
+});
+
 export const sitewideRules = [
   siteHostCanonicalization,
   siteRobotsTxtAvailability,
@@ -409,4 +552,6 @@ export const sitewideRules = [
   siteSitemapRobotsAlignment,
   siteSampleIndexability,
   siteSampleBasicsCoverage,
+  siteSitemapUrlHygiene,
+  siteDiscoveryAlignment,
 ];

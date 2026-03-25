@@ -333,4 +333,13 @@ test("collectSitewideSignals falls back to homepage links and deduplicates the 5
   assert.equal(sitewide.sampleCoverage.sampledUrlCount, 5);
   assert.equal(sitewide.sampleCoverage.indexableCoverageRatio, 1);
   assert.equal(sitewide.sitemap.discoveryMethod, "none");
+  assert.equal(sitewide.sitemapSampleHealth.sampledSitemapUrlCount, 0);
+  assert.equal(sitewide.discoveryAlignment.sampledDiscoveryUrlCount, 5);
+  assert.deepEqual(sitewide.discoveryAlignment.internalUrlsMissingFromSitemap, [
+    "https://example.com/",
+    "https://example.com/contact",
+    "https://example.com/products",
+    "https://example.com/pricing",
+    "https://example.com/blog",
+  ]);
 });

@@ -109,11 +109,14 @@
         "robots_controls",
         "robots_preview",
         "robots_txt",
+        "soft_404",
         "social_open_graph",
         "social_twitter",
         "social_url_hygiene",
+        "sitewide_discovery_alignment",
         "sitewide_foundations",
         "sitewide_sample_coverage",
+        "sitewide_sitemap_hygiene",
         "sitewide_sitemaps",
         "source-visible-text",
         "source_link_presence",
@@ -1328,10 +1331,13 @@
         "isHtmlResponse": { "type": "boolean" },
         "robotsTxtAllowsCrawl": { "$ref": "#/$defs/nullableBoolean" },
         "effectiveIndexing": { "$ref": "#/$defs/nullableString" },
+        "hasBlockingNoindex": { "type": "boolean" },
         "indexable": { "type": "boolean" },
         "hasTitle": { "type": "boolean" },
         "hasMetaDescription": { "type": "boolean" },
-        "hasValidCanonical": { "type": "boolean" }
+        "hasValidCanonical": { "type": "boolean" },
+        "resolvedCanonicalUrl": { "$ref": "#/$defs/nullableString" },
+        "canonicalMatchesFinalUrl": { "$ref": "#/$defs/nullableBoolean" }
       }
     },
     "sitewideSampleCoverage": {
@@ -1362,6 +1368,97 @@
         "canonicalCoverageRatio": { "type": "number", "minimum": 0, "maximum": 1 }
       }
     },
+    "sitewideSitemapSampleIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "issueTypes"],
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "issueTypes": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["broken", "redirected", "noindex", "non_canonical"] }
+        }
+      }
+    },
+    "sitewideSitemapSampleHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampledSitemapUrlCount",
+        "healthyUrlCount",
+        "brokenUrlCount",
+        "redirectedUrlCount",
+        "noindexUrlCount",
+        "nonCanonicalUrlCount",
+        "issueUrls"
+      ],
+      "properties": {
+        "sampledSitemapUrlCount": { "type": "integer", "minimum": 0 },
+        "healthyUrlCount": { "type": "integer", "minimum": 0 },
+        "brokenUrlCount": { "type": "integer", "minimum": 0 },
+        "redirectedUrlCount": { "type": "integer", "minimum": 0 },
+        "noindexUrlCount": { "type": "integer", "minimum": 0 },
+        "nonCanonicalUrlCount": { "type": "integer", "minimum": 0 },
+        "issueUrls": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sitewideSitemapSampleIssue" }
+        }
+      }
+    },
+    "sitewideDiscoveryAlignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampledSitemapUrlCount",
+        "sampledDiscoveryUrlCount",
+        "alignedUrlCount",
+        "sitemapUrlsMissingInternalDiscovery",
+        "internalUrlsMissingFromSitemap"
+      ],
+      "properties": {
+        "sampledSitemapUrlCount": { "type": "integer", "minimum": 0 },
+        "sampledDiscoveryUrlCount": { "type": "integer", "minimum": 0 },
+        "alignedUrlCount": { "type": "integer", "minimum": 0 },
+        "sitemapUrlsMissingInternalDiscovery": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "internalUrlsMissingFromSitemap": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "soft404Control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "wordCount",
+        "matchedPhrases",
+        "titleLooksLikeError",
+        "headingLooksLikeError",
+        "metaDescriptionLooksLikeError",
+        "thinContent",
+        "missingPrimarySignals",
+        "canonicalContradicts",
+        "signalCount"
+      ],
+      "properties": {
+        "status": { "type": "string", "enum": ["not_applicable", "clear", "suspected", "likely"] },
+        "wordCount": { "type": "integer", "minimum": 0 },
+        "title": { "$ref": "#/$defs/nullableString" },
+        "firstH1Text": { "$ref": "#/$defs/nullableString" },
+        "matchedPhrases": { "type": "array", "items": { "type": "string" } },
+        "titleLooksLikeError": { "type": "boolean" },
+        "headingLooksLikeError": { "type": "boolean" },
+        "metaDescriptionLooksLikeError": { "type": "boolean" },
+        "thinContent": { "type": "boolean" },
+        "missingPrimarySignals": { "type": "boolean" },
+        "canonicalContradicts": { "type": "boolean" },
+        "signalCount": { "type": "integer", "minimum": 0 }
+      }
+    },
     "sitewideSummary": {
       "type": "object",
       "additionalProperties": false,
@@ -1371,7 +1468,9 @@
         "robotsTxt",
         "sitemap",
         "sampledUrls",
-        "sampleCoverage"
+        "sampleCoverage",
+        "sitemapSampleHealth",
+        "discoveryAlignment"
       ],
       "properties": {
         "siteRootUrl": { "type": "string", "minLength": 1 },
@@ -1386,7 +1485,9 @@
           "type": "array",
           "items": { "$ref": "#/$defs/sitewideSampledUrl" }
         },
-        "sampleCoverage": { "$ref": "#/$defs/sitewideSampleCoverage" }
+        "sampleCoverage": { "$ref": "#/$defs/sitewideSampleCoverage" },
+        "sitemapSampleHealth": { "$ref": "#/$defs/sitewideSitemapSampleHealth" },
+        "discoveryAlignment": { "$ref": "#/$defs/sitewideDiscoveryAlignment" }
       }
     },
     "reportCheckMetadata": {
@@ -1461,6 +1562,7 @@
         "sourceH1Count": { "type": "integer", "minimum": 0 },
         "renderedH1Count": { "type": "integer", "minimum": 0 },
         "effectiveIndexing": { "$ref": "#/$defs/nullableString" },
+        "effectiveFollowing": { "$ref": "#/$defs/nullableString" },
         "effectiveTarget": { "$ref": "#/$defs/nullableString" },
         "effectiveSnippet": { "$ref": "#/$defs/nullableString" },
         "effectiveArchive": { "$ref": "#/$defs/nullableString" },
@@ -1551,6 +1653,7 @@
         "faviconControl": { "$ref": "#/$defs/faviconControl" },
         "headHygieneControl": { "$ref": "#/$defs/headHygieneControl" },
         "structuredDataControl": { "$ref": "#/$defs/structuredDataControl" },
+        "soft404Control": { "$ref": "#/$defs/soft404Control" },
         "canonicalTargetControl": { "$ref": "#/$defs/canonicalTargetControl" },
         "metaRefreshControl": { "$ref": "#/$defs/metaRefreshControl" },
         "robotsTxt": { "$ref": "#/$defs/robotsTxt" },
@@ -1616,6 +1719,7 @@
         "headingControl": { "$ref": "#/$defs/headingControl" },
         "headingQualityControl": { "$ref": "#/$defs/headingQualityControl" },
         "bodyImageAltControl": { "$ref": "#/$defs/bodyImageAltControl" },
+        "soft404Control": { "$ref": "#/$defs/soft404Control" },
         "langControl": { "$ref": "#/$defs/langControl" },
         "socialMetadataControl": { "$ref": "#/$defs/socialMetadataControl" },
         "socialUrlControl": { "$ref": "#/$defs/socialUrlControl" },

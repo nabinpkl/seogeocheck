@@ -115,6 +115,22 @@ function createSitewideSummary(overrides = {}) {
       metaDescriptionCoverageRatio: 1,
       canonicalCoverageRatio: 1,
     },
+    sitemapSampleHealth: {
+      sampledSitemapUrlCount: 1,
+      healthyUrlCount: 1,
+      brokenUrlCount: 0,
+      redirectedUrlCount: 0,
+      noindexUrlCount: 0,
+      nonCanonicalUrlCount: 0,
+      issueUrls: [],
+    },
+    discoveryAlignment: {
+      sampledSitemapUrlCount: 1,
+      sampledDiscoveryUrlCount: 2,
+      alignedUrlCount: 1,
+      sitemapUrlsMissingInternalDiscovery: [],
+      internalUrlsMissingFromSitemap: ["https://example.com/"],
+    },
     ...overrides,
   };
 }
@@ -176,4 +192,53 @@ test("site sample coverage rules escalate at the planned thresholds", () => {
   assert.equal(indexabilityResult.severity, "high");
   assert.equal(basicsResult.status, "issue");
   assert.equal(basicsResult.severity, "low");
+});
+
+test("site sitemap URL hygiene flags broken sitemap URLs as high severity", () => {
+  const rule = getRule("site-sitemap-url-hygiene");
+  const result = rule.check(
+    createSitewideSummary({
+      sitemapSampleHealth: {
+        sampledSitemapUrlCount: 2,
+        healthyUrlCount: 0,
+        brokenUrlCount: 1,
+        redirectedUrlCount: 0,
+        noindexUrlCount: 1,
+        nonCanonicalUrlCount: 0,
+        issueUrls: [
+          {
+            url: "https://example.com/pricing",
+            issueTypes: ["broken", "noindex"],
+          },
+        ],
+      },
+    })
+  );
+
+  assert.equal(result.status, "issue");
+  assert.equal(result.severity, "high");
+});
+
+test("site discovery alignment flags major sitemap and internal mismatch", () => {
+  const rule = getRule("site-discovery-alignment");
+  const result = rule.check(
+    createSitewideSummary({
+      discoveryAlignment: {
+        sampledSitemapUrlCount: 2,
+        sampledDiscoveryUrlCount: 2,
+        alignedUrlCount: 0,
+        sitemapUrlsMissingInternalDiscovery: [
+          "https://example.com/pricing",
+          "https://example.com/features",
+        ],
+        internalUrlsMissingFromSitemap: [
+          "https://example.com/",
+          "https://example.com/blog",
+        ],
+      },
+    })
+  );
+
+  assert.equal(result.status, "issue");
+  assert.equal(result.severity, "medium");
 });

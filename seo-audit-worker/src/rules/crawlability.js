@@ -107,6 +107,132 @@ const robotsIndexing = defineRule({
   },
 });
 
+const robotsFollowing = defineRule({
+  id: "robots-following",
+  label: "Robots Following",
+  packId: "crawlability",
+  scoreWeight: 2,
+  priority: 5,
+  problemFamily: "robots_controls",
+  check: (facts) => {
+    if (
+      facts.robotsControl.sameTargetConflicts.some((conflict) => conflict.field === "following")
+    ) {
+      return issueCheck(
+        "robots-following",
+        "Resolve link-following conflicts before relying on robots directives",
+        "high",
+        "Clear the conflicting follow and nofollow directives so Googlebot receives one clear instruction for link discovery.",
+        "The audit found contradictory link-following directives for the same crawler target.",
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-effective-following",
+        {
+          effectiveFollowing: facts.robotsControl.effectiveFollowing,
+          effectiveTarget: facts.robotsControl.effectiveTarget,
+          targetedOverrides: facts.robotsControl.targetedOverrides,
+        }
+      );
+    }
+
+    if (facts.robotsControl.effectiveFollowing === "nofollow") {
+      const targetedOverride = facts.robotsControl.targetedOverrides.find(
+        (override) => override.field === "following"
+      );
+      const detail = targetedOverride
+        ? `A crawler-specific following override is active: general following is ${targetedOverride.generalValue}, but Googlebot is ${targetedOverride.targetedValue}.`
+        : `The effective following directive for ${facts.robotsControl.effectiveTarget ?? "the evaluated crawler"} is nofollow.`;
+
+      return issueCheck(
+        "robots-following",
+        "Robots directives discourage Google from following links",
+        "high",
+        "Remove the blocking nofollow directive if links on this page should help Google discover important URLs.",
+        detail,
+        'head > meta[name="robots"], head > meta[name="googlebot"], document',
+        "robots-effective-following",
+        {
+          effectiveFollowing: facts.robotsControl.effectiveFollowing,
+          effectiveTarget: facts.robotsControl.effectiveTarget,
+          targetedOverrides: facts.robotsControl.targetedOverrides,
+        }
+      );
+    }
+
+    return passedCheck(
+      "robots-following",
+      "Robots directives allow Google to follow links",
+      "The effective robots directives do not discourage Googlebot from following links on this page.",
+      'head > meta[name="robots"], head > meta[name="googlebot"], document',
+      "robots-effective-following",
+      {
+        effectiveFollowing: facts.robotsControl.effectiveFollowing,
+        effectiveTarget: facts.robotsControl.effectiveTarget,
+        targetedOverrides: facts.robotsControl.targetedOverrides,
+      }
+    );
+  },
+});
+
+const soft404Likelihood = defineRule({
+  id: "soft-404-likelihood",
+  label: "Soft 404 Likelihood",
+  packId: "indexability",
+  scoreWeight: 5,
+  priority: 5,
+  problemFamily: "soft_404",
+  check: (facts) => {
+    if (facts.soft404Control.status === "not_applicable") {
+      return notApplicableCheck(
+        "soft-404-likelihood",
+        "Soft 404 likelihood is only checked on reachable HTML pages",
+        "This check applies to reachable HTML pages that return HTTP 200.",
+        "document",
+        "soft-404-likelihood",
+        {
+          soft404Control: facts.soft404Control,
+          reasonCode: "missing_prerequisite",
+        },
+        "A healthy page returns a real content page rather than a thin or error-like 200 response."
+      );
+    }
+
+    if (facts.soft404Control.status === "likely") {
+      return issueCheck(
+        "soft-404-likelihood",
+        "This page looks like a soft 404 despite returning HTTP 200",
+        "high",
+        "Return a real 404 or 410 for missing pages, or replace this thin error-like response with substantive indexable content.",
+        `The page returned HTTP 200 but exposed strong soft-404 signals: ${facts.soft404Control.matchedPhrases.join(", ") || "error-like copy"}, with only ${facts.soft404Control.wordCount} source words.`,
+        "document",
+        "soft-404-likelihood",
+        { soft404Control: facts.soft404Control }
+      );
+    }
+
+    if (facts.soft404Control.status === "suspected") {
+      return issueCheck(
+        "soft-404-likelihood",
+        "This page may be interpreted as a soft 404",
+        "medium",
+        "Strengthen the page with substantive content and remove error-like cues if this URL should be indexed.",
+        `The page returned HTTP 200 and showed soft-404 warning signals with ${facts.soft404Control.wordCount} source words.`,
+        "document",
+        "soft-404-likelihood",
+        { soft404Control: facts.soft404Control }
+      );
+    }
+
+    return passedCheck(
+      "soft-404-likelihood",
+      "The page does not look like a soft 404",
+      "The source HTML does not show strong soft-404 patterns for a 200 response.",
+      "document",
+      "soft-404-likelihood",
+      { soft404Control: facts.soft404Control }
+    );
+  },
+});
+
 const robotsDirectiveHygiene = defineRule({
   id: "robots-directive-hygiene",
   label: "Robots Directive Hygiene",
@@ -1085,6 +1211,8 @@ const fragmentRouteHygiene = defineRule({
 export const crawlabilityRules = [
   robotsDirectiveConflicts,
   robotsIndexing,
+  robotsFollowing,
+  soft404Likelihood,
   robotsDirectiveHygiene,
   robotsNoarchive,
   robotsNotranslate,

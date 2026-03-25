@@ -238,6 +238,8 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.headingControl.status, "multiple_and_skipped");
   assert.equal(facts.headingQualityControl.status, "good");
   assert.equal(facts.bodyImageAltControl.status, "missing_alt");
+  assert.equal(facts.soft404Control.status, "clear");
+  assert.equal(facts.soft404Control.wordCount, 42);
   assert.equal(facts.metaRefreshControl.status, "immediate_redirect");
   assert.equal(facts.langControl.status, "valid");
   assert.equal(facts.structuredDataControl.status, "valid");
@@ -255,4 +257,58 @@ test("deriveFacts creates reusable facts from collected evidence", () => {
   assert.equal(facts.internalLinkCoverageControl.status, "not_applicable");
   assert.equal(facts.robotsControl.hasNoarchiveDirective, true);
   assert.equal(facts.canonicalSelfReferenceControl.status, "not_applicable");
+});
+
+test("deriveFacts marks likely soft 404 patterns on a thin 200 page", () => {
+  const facts = deriveFacts({
+    requestedUrl: "https://example.com/missing-page",
+    finalUrl: "https://example.com/missing-page",
+    statusCode: 200,
+    contentType: "text/html; charset=utf-8",
+    title: "404 Page Not Found",
+    metaDescription: "This page could not be found.",
+    h1Count: 1,
+    headingOutline: [{ level: 1, text: "Page not found" }],
+    wordCount: 24,
+    sourceAnchors: [],
+    linkedImages: [],
+    bodyImages: [],
+    structuredDataKinds: [],
+    structuredDataJsonLdBlocks: [],
+    robotsTxt: {
+      status: "allowed",
+      allowsCrawl: true,
+      evaluatedUserAgent: "Googlebot",
+      matchedDirective: null,
+      matchedPattern: null,
+      fetchStatusCode: 200,
+      url: "https://example.com/robots.txt",
+      finalUrl: "https://example.com/robots.txt",
+      error: null,
+    },
+    redirectChain: {
+      status: "ok",
+      totalRedirects: 0,
+      finalUrlChanged: false,
+      finalUrl: "https://example.com/missing-page",
+      chain: [
+        {
+          url: "https://example.com/missing-page",
+          statusCode: 200,
+          location: null,
+        },
+      ],
+      error: null,
+    },
+  });
+
+  assert.equal(facts.soft404Control.status, "likely");
+  assert.equal(facts.soft404Control.thinContent, true);
+  assert.equal(facts.soft404Control.titleLooksLikeError, true);
+  assert.equal(facts.soft404Control.headingLooksLikeError, true);
+  assert.deepEqual(facts.soft404Control.matchedPhrases.sort(), [
+    "404",
+    "not found",
+    "page not found",
+  ]);
 });

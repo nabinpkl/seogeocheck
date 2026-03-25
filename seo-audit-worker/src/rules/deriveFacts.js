@@ -18,6 +18,7 @@ import {
   buildRobotsPreviewControl,
   buildRobotsControl,
   buildSocialUrlControl,
+  buildSoft404Control,
   buildSocialMetadataControl,
   buildStructuredDataControl,
   buildTitleControl,
@@ -215,6 +216,16 @@ export function deriveFacts(input) {
     isHtmlResponse: isHtmlContentType(contentType),
     robotsControl,
   });
+  const soft404Control = buildSoft404Control({
+    statusCode,
+    isReachable: statusCode !== null && statusCode >= 200 && statusCode < 400,
+    isHtmlResponse: isHtmlContentType(contentType),
+    title,
+    metaDescription,
+    headingOutline,
+    wordCount,
+    canonicalSelfReferenceControl,
+  });
   const sameOriginCrawlableLinks = sourceAnchors.filter((anchor) => anchor.sameOrigin && anchor.crawlable);
   const nonCrawlableLinks = sourceAnchors.filter((anchor) => !anchor.crawlable);
   const emptyAnchorTextCount = sourceAnchors.filter((anchor) => !anchor.text).length;
@@ -277,6 +288,7 @@ export function deriveFacts(input) {
     headingControl,
     headingQualityControl,
     bodyImageAltControl,
+    soft404Control,
     langControl,
     metaRefreshControl,
     structuredDataControl,
