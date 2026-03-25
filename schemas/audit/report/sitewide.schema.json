@@ -1,0 +1,497 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seogeo.dev/schemas/audit/report/sitewide.schema.json",
+  "$defs": {
+    "sitewideHostVariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestedUrl",
+        "status",
+        "redirectCount",
+        "isReachable",
+        "isHtmlResponse"
+      ],
+      "properties": {
+        "requestedUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "finalOrigin": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "status": {
+          "type": "string"
+        },
+        "statusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "redirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "isReachable": {
+          "type": "boolean"
+        },
+        "isHtmlResponse": {
+          "type": "boolean"
+        },
+        "robotsTxtAllowsCrawl": {
+          "$ref": "./common.schema.json#/$defs/nullableBoolean"
+        },
+        "effectiveIndexing": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "error": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "sitewideRobotsTxt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "declaredSitemapUrls"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "allowsCrawl": {
+          "$ref": "./common.schema.json#/$defs/nullableBoolean"
+        },
+        "evaluatedUserAgent": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "matchedDirective": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "matchedPattern": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "fetchStatusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "url": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "error": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "declaredSitemapUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sitewideFetchedSitemap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "status",
+        "discoveredUrlCount",
+        "sameOriginUrlCount"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "statusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "contentType": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "status": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "discoveredUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sameOriginUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "sitewideSitemap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "discoveryMethod",
+        "declaredSitemapUrls",
+        "processedSitemapCount",
+        "discoveredUrlCount",
+        "sameOriginUrlCount",
+        "fetchedSitemaps",
+        "discoveredUrls"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "discoveryMethod": {
+          "type": "string",
+          "enum": [
+            "robots_txt",
+            "fallback",
+            "none"
+          ]
+        },
+        "declaredSitemapUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fallbackSitemapUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "processedSitemapCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "discoveredUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sameOriginUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fetchedSitemaps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sitewideFetchedSitemap"
+          }
+        },
+        "discoveredUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sitewideSampledUrl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "source",
+        "status",
+        "redirectCount",
+        "isReachable",
+        "isHtmlResponse",
+        "indexable",
+        "hasTitle",
+        "hasMetaDescription",
+        "hasValidCanonical"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "site_root",
+            "current_page",
+            "sitemap",
+            "homepage_link"
+          ]
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "status": {
+          "type": "string"
+        },
+        "statusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "redirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "isReachable": {
+          "type": "boolean"
+        },
+        "isHtmlResponse": {
+          "type": "boolean"
+        },
+        "robotsTxtAllowsCrawl": {
+          "$ref": "./common.schema.json#/$defs/nullableBoolean"
+        },
+        "effectiveIndexing": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "hasBlockingNoindex": {
+          "type": "boolean"
+        },
+        "indexable": {
+          "type": "boolean"
+        },
+        "hasTitle": {
+          "type": "boolean"
+        },
+        "hasMetaDescription": {
+          "type": "boolean"
+        },
+        "hasValidCanonical": {
+          "type": "boolean"
+        },
+        "resolvedCanonicalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "canonicalMatchesFinalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableBoolean"
+        }
+      }
+    },
+    "sitewideSampleCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampledUrlCount",
+        "indexableUrlCount",
+        "titleCoverageCount",
+        "metaDescriptionCoverageCount",
+        "canonicalCoverageCount",
+        "minimumPassingRatio",
+        "indexableCoverageRatio",
+        "titleCoverageRatio",
+        "metaDescriptionCoverageRatio",
+        "canonicalCoverageRatio"
+      ],
+      "properties": {
+        "sampledUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indexableUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "titleCoverageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metaDescriptionCoverageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "canonicalCoverageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimumPassingRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "indexableCoverageRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "titleCoverageRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "metaDescriptionCoverageRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "canonicalCoverageRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "sitewideSitemapSampleIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "issueTypes"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issueTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "broken",
+              "redirected",
+              "noindex",
+              "non_canonical"
+            ]
+          }
+        }
+      }
+    },
+    "sitewideSitemapSampleHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampledSitemapUrlCount",
+        "healthyUrlCount",
+        "brokenUrlCount",
+        "redirectedUrlCount",
+        "noindexUrlCount",
+        "nonCanonicalUrlCount",
+        "issueUrls"
+      ],
+      "properties": {
+        "sampledSitemapUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "healthyUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "brokenUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "redirectedUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "noindexUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nonCanonicalUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "issueUrls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sitewideSitemapSampleIssue"
+          }
+        }
+      }
+    },
+    "sitewideDiscoveryAlignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampledSitemapUrlCount",
+        "sampledDiscoveryUrlCount",
+        "alignedUrlCount",
+        "sitemapUrlsMissingInternalDiscovery",
+        "internalUrlsMissingFromSitemap"
+      ],
+      "properties": {
+        "sampledSitemapUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sampledDiscoveryUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alignedUrlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sitemapUrlsMissingInternalDiscovery": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "internalUrlsMissingFromSitemap": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sitewideSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "siteRootUrl",
+        "hostVariants",
+        "robotsTxt",
+        "sitemap",
+        "sampledUrls",
+        "sampleCoverage",
+        "sitemapSampleHealth",
+        "discoveryAlignment"
+      ],
+      "properties": {
+        "siteRootUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preferredOrigin": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "hostVariants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sitewideHostVariant"
+          }
+        },
+        "robotsTxt": {
+          "$ref": "#/$defs/sitewideRobotsTxt"
+        },
+        "sitemap": {
+          "$ref": "#/$defs/sitewideSitemap"
+        },
+        "sampledUrls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sitewideSampledUrl"
+          }
+        },
+        "sampleCoverage": {
+          "$ref": "#/$defs/sitewideSampleCoverage"
+        },
+        "sitemapSampleHealth": {
+          "$ref": "#/$defs/sitewideSitemapSampleHealth"
+        },
+        "discoveryAlignment": {
+          "$ref": "#/$defs/sitewideDiscoveryAlignment"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1946 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seogeo.dev/schemas/audit/report/controls.schema.json",
+  "$defs": {
+    "redirectStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "location": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "redirectChain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "totalRedirects",
+        "finalUrlChanged",
+        "chain"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "totalRedirects": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "finalUrlChanged": {
+          "type": "boolean"
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "chain": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/redirectStep"
+          }
+        },
+        "error": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "robotsTxt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "allowsCrawl": {
+          "$ref": "./common.schema.json#/$defs/nullableBoolean"
+        },
+        "evaluatedUserAgent": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "matchedDirective": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "matchedPattern": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "fetchStatusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "url": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "error": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "xRobotsTag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocksIndexing"
+      ],
+      "properties": {
+        "value": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "blocksIndexing": {
+          "type": "boolean"
+        }
+      }
+    },
+    "linkAnnotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "href": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "rel": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "hreflang": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "media": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "type": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "canonicalCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface",
+        "status",
+        "resolvedUrl"
+      ],
+      "properties": {
+        "href": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "rel": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "hreflang": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "media": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "type": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "surface": {
+          "type": "string",
+          "enum": [
+            "html",
+            "http_header"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "resolvedUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "canonicalControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "candidates",
+        "uniqueTargetCount",
+        "uniqueTargets",
+        "htmlCount",
+        "headerCount",
+        "invalidCandidates",
+        "consistency"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/canonicalCandidate"
+          }
+        },
+        "uniqueTargetCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "uniqueTargets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "htmlCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "headerCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalidCandidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/canonicalCandidate"
+          }
+        },
+        "resolvedCanonicalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "consistency": {
+          "type": "string"
+        }
+      }
+    },
+    "canonicalSelfReferenceControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "expectsSelfReference"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "expectsSelfReference": {
+          "type": "boolean"
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "resolvedCanonicalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "urlInspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "isReachable",
+        "isHtmlResponse",
+        "metaRobotsTags",
+        "googlebotRobotsTags",
+        "xRobotsTagHeaders",
+        "headerCanonicalLinks",
+        "headerAlternateLinks",
+        "redirectChain",
+        "redirectCount",
+        "robotsTxt",
+        "reusedCurrentPageInspection"
+      ],
+      "properties": {
+        "inspectedUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "status": {
+          "type": "string"
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "statusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "contentType": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "isReachable": {
+          "type": "boolean"
+        },
+        "isHtmlResponse": {
+          "type": "boolean"
+        },
+        "metaRobotsTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "googlebotRobotsTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "xRobotsTag": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "xRobotsTagHeaders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "headerCanonicalLinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/linkAnnotation"
+          }
+        },
+        "headerAlternateLinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/linkAnnotation"
+          }
+        },
+        "redirectChain": {
+          "$ref": "#/$defs/redirectChain"
+        },
+        "redirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "robotsTxt": {
+          "$ref": "#/$defs/robotsTxt"
+        },
+        "reusedCurrentPageInspection": {
+          "type": "boolean"
+        }
+      }
+    },
+    "robotsDirectiveEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface",
+        "target",
+        "rawValue",
+        "directives",
+        "indexingValues",
+        "followingValues",
+        "snippetValues",
+        "archiveValues",
+        "translateValues",
+        "maxSnippetValues",
+        "maxImagePreviewValues",
+        "maxVideoPreviewValues",
+        "unsupportedTokens",
+        "malformedTokens"
+      ],
+      "properties": {
+        "surface": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rawValue": {
+          "type": "string"
+        },
+        "directives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "indexingValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "followingValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "snippetValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "archiveValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "translateValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxSnippetValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxImagePreviewValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxVideoPreviewValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unsupportedTokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "malformedTokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "robotsSameTargetConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "field",
+        "values"
+      ],
+      "properties": {
+        "target": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "robotsTargetedOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "field",
+        "generalValue",
+        "targetedValue"
+      ],
+      "properties": {
+        "target": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "generalValue": {
+          "type": "string"
+        },
+        "targetedValue": {
+          "type": "string"
+        }
+      }
+    },
+    "robotsTargetSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entries",
+        "indexingValues",
+        "followingValues",
+        "snippetValues",
+        "archiveValues",
+        "translateValues",
+        "maxSnippetValues",
+        "maxImagePreviewValues",
+        "maxVideoPreviewValues"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/robotsDirectiveEntry"
+          }
+        },
+        "indexingValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "followingValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "snippetValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "archiveValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "translateValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxSnippetValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxImagePreviewValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxVideoPreviewValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "indexing": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "following": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "snippet": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "archive": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "translate": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "maxSnippet": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "maxImagePreview": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "maxVideoPreview": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "robotsControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "entries",
+        "targets",
+        "sameTargetConflicts",
+        "targetedOverrides",
+        "unsupportedTokens",
+        "malformedTokens",
+        "hasBlockingNoindex",
+        "hasNoarchiveDirective",
+        "hasNotranslateDirective"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/robotsDirectiveEntry"
+          }
+        },
+        "targets": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/robotsTargetSummary"
+          }
+        },
+        "sameTargetConflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/robotsSameTargetConflict"
+          }
+        },
+        "targetedOverrides": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/robotsTargetedOverride"
+          }
+        },
+        "unsupportedTokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "malformedTokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "effectiveIndexing": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveFollowing": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveSnippet": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveArchive": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveTranslate": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxSnippet": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxImagePreview": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxVideoPreview": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveTarget": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "hasBlockingNoindex": {
+          "type": "boolean"
+        },
+        "hasNoarchiveDirective": {
+          "type": "boolean"
+        },
+        "hasNotranslateDirective": {
+          "type": "boolean"
+        }
+      }
+    },
+    "alternateLanguageAnnotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface",
+        "status",
+        "resolvedUrl"
+      ],
+      "properties": {
+        "href": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "rel": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "hreflang": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "media": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "type": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "surface": {
+          "type": "string",
+          "enum": [
+            "html",
+            "http_header"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "resolvedUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "alternateLanguageConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hreflang",
+        "targets"
+      ],
+      "properties": {
+        "hreflang": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "alternateLanguageControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "annotations",
+        "validAnnotations",
+        "invalidAnnotations",
+        "conflicts",
+        "groupedByLanguage"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alternateLanguageAnnotation"
+          }
+        },
+        "validAnnotations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alternateLanguageAnnotation"
+          }
+        },
+        "invalidAnnotations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alternateLanguageAnnotation"
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alternateLanguageConflict"
+          }
+        },
+        "groupedByLanguage": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/alternateLanguageAnnotation"
+            }
+          }
+        }
+      }
+    },
+    "linkDiscoveryAffectedLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relTokens"
+      ],
+      "properties": {
+        "href": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "text": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "relTokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "linkDiscoveryControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "internalCrawlableLinkCount",
+        "internalNofollowCount",
+        "blockedByRelCount",
+        "affectedLinks"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "internalCrawlableLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "internalNofollowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blockedByRelCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "affectedLinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/linkDiscoveryAffectedLink"
+          }
+        }
+      }
+    },
+    "internalLinkCoverageControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "sameOriginCrawlableLinkCount",
+        "minimumRecommendedCount"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "sameOriginCrawlableLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimumRecommendedCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "titleControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "length",
+        "minLength",
+        "maxLength"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "metaDescriptionControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "length",
+        "minLength",
+        "maxLength"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "headingTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fromLevel",
+        "toLevel",
+        "expectedNextLevel"
+      ],
+      "properties": {
+        "fromLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "toLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "expectedNextLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "headingText": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "headingControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "h1Count",
+        "headingCount",
+        "skippedTransitions",
+        "hasMultipleH1",
+        "hasSkippedLevels"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "h1Count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "headingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedTransitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/headingTransition"
+          }
+        },
+        "hasMultipleH1": {
+          "type": "boolean"
+        },
+        "hasSkippedLevels": {
+          "type": "boolean"
+        }
+      }
+    },
+    "headingRepeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "count"
+      ],
+      "properties": {
+        "text": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2
+        }
+      }
+    },
+    "headingQualityControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "emptyHeadingCount",
+        "repeatedHeadingCount",
+        "firstHeadingNotH1",
+        "repeatedHeadings"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "emptyHeadingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "repeatedHeadingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "firstHeadingNotH1": {
+          "type": "boolean"
+        },
+        "repeatedHeadings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/headingRepeat"
+          }
+        }
+      }
+    },
+    "missingAltImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "src": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "alt": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "bodyImageAltControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "totalImageCount",
+        "eligibleImageCount",
+        "missingAltCount",
+        "excludedMissingSrcCount",
+        "excludedDecorativeCount",
+        "excludedTrackingPixelCount",
+        "missingAltImages"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "totalImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingAltCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excludedMissingSrcCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excludedDecorativeCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excludedTrackingPixelCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingAltImages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/missingAltImage"
+          }
+        }
+      }
+    },
+    "langControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "canonicalValue": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "socialFieldDuplicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "count"
+      ],
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2
+        }
+      }
+    },
+    "openGraphFieldValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "title": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "description": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "type": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "url": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "image": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "twitterFieldValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "card": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "title": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "description": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "image": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "openGraphSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "presentFields",
+        "missingFields",
+        "duplicateFields",
+        "fieldValues"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "presentFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missingFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "duplicateFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/socialFieldDuplicate"
+          }
+        },
+        "fieldValues": {
+          "$ref": "#/$defs/openGraphFieldValues"
+        }
+      }
+    },
+    "twitterSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "presentFields",
+        "missingFields",
+        "duplicateFields",
+        "fieldValues"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "presentFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missingFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "duplicateFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/socialFieldDuplicate"
+          }
+        },
+        "fieldValues": {
+          "$ref": "#/$defs/twitterFieldValues"
+        }
+      }
+    },
+    "socialMetadataControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "openGraph",
+        "twitter"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "openGraph": {
+          "$ref": "#/$defs/openGraphSummary"
+        },
+        "twitter": {
+          "$ref": "#/$defs/twitterSummary"
+        }
+      }
+    },
+    "socialUrlField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "rawValue",
+        "status"
+      ],
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "rawValue": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "resolvedUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "socialUrlControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "fieldCount",
+        "invalidFields",
+        "fields"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "fieldCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalidFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/socialUrlField"
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/socialUrlField"
+          }
+        }
+      }
+    },
+    "metadataAlignmentControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "titleSharedTokenCount",
+        "metaDescriptionSharedTokenCount",
+        "titleH1Mismatch",
+        "weakMetaDescriptionAlignment"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "firstH1Text": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "titleSharedTokenCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metaDescriptionSharedTokenCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "titleH1Mismatch": {
+          "type": "boolean"
+        },
+        "weakMetaDescriptionAlignment": {
+          "type": "boolean"
+        }
+      }
+    },
+    "robotsPreviewControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "restrictiveSignals",
+        "conflicts"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "effectiveSnippet": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxSnippet": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxImagePreview": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxVideoPreview": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "restrictiveSignals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/robotsSameTargetConflict"
+          }
+        }
+      }
+    },
+    "viewportControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "hasDeviceWidth",
+        "hasInitialScale",
+        "disablesZoom"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "content": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "hasDeviceWidth": {
+          "type": "boolean"
+        },
+        "hasInitialScale": {
+          "type": "boolean"
+        },
+        "disablesZoom": {
+          "type": "boolean"
+        }
+      }
+    },
+    "iconLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "href": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "rel": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "sizes": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "type": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "faviconControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "iconCount",
+        "rels",
+        "links"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "iconCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/iconLink"
+          }
+        }
+      }
+    },
+    "duplicateFieldCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "count"
+      ],
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2
+        }
+      }
+    },
+    "duplicateHeadCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "metaDescription",
+        "viewport",
+        "openGraphTitle",
+        "openGraphDescription",
+        "openGraphType",
+        "openGraphUrl",
+        "openGraphImage",
+        "twitterCard",
+        "twitterTitle",
+        "twitterDescription",
+        "twitterImage"
+      ],
+      "properties": {
+        "title": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metaDescription": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "viewport": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "openGraphTitle": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "openGraphDescription": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "openGraphType": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "openGraphUrl": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "openGraphImage": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "twitterCard": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "twitterTitle": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "twitterDescription": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "twitterImage": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "headHygieneControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "duplicateHeadCounts",
+        "problematicFields"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "duplicateHeadCounts": {
+          "$ref": "#/$defs/duplicateHeadCounts"
+        },
+        "problematicFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/duplicateFieldCount"
+          }
+        }
+      }
+    },
+    "structuredDataBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "hasContext",
+        "hasType"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "hasContext": {
+          "type": "boolean"
+        },
+        "hasType": {
+          "type": "boolean"
+        }
+      }
+    },
+    "structuredDataControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "totalJsonLdBlocks",
+        "validJsonLdBlocks",
+        "invalidJsonLdBlocks",
+        "emptyJsonLdBlocks",
+        "missingContextBlocks",
+        "missingTypeBlocks",
+        "blocks"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "totalJsonLdBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "validJsonLdBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalidJsonLdBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "emptyJsonLdBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingContextBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingTypeBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/structuredDataBlock"
+          }
+        }
+      }
+    },
+    "canonicalTargetControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "redirectCount",
+        "reusedCurrentPageInspection"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "targetUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "resolvedCanonicalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "redirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reusedCurrentPageInspection": {
+          "type": "boolean"
+        },
+        "inspection": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/urlInspection"
+            }
+          ]
+        },
+        "robotsControl": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/robotsControl"
+            }
+          ]
+        }
+      }
+    },
+    "metaRefreshEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "delaySeconds"
+      ],
+      "properties": {
+        "rawValue": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "status": {
+          "type": "string"
+        },
+        "delaySeconds": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "targetUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "resolvedTargetUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        }
+      }
+    },
+    "metaRefreshControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "tagCount",
+        "immediateRedirectCount",
+        "timedRedirectCount",
+        "malformedCount",
+        "refreshOnlyCount",
+        "entries"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "tagCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "immediateRedirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timedRedirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "malformedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refreshOnlyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "redirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/metaRefreshEntry"
+          }
+        }
+      }
+    },
+    "surfaceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wordCount",
+        "sameOriginCrawlableLinkCount",
+        "nonCrawlableLinkCount",
+        "emptyAnchorTextCount",
+        "genericAnchorTextCount",
+        "metaRefreshTagCount",
+        "headingOutlineCount",
+        "headingHierarchySkipCount",
+        "emptyHeadingCount",
+        "repeatedHeadingCount",
+        "linkedImageCount",
+        "linkedImageMissingAltCount",
+        "bodyImageCount",
+        "eligibleBodyImageCount",
+        "bodyImageMissingAltCount",
+        "structuredDataKinds"
+      ],
+      "properties": {
+        "wordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sameOriginCrawlableLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nonCrawlableLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "emptyAnchorTextCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "genericAnchorTextCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metaRefreshTagCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "headingOutlineCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "headingHierarchySkipCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "emptyHeadingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "repeatedHeadingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "linkedImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "linkedImageMissingAltCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bodyImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleBodyImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bodyImageMissingAltCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "structuredDataKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "renderComparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceOnlyCriticalIssues",
+        "renderedOnlySignals",
+        "mismatches",
+        "renderDependencyRisk"
+      ],
+      "properties": {
+        "sourceOnlyCriticalIssues": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderedOnlySignals": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mismatches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderDependencyRisk": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      }
+    },
+    "soft404Control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "wordCount",
+        "matchedPhrases",
+        "titleLooksLikeError",
+        "headingLooksLikeError",
+        "metaDescriptionLooksLikeError",
+        "thinContent",
+        "missingPrimarySignals",
+        "canonicalContradicts",
+        "signalCount"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_applicable",
+            "clear",
+            "suspected",
+            "likely"
+          ]
+        },
+        "wordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "title": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "firstH1Text": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "matchedPhrases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "titleLooksLikeError": {
+          "type": "boolean"
+        },
+        "headingLooksLikeError": {
+          "type": "boolean"
+        },
+        "metaDescriptionLooksLikeError": {
+          "type": "boolean"
+        },
+        "thinContent": {
+          "type": "boolean"
+        },
+        "missingPrimarySignals": {
+          "type": "boolean"
+        },
+        "canonicalContradicts": {
+          "type": "boolean"
+        },
+        "signalCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

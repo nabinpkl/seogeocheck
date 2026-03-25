@@ -1,5 +1,5 @@
 import { watch } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compileFromFile } from "json-schema-to-typescript";
@@ -22,6 +22,24 @@ const schemas = [
 
 const watchMode = process.argv.includes("--watch");
 let pendingGeneration = null;
+
+async function collectSchemaFiles(dir) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const entryPath = resolve(dir, entry.name);
+      if (entry.isDirectory()) {
+        return collectSchemaFiles(entryPath);
+      }
+      if (entry.isFile() && entry.name.endsWith(".json")) {
+        return [entryPath];
+      }
+      return [];
+    })
+  );
+
+  return files.flat();
+}
 
 async function generateTypes() {
   await mkdir(outputDir, { recursive: true });
@@ -64,9 +82,9 @@ await queueGeneration();
 
 if (watchMode) {
   console.log("[generate-audit-types] Watching audit schemas for changes.");
-  for (const schema of schemas) {
-    watch(schema.source, () => {
-      void queueGeneration(`change in ${schema.source.split("/").pop()}`);
+  for (const schemaPath of await collectSchemaFiles(schemaDir)) {
+    watch(schemaPath, () => {
+      void queueGeneration(`change in ${schemaPath.split("/").slice(-2).join("/")}`);
     });
   }
 

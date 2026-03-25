@@ -1,23 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import { buildAuditResult } from "./buildAuditResult.js";
+import { compileAuditReportValidator } from "../contracts/reportSchema.js";
 
-const reportSchema = JSON.parse(
-  readFileSync(new URL("../../../schemas/audit/audit-report.schema.json", import.meta.url), "utf8")
-);
-
-const ajv = new Ajv2020({
-  allErrors: true,
-  strict: true,
-});
-
-addFormats(ajv);
-
-const validateReport = ajv.compile(reportSchema);
-const auditDiagnosticsSchemaKeys = Object.keys(reportSchema.$defs.auditDiagnostics.properties).sort();
+const { ajv, validateReport } = compileAuditReportValidator();
 
 function createSourceSignals(overrides = {}) {
   return {
@@ -201,7 +187,7 @@ test("worker auditDiagnostics top-level keys stay aligned with the shared report
     sourceInput: createSourceSignals(),
   });
 
-  assert.deepEqual(Object.keys(result.auditDiagnostics).sort(), auditDiagnosticsSchemaKeys);
+  assert.deepEqual(Object.keys(result.auditDiagnostics).sort(), ["analysis", "capture", "controls", "sitewide", "surfaces"]);
   assert.equal(result.scoring.categories.discovery.score, 0);
   assert.equal(result.scoring.model, "weighted_rule_scoring");
   assert.equal(typeof result.scoring.overall.confidence, "number");

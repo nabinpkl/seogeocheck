@@ -4,67 +4,13 @@
  * Do not edit it by hand.
  */
 
-export type AuditStatus = 'QUEUED' | 'STREAMING' | 'COMPLETE' | 'FAILED' | 'VERIFIED';
-export type IndexabilityVerdictLabel = 'Blocked' | 'Unknown' | 'At Risk' | 'Indexable';
-export type CheckStatus = 'issue' | 'passed' | 'not_applicable' | 'system_error';
-export type AuditCategoryId =
-  | 'reachability'
-  | 'crawlability'
-  | 'indexability'
-  | 'sitewide'
-  | 'contentVisibility'
-  | 'metadata'
-  | 'discovery';
-export type Severity = 'high' | 'medium' | 'low';
-export type EvidenceSource = 'source_html' | 'rendered_dom' | 'surface_comparison';
-export type ProblemFamily =
-  | 'alternate_language_controls'
-  | 'anchor_text_quality'
-  | 'body-image-alt'
-  | 'canonical_controls'
-  | 'content-depth'
-  | 'document_title'
-  | 'favicon'
-  | 'fragment_routes'
-  | 'head_hygiene'
-  | 'heading_structure'
-  | 'html_lang'
-  | 'internal_link_discovery'
-  | 'meta_description'
-  | 'meta_refresh'
-  | 'meta_viewport'
-  | 'metadata_alignment'
-  | 'redirect_chain'
-  | 'render_dependency'
-  | 'robots_controls'
-  | 'robots_preview'
-  | 'robots_txt'
-  | 'soft_404'
-  | 'social_open_graph'
-  | 'social_twitter'
-  | 'social_url_hygiene'
-  | 'sitewide_discovery_alignment'
-  | 'sitewide_foundations'
-  | 'sitewide_sample_coverage'
-  | 'sitewide_sitemap_hygiene'
-  | 'sitewide_sitemaps'
-  | 'source-visible-text'
-  | 'source_link_presence'
-  | 'structured_data'
-  | 'url-reachable';
-export type ReasonCode = 'missing_prerequisite' | 'invalid_prerequisite' | 'upstream_fetch_failed' | 'timeout';
-export type NullableString = string | null;
-export type NullableInteger = number | null;
-export type NullableBoolean = boolean | null;
-export type AuditScoringExclusionReason = 'not_applicable' | 'system_error';
-
 export interface AuditReport {
   jobId: string;
-  status: AuditStatus;
+  status: 'QUEUED' | 'STREAMING' | 'COMPLETE' | 'FAILED' | 'VERIFIED';
   generatedAt: string;
   targetUrl: string;
   reportType: 'SEO_SIGNALS_SIGNED_AUDIT';
-  indexabilityVerdict: IndexabilityVerdictLabel;
+  indexabilityVerdict: 'Blocked' | 'Unknown' | 'At Risk' | 'Indexable';
   summary: ReportSummary;
   checks: ReportCheck[];
   scoring: AuditScoring;
@@ -73,8 +19,8 @@ export interface AuditReport {
 }
 export interface ReportSummary {
   score: number;
-  status: AuditStatus;
-  indexabilityVerdict: IndexabilityVerdictLabel;
+  status: 'QUEUED' | 'STREAMING' | 'COMPLETE' | 'FAILED' | 'VERIFIED';
+  indexabilityVerdict: 'Blocked' | 'Unknown' | 'At Risk' | 'Indexable';
   targetUrl: string;
   issueCount: number;
   passedCheckCount: number;
@@ -85,9 +31,16 @@ export interface ReportSummary {
 export interface ReportCheck {
   id: string;
   label: string;
-  status: CheckStatus;
-  category: AuditCategoryId;
-  severity?: null | Severity;
+  status: 'issue' | 'passed' | 'not_applicable' | 'system_error';
+  category:
+    | 'reachability'
+    | 'crawlability'
+    | 'indexability'
+    | 'sitewide'
+    | 'contentVisibility'
+    | 'metadata'
+    | 'discovery';
+  severity?: null | ('high' | 'medium' | 'low');
   instruction?: string | null;
   detail?: string | null;
   selector?: string | null;
@@ -95,24 +48,58 @@ export interface ReportCheck {
   metadata?: ReportCheckMetadata;
 }
 export interface ReportCheckMetadata {
-  evidenceSource?: EvidenceSource;
-  problemFamily?: ProblemFamily;
-  reasonCode?: ReasonCode;
+  evidenceSource?: 'source_html' | 'rendered_dom' | 'surface_comparison';
+  problemFamily?:
+    | 'alternate_language_controls'
+    | 'anchor_text_quality'
+    | 'body-image-alt'
+    | 'canonical_controls'
+    | 'content-depth'
+    | 'document_title'
+    | 'favicon'
+    | 'fragment_routes'
+    | 'head_hygiene'
+    | 'heading_structure'
+    | 'html_lang'
+    | 'internal_link_discovery'
+    | 'meta_description'
+    | 'meta_refresh'
+    | 'meta_viewport'
+    | 'metadata_alignment'
+    | 'redirect_chain'
+    | 'render_dependency'
+    | 'robots_controls'
+    | 'robots_preview'
+    | 'robots_txt'
+    | 'soft_404'
+    | 'social_open_graph'
+    | 'social_twitter'
+    | 'social_url_hygiene'
+    | 'sitewide_discovery_alignment'
+    | 'sitewide_foundations'
+    | 'sitewide_sample_coverage'
+    | 'sitewide_sitemap_hygiene'
+    | 'sitewide_sitemaps'
+    | 'source-visible-text'
+    | 'source_link_presence'
+    | 'structured_data'
+    | 'url-reachable';
+  reasonCode?: 'missing_prerequisite' | 'invalid_prerequisite' | 'upstream_fetch_failed' | 'timeout';
   blockedBy?: string[];
   retryable?: boolean;
   length?: number;
   minLength?: number;
   maxLength?: number;
   title?: string;
-  content?: NullableString;
-  contentType?: NullableString;
-  value?: NullableString;
-  canonicalValue?: NullableString;
-  finalUrl?: NullableString;
-  resolvedCanonicalUrl?: NullableString;
-  targetUrl?: NullableString;
-  status?: NullableString;
-  statusCode?: NullableInteger;
+  content?: string | null;
+  contentType?: string | null;
+  value?: string | null;
+  canonicalValue?: string | null;
+  finalUrl?: string | null;
+  resolvedCanonicalUrl?: string | null;
+  targetUrl?: string | null;
+  status?: string | null;
+  statusCode?: number | null;
   wordCount?: number;
   h1Count?: number;
   headingCount?: number;
@@ -158,19 +145,19 @@ export interface ReportCheckMetadata {
   renderedTitle?: string;
   sourceCanonicalUrl?: string;
   renderedCanonicalUrl?: string;
-  sourceRobotsContent?: NullableString;
-  renderedRobotsContent?: NullableString;
+  sourceRobotsContent?: string | null;
+  renderedRobotsContent?: string | null;
   sourceH1Count?: number;
   renderedH1Count?: number;
-  effectiveIndexing?: NullableString;
-  effectiveFollowing?: NullableString;
-  effectiveTarget?: NullableString;
-  effectiveSnippet?: NullableString;
-  effectiveArchive?: NullableString;
-  effectiveTranslate?: NullableString;
-  effectiveMaxSnippet?: NullableString;
-  effectiveMaxImagePreview?: NullableString;
-  effectiveMaxVideoPreview?: NullableString;
+  effectiveIndexing?: string | null;
+  effectiveFollowing?: string | null;
+  effectiveTarget?: string | null;
+  effectiveSnippet?: string | null;
+  effectiveArchive?: string | null;
+  effectiveTranslate?: string | null;
+  effectiveMaxSnippet?: string | null;
+  effectiveMaxImagePreview?: string | null;
+  effectiveMaxVideoPreview?: string | null;
   expectsSelfReference?: boolean;
   hasDeviceWidth?: boolean;
   hasInitialScale?: boolean;
@@ -181,7 +168,7 @@ export interface ReportCheckMetadata {
   reusedCurrentPageInspection?: boolean;
   titleH1Mismatch?: boolean;
   weakMetaDescriptionAlignment?: boolean;
-  firstH1Text?: NullableString;
+  firstH1Text?: string | null;
   missingFields?: string[];
   presentFields?: string[];
   rels?: string[];
@@ -239,11 +226,11 @@ export interface RobotsTargetedOverride {
   targetedValue: string;
 }
 export interface MetaRefreshEntry {
-  rawValue?: NullableString;
+  rawValue?: string | null;
   status: string;
   delaySeconds: number | null;
-  targetUrl?: NullableString;
-  resolvedTargetUrl?: NullableString;
+  targetUrl?: string | null;
+  resolvedTargetUrl?: string | null;
 }
 export interface RobotsDirectiveEntry {
   surface: string;
@@ -262,17 +249,17 @@ export interface RobotsDirectiveEntry {
   malformedTokens: string[];
 }
 export interface OpenGraphFieldValues {
-  title?: NullableString;
-  description?: NullableString;
-  type?: NullableString;
-  url?: NullableString;
-  image?: NullableString;
+  title?: string | null;
+  description?: string | null;
+  type?: string | null;
+  url?: string | null;
+  image?: string | null;
 }
 export interface TwitterFieldValues {
-  card?: NullableString;
-  title?: NullableString;
-  description?: NullableString;
-  image?: NullableString;
+  card?: string | null;
+  title?: string | null;
+  description?: string | null;
+  image?: string | null;
 }
 export interface SocialFieldDuplicate {
   field: string;
@@ -282,22 +269,22 @@ export interface SocialUrlField {
   field: string;
   rawValue: string;
   status: string;
-  resolvedUrl?: NullableString;
+  resolvedUrl?: string | null;
 }
 export interface IconLink {
-  href?: NullableString;
-  rel?: NullableString;
-  sizes?: NullableString;
-  type?: NullableString;
+  href?: string | null;
+  rel?: string | null;
+  sizes?: string | null;
+  type?: string | null;
 }
 export interface HeadingTransition {
   fromLevel: number;
   toLevel: number;
   expectedNextLevel: number;
-  headingText?: NullableString;
+  headingText?: string | null;
 }
 export interface HeadingRepeat {
-  text?: NullableString;
+  text?: string | null;
   count: number;
 }
 export interface DuplicateFieldCount {
@@ -331,18 +318,18 @@ export interface CanonicalControl {
   htmlCount: number;
   headerCount: number;
   invalidCandidates: CanonicalCandidate[];
-  resolvedCanonicalUrl?: NullableString;
+  resolvedCanonicalUrl?: string | null;
   consistency: string;
 }
 export interface CanonicalCandidate {
-  href?: NullableString;
-  rel?: NullableString;
-  hreflang?: NullableString;
-  media?: NullableString;
-  type?: NullableString;
+  href?: string | null;
+  rel?: string | null;
+  hreflang?: string | null;
+  media?: string | null;
+  type?: string | null;
   surface: 'html' | 'http_header';
   status: string;
-  resolvedUrl: NullableString;
+  resolvedUrl: string | null;
 }
 export interface AlternateLanguageControl {
   status: string;
@@ -355,14 +342,14 @@ export interface AlternateLanguageControl {
   };
 }
 export interface AlternateLanguageAnnotation {
-  href?: NullableString;
-  rel?: NullableString;
-  hreflang?: NullableString;
-  media?: NullableString;
-  type?: NullableString;
+  href?: string | null;
+  rel?: string | null;
+  hreflang?: string | null;
+  media?: string | null;
+  type?: string | null;
   surface: 'html' | 'http_header';
   status: string;
-  resolvedUrl: NullableString;
+  resolvedUrl: string | null;
 }
 export interface AlternateLanguageConflict {
   hreflang: string;
@@ -376,8 +363,8 @@ export interface LinkDiscoveryControl {
   affectedLinks: LinkDiscoveryAffectedLink[];
 }
 export interface LinkDiscoveryAffectedLink {
-  href?: NullableString;
-  text?: NullableString;
+  href?: string | null;
+  text?: string | null;
   relTokens: string[];
 }
 export interface InternalLinkCoverageControl {
@@ -423,13 +410,13 @@ export interface BodyImageAltControl {
   missingAltImages: MissingAltImage[];
 }
 export interface MissingAltImage {
-  src?: NullableString;
-  alt?: NullableString;
+  src?: string | null;
+  alt?: string | null;
 }
 export interface LangControl {
   status: string;
-  value?: NullableString;
-  canonicalValue?: NullableString;
+  value?: string | null;
+  canonicalValue?: string | null;
 }
 export interface SocialMetadataControl {
   status: string;
@@ -458,7 +445,7 @@ export interface SocialUrlControl {
 }
 export interface MetadataAlignmentControl {
   status: string;
-  firstH1Text?: NullableString;
+  firstH1Text?: string | null;
   titleSharedTokenCount: number;
   metaDescriptionSharedTokenCount: number;
   titleH1Mismatch: boolean;
@@ -466,16 +453,16 @@ export interface MetadataAlignmentControl {
 }
 export interface RobotsPreviewControl {
   status: string;
-  effectiveSnippet?: NullableString;
-  effectiveMaxSnippet?: NullableString;
-  effectiveMaxImagePreview?: NullableString;
-  effectiveMaxVideoPreview?: NullableString;
+  effectiveSnippet?: string | null;
+  effectiveMaxSnippet?: string | null;
+  effectiveMaxImagePreview?: string | null;
+  effectiveMaxVideoPreview?: string | null;
   restrictiveSignals: string[];
   conflicts: RobotsSameTargetConflict[];
 }
 export interface ViewportControl {
   status: string;
-  content?: NullableString;
+  content?: string | null;
   hasDeviceWidth: boolean;
   hasInitialScale: boolean;
   disablesZoom: boolean;
@@ -504,8 +491,8 @@ export interface StructuredDataControl {
 export interface Soft404Control {
   status: 'not_applicable' | 'clear' | 'suspected' | 'likely';
   wordCount: number;
-  title?: NullableString;
-  firstH1Text?: NullableString;
+  title?: string | null;
+  firstH1Text?: string | null;
   matchedPhrases: string[];
   titleLooksLikeError: boolean;
   headingLooksLikeError: boolean;
@@ -517,25 +504,25 @@ export interface Soft404Control {
 }
 export interface CanonicalTargetControl {
   status: string;
-  targetUrl?: NullableString;
-  finalUrl?: NullableString;
-  resolvedCanonicalUrl?: NullableString;
+  targetUrl?: string | null;
+  finalUrl?: string | null;
+  resolvedCanonicalUrl?: string | null;
   redirectCount: number;
   reusedCurrentPageInspection: boolean;
   inspection?: null | UrlInspection;
   robotsControl?: null | RobotsControl;
 }
 export interface UrlInspection {
-  inspectedUrl?: NullableString;
+  inspectedUrl?: string | null;
   status: string;
-  finalUrl?: NullableString;
-  statusCode?: NullableInteger;
-  contentType?: NullableString;
+  finalUrl?: string | null;
+  statusCode?: number | null;
+  contentType?: string | null;
   isReachable: boolean;
   isHtmlResponse: boolean;
   metaRobotsTags: string[];
   googlebotRobotsTags: string[];
-  xRobotsTag?: NullableString;
+  xRobotsTag?: string | null;
   xRobotsTagHeaders: string[];
   headerCanonicalLinks: LinkAnnotation[];
   headerAlternateLinks: LinkAnnotation[];
@@ -545,35 +532,35 @@ export interface UrlInspection {
   reusedCurrentPageInspection: boolean;
 }
 export interface LinkAnnotation {
-  href?: NullableString;
-  rel?: NullableString;
-  hreflang?: NullableString;
-  media?: NullableString;
-  type?: NullableString;
+  href?: string | null;
+  rel?: string | null;
+  hreflang?: string | null;
+  media?: string | null;
+  type?: string | null;
 }
 export interface RedirectChain {
   status: string;
   totalRedirects: number;
   finalUrlChanged: boolean;
-  finalUrl?: NullableString;
+  finalUrl?: string | null;
   chain: RedirectStep[];
-  error?: NullableString;
+  error?: string | null;
 }
 export interface RedirectStep {
   url: string;
-  statusCode?: NullableInteger;
-  location?: NullableString;
+  statusCode?: number | null;
+  location?: string | null;
 }
 export interface RobotsTxt {
   status: string;
-  allowsCrawl?: NullableBoolean;
-  evaluatedUserAgent?: NullableString;
-  matchedDirective?: NullableString;
-  matchedPattern?: NullableString;
-  fetchStatusCode?: NullableInteger;
-  url?: NullableString;
-  finalUrl?: NullableString;
-  error?: NullableString;
+  allowsCrawl?: boolean | null;
+  evaluatedUserAgent?: string | null;
+  matchedDirective?: string | null;
+  matchedPattern?: string | null;
+  fetchStatusCode?: number | null;
+  url?: string | null;
+  finalUrl?: string | null;
+  error?: string | null;
 }
 export interface RobotsControl {
   status: string;
@@ -585,15 +572,15 @@ export interface RobotsControl {
   targetedOverrides: RobotsTargetedOverride[];
   unsupportedTokens: string[];
   malformedTokens: string[];
-  effectiveIndexing?: NullableString;
-  effectiveFollowing?: NullableString;
-  effectiveSnippet?: NullableString;
-  effectiveArchive?: NullableString;
-  effectiveTranslate?: NullableString;
-  effectiveMaxSnippet?: NullableString;
-  effectiveMaxImagePreview?: NullableString;
-  effectiveMaxVideoPreview?: NullableString;
-  effectiveTarget?: NullableString;
+  effectiveIndexing?: string | null;
+  effectiveFollowing?: string | null;
+  effectiveSnippet?: string | null;
+  effectiveArchive?: string | null;
+  effectiveTranslate?: string | null;
+  effectiveMaxSnippet?: string | null;
+  effectiveMaxImagePreview?: string | null;
+  effectiveMaxVideoPreview?: string | null;
+  effectiveTarget?: string | null;
   hasBlockingNoindex: boolean;
   hasNoarchiveDirective: boolean;
   hasNotranslateDirective: boolean;
@@ -608,14 +595,14 @@ export interface RobotsTargetSummary {
   maxSnippetValues: string[];
   maxImagePreviewValues: string[];
   maxVideoPreviewValues: string[];
-  indexing?: NullableString;
-  following?: NullableString;
-  snippet?: NullableString;
-  archive?: NullableString;
-  translate?: NullableString;
-  maxSnippet?: NullableString;
-  maxImagePreview?: NullableString;
-  maxVideoPreview?: NullableString;
+  indexing?: string | null;
+  following?: string | null;
+  snippet?: string | null;
+  archive?: string | null;
+  translate?: string | null;
+  maxSnippet?: string | null;
+  maxImagePreview?: string | null;
+  maxVideoPreview?: string | null;
 }
 export interface MetaRefreshControl {
   status: string;
@@ -659,13 +646,20 @@ export interface AuditScoringCategoryBreakdown {
 }
 export interface AuditScoringRuleBreakdown {
   ruleId: string;
-  categoryId: AuditCategoryId;
-  status: CheckStatus;
-  severity?: null | Severity;
+  categoryId:
+    | 'reachability'
+    | 'crawlability'
+    | 'indexability'
+    | 'sitewide'
+    | 'contentVisibility'
+    | 'metadata'
+    | 'discovery';
+  status: 'issue' | 'passed' | 'not_applicable' | 'system_error';
+  severity?: null | ('high' | 'medium' | 'low');
   ruleWeight: number;
   earnedWeight: number;
   includedInScore: boolean;
-  exclusionReason?: null | AuditScoringExclusionReason;
+  exclusionReason?: null | ('not_applicable' | 'system_error');
   scoreImpact: number;
 }
 export interface AuditDiagnostics {
@@ -677,12 +671,15 @@ export interface AuditDiagnostics {
 }
 export interface AuditDiagnosticsCapture {
   worker: 'seo-audit-worker';
-  statusCode?: NullableInteger;
-  contentType?: NullableString;
+  statusCode?: number | null;
+  contentType?: string | null;
   /**
    * @minItems 1
    */
-  capturePasses: [EvidenceSource, ...EvidenceSource[]];
+  capturePasses: [
+    'source_html' | 'rendered_dom' | 'surface_comparison',
+    ...('source_html' | 'rendered_dom' | 'surface_comparison')[]
+  ];
 }
 export interface AuditDiagnosticsSurfaces {
   sourceHtml: SurfaceSummary;
@@ -742,18 +739,18 @@ export interface AuditDiagnosticsControls {
   redirectChain: RedirectChain;
 }
 export interface XRobotsTag {
-  value?: NullableString;
+  value?: string | null;
   blocksIndexing: boolean;
 }
 export interface CanonicalSelfReferenceControl {
   status: string;
   expectsSelfReference: boolean;
-  finalUrl?: NullableString;
-  resolvedCanonicalUrl?: NullableString;
+  finalUrl?: string | null;
+  resolvedCanonicalUrl?: string | null;
 }
 export interface SitewideSummary {
   siteRootUrl: string;
-  preferredOrigin?: NullableString;
+  preferredOrigin?: string | null;
   hostVariants: SitewideHostVariant[];
   robotsTxt: SitewideRobotsTxt;
   sitemap: SitewideSitemap;
@@ -764,34 +761,34 @@ export interface SitewideSummary {
 }
 export interface SitewideHostVariant {
   requestedUrl: string;
-  finalUrl?: NullableString;
-  finalOrigin?: NullableString;
+  finalUrl?: string | null;
+  finalOrigin?: string | null;
   status: string;
-  statusCode?: NullableInteger;
+  statusCode?: number | null;
   redirectCount: number;
   isReachable: boolean;
   isHtmlResponse: boolean;
-  robotsTxtAllowsCrawl?: NullableBoolean;
-  effectiveIndexing?: NullableString;
-  error?: NullableString;
+  robotsTxtAllowsCrawl?: boolean | null;
+  effectiveIndexing?: string | null;
+  error?: string | null;
 }
 export interface SitewideRobotsTxt {
   status: string;
-  allowsCrawl?: NullableBoolean;
-  evaluatedUserAgent?: NullableString;
-  matchedDirective?: NullableString;
-  matchedPattern?: NullableString;
-  fetchStatusCode?: NullableInteger;
-  url?: NullableString;
-  finalUrl?: NullableString;
-  error?: NullableString;
+  allowsCrawl?: boolean | null;
+  evaluatedUserAgent?: string | null;
+  matchedDirective?: string | null;
+  matchedPattern?: string | null;
+  fetchStatusCode?: number | null;
+  url?: string | null;
+  finalUrl?: string | null;
+  error?: string | null;
   declaredSitemapUrls: string[];
 }
 export interface SitewideSitemap {
   status: string;
   discoveryMethod: 'robots_txt' | 'fallback' | 'none';
   declaredSitemapUrls: string[];
-  fallbackSitemapUrl?: NullableString;
+  fallbackSitemapUrl?: string | null;
   processedSitemapCount: number;
   discoveredUrlCount: number;
   sameOriginUrlCount: number;
@@ -800,33 +797,33 @@ export interface SitewideSitemap {
 }
 export interface SitewideFetchedSitemap {
   url: string;
-  finalUrl?: NullableString;
-  statusCode?: NullableInteger;
-  contentType?: NullableString;
+  finalUrl?: string | null;
+  statusCode?: number | null;
+  contentType?: string | null;
   status: string;
-  kind?: NullableString;
+  kind?: string | null;
   discoveredUrlCount: number;
   sameOriginUrlCount: number;
-  error?: NullableString;
+  error?: string | null;
 }
 export interface SitewideSampledUrl {
   url: string;
   source: 'site_root' | 'current_page' | 'sitemap' | 'homepage_link';
-  finalUrl?: NullableString;
+  finalUrl?: string | null;
   status: string;
-  statusCode?: NullableInteger;
+  statusCode?: number | null;
   redirectCount: number;
   isReachable: boolean;
   isHtmlResponse: boolean;
-  robotsTxtAllowsCrawl?: NullableBoolean;
-  effectiveIndexing?: NullableString;
+  robotsTxtAllowsCrawl?: boolean | null;
+  effectiveIndexing?: string | null;
   hasBlockingNoindex?: boolean;
   indexable: boolean;
   hasTitle: boolean;
   hasMetaDescription: boolean;
   hasValidCanonical: boolean;
-  resolvedCanonicalUrl?: NullableString;
-  canonicalMatchesFinalUrl?: NullableBoolean;
+  resolvedCanonicalUrl?: string | null;
+  canonicalMatchesFinalUrl?: boolean | null;
 }
 export interface SitewideSampleCoverage {
   sampledUrlCount: number;

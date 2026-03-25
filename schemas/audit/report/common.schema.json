@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seogeo.dev/schemas/audit/report/common.schema.json",
+  "$defs": {
+    "auditStatus": {
+      "type": "string",
+      "enum": [
+        "QUEUED",
+        "STREAMING",
+        "COMPLETE",
+        "FAILED",
+        "VERIFIED"
+      ]
+    },
+    "checkStatus": {
+      "type": "string",
+      "enum": [
+        "issue",
+        "passed",
+        "not_applicable",
+        "system_error"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "auditCategoryId": {
+      "type": "string",
+      "enum": [
+        "reachability",
+        "crawlability",
+        "indexability",
+        "sitewide",
+        "contentVisibility",
+        "metadata",
+        "discovery"
+      ]
+    },
+    "evidenceSource": {
+      "type": "string",
+      "enum": [
+        "source_html",
+        "rendered_dom",
+        "surface_comparison"
+      ]
+    },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "missing_prerequisite",
+        "invalid_prerequisite",
+        "upstream_fetch_failed",
+        "timeout"
+      ]
+    },
+    "problemFamily": {
+      "type": "string",
+      "enum": [
+        "alternate_language_controls",
+        "anchor_text_quality",
+        "body-image-alt",
+        "canonical_controls",
+        "content-depth",
+        "document_title",
+        "favicon",
+        "fragment_routes",
+        "head_hygiene",
+        "heading_structure",
+        "html_lang",
+        "internal_link_discovery",
+        "meta_description",
+        "meta_refresh",
+        "meta_viewport",
+        "metadata_alignment",
+        "redirect_chain",
+        "render_dependency",
+        "robots_controls",
+        "robots_preview",
+        "robots_txt",
+        "soft_404",
+        "social_open_graph",
+        "social_twitter",
+        "social_url_hygiene",
+        "sitewide_discovery_alignment",
+        "sitewide_foundations",
+        "sitewide_sample_coverage",
+        "sitewide_sitemap_hygiene",
+        "sitewide_sitemaps",
+        "source-visible-text",
+        "source_link_presence",
+        "structured_data",
+        "url-reachable"
+      ]
+    },
+    "indexabilityVerdictLabel": {
+      "type": "string",
+      "enum": [
+        "Blocked",
+        "Unknown",
+        "At Risk",
+        "Indexable"
+      ]
+    },
+    "nullableString": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nullableBoolean": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "nullableInteger": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "present",
+        "algorithm",
+        "value"
+      ],
+      "properties": {
+        "present": {
+          "type": "boolean",
+          "const": true
+        },
+        "algorithm": {
+          "type": "string",
+          "const": "HMAC-SHA256"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "reportSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "score",
+        "status",
+        "indexabilityVerdict",
+        "targetUrl",
+        "issueCount",
+        "passedCheckCount",
+        "notApplicableCount",
+        "systemErrorCount",
+        "topIssue"
+      ],
+      "properties": {
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "status": {
+          "$ref": "#/$defs/auditStatus"
+        },
+        "indexabilityVerdict": {
+          "$ref": "#/$defs/indexabilityVerdictLabel"
+        },
+        "targetUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issueCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passedCheckCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "notApplicableCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "systemErrorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "topIssue": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "categoryScores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reachability",
+        "crawlability",
+        "indexability",
+        "sitewide",
+        "contentVisibility",
+        "metadata",
+        "discovery"
+      ],
+      "properties": {
+        "reachability": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "crawlability": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "indexability": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "sitewide": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "contentVisibility": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "metadata": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "discovery": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "indexabilityVerdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "blockingSignals",
+        "riskSignals",
+        "unknownSignals"
+      ],
+      "properties": {
+        "verdict": {
+          "$ref": "#/$defs/indexabilityVerdictLabel"
+        },
+        "blockingSignals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "riskSignals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unknownSignals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

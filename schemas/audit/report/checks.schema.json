@@ -1,0 +1,587 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seogeo.dev/schemas/audit/report/checks.schema.json",
+  "$defs": {
+    "reportCheckMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "evidenceSource": {
+          "$ref": "./common.schema.json#/$defs/evidenceSource"
+        },
+        "problemFamily": {
+          "$ref": "./common.schema.json#/$defs/problemFamily"
+        },
+        "reasonCode": {
+          "$ref": "./common.schema.json#/$defs/reasonCode"
+        },
+        "blockedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "contentType": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "value": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "canonicalValue": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "finalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "resolvedCanonicalUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "targetUrl": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "status": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "statusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "wordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "h1Count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "headingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bodyImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleBodyImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bodyImageMissingAltCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "linkedImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "linkedImageMissingAltCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sameOriginCrawlableLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nonCrawlableLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "emptyAnchorTextCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "genericAnchorTextCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "emptyHeadingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "repeatedHeadingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "problematicLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "iconCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tagCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fieldCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimumRecommendedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "immediateRedirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refreshOnlyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timedRedirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "malformedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "redirectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metaDescriptionSharedTokenCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "titleSharedTokenCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalJsonLdBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "validJsonLdBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalidJsonLdBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "emptyJsonLdBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingContextBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingTypeBlocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "structuredDataKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceWordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderedWordCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceSameOriginCrawlableLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderedSameOriginCrawlableLinkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceStructuredDataKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "renderedStructuredDataKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceMetaDescription": {
+          "type": "string"
+        },
+        "renderedMetaDescription": {
+          "type": "string"
+        },
+        "sourceTitle": {
+          "type": "string"
+        },
+        "renderedTitle": {
+          "type": "string"
+        },
+        "sourceCanonicalUrl": {
+          "type": "string"
+        },
+        "renderedCanonicalUrl": {
+          "type": "string"
+        },
+        "sourceRobotsContent": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "renderedRobotsContent": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "sourceH1Count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderedH1Count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "effectiveIndexing": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveFollowing": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveTarget": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveSnippet": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveArchive": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveTranslate": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxSnippet": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxImagePreview": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "effectiveMaxVideoPreview": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "expectsSelfReference": {
+          "type": "boolean"
+        },
+        "hasDeviceWidth": {
+          "type": "boolean"
+        },
+        "hasInitialScale": {
+          "type": "boolean"
+        },
+        "disablesZoom": {
+          "type": "boolean"
+        },
+        "hasMultipleH1": {
+          "type": "boolean"
+        },
+        "hasSkippedLevels": {
+          "type": "boolean"
+        },
+        "firstHeadingNotH1": {
+          "type": "boolean"
+        },
+        "reusedCurrentPageInspection": {
+          "type": "boolean"
+        },
+        "titleH1Mismatch": {
+          "type": "boolean"
+        },
+        "weakMetaDescriptionAlignment": {
+          "type": "boolean"
+        },
+        "firstH1Text": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "missingFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "presentFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "restrictiveSignals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/robotsSameTargetConflict"
+          }
+        },
+        "targetedOverrides": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/robotsTargetedOverride"
+          }
+        },
+        "problematicTokens": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "token"
+            ],
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "token": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "./controls.schema.json#/$defs/metaRefreshEntry"
+              },
+              {
+                "$ref": "./controls.schema.json#/$defs/robotsDirectiveEntry"
+              }
+            ]
+          }
+        },
+        "fieldValues": {
+          "oneOf": [
+            {
+              "$ref": "./controls.schema.json#/$defs/openGraphFieldValues"
+            },
+            {
+              "$ref": "./controls.schema.json#/$defs/twitterFieldValues"
+            }
+          ]
+        },
+        "duplicateFields": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/socialFieldDuplicate"
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/socialUrlField"
+          }
+        },
+        "invalidFields": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/socialUrlField"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/iconLink"
+          }
+        },
+        "skippedTransitions": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/headingTransition"
+          }
+        },
+        "repeatedHeadings": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/headingRepeat"
+          }
+        },
+        "problematicFields": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/duplicateFieldCount"
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "./controls.schema.json#/$defs/structuredDataBlock"
+          }
+        },
+        "duplicateHeadCounts": {
+          "$ref": "./controls.schema.json#/$defs/duplicateHeadCounts"
+        },
+        "canonicalControl": {
+          "$ref": "./controls.schema.json#/$defs/canonicalControl"
+        },
+        "alternateLanguageControl": {
+          "$ref": "./controls.schema.json#/$defs/alternateLanguageControl"
+        },
+        "linkDiscoveryControl": {
+          "$ref": "./controls.schema.json#/$defs/linkDiscoveryControl"
+        },
+        "internalLinkCoverageControl": {
+          "$ref": "./controls.schema.json#/$defs/internalLinkCoverageControl"
+        },
+        "titleControl": {
+          "$ref": "./controls.schema.json#/$defs/titleControl"
+        },
+        "metaDescriptionControl": {
+          "$ref": "./controls.schema.json#/$defs/metaDescriptionControl"
+        },
+        "headingControl": {
+          "$ref": "./controls.schema.json#/$defs/headingControl"
+        },
+        "headingQualityControl": {
+          "$ref": "./controls.schema.json#/$defs/headingQualityControl"
+        },
+        "bodyImageAltControl": {
+          "$ref": "./controls.schema.json#/$defs/bodyImageAltControl"
+        },
+        "langControl": {
+          "$ref": "./controls.schema.json#/$defs/langControl"
+        },
+        "socialMetadataControl": {
+          "$ref": "./controls.schema.json#/$defs/socialMetadataControl"
+        },
+        "socialUrlControl": {
+          "$ref": "./controls.schema.json#/$defs/socialUrlControl"
+        },
+        "metadataAlignmentControl": {
+          "$ref": "./controls.schema.json#/$defs/metadataAlignmentControl"
+        },
+        "robotsPreviewControl": {
+          "$ref": "./controls.schema.json#/$defs/robotsPreviewControl"
+        },
+        "viewportControl": {
+          "$ref": "./controls.schema.json#/$defs/viewportControl"
+        },
+        "faviconControl": {
+          "$ref": "./controls.schema.json#/$defs/faviconControl"
+        },
+        "headHygieneControl": {
+          "$ref": "./controls.schema.json#/$defs/headHygieneControl"
+        },
+        "structuredDataControl": {
+          "$ref": "./controls.schema.json#/$defs/structuredDataControl"
+        },
+        "soft404Control": {
+          "$ref": "./controls.schema.json#/$defs/soft404Control"
+        },
+        "canonicalTargetControl": {
+          "$ref": "./controls.schema.json#/$defs/canonicalTargetControl"
+        },
+        "metaRefreshControl": {
+          "$ref": "./controls.schema.json#/$defs/metaRefreshControl"
+        },
+        "robotsTxt": {
+          "$ref": "./controls.schema.json#/$defs/robotsTxt"
+        },
+        "redirectChain": {
+          "$ref": "./controls.schema.json#/$defs/redirectChain"
+        }
+      }
+    },
+    "reportCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "status",
+        "category"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "./common.schema.json#/$defs/checkStatus"
+        },
+        "category": {
+          "$ref": "./common.schema.json#/$defs/auditCategoryId"
+        },
+        "severity": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "./common.schema.json#/$defs/severity"
+            }
+          ]
+        },
+        "instruction": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selector": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metric": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metadata": {
+          "$ref": "#/$defs/reportCheckMetadata"
+        }
+      }
+    }
+  }
+}

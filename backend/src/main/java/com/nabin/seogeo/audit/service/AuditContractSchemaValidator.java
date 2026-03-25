@@ -6,14 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -21,9 +18,11 @@ import java.util.stream.Collectors;
 @Service
 public class AuditContractSchemaValidator {
 
-    private static final String REPORT_SCHEMA = "audit/audit-report.schema.json";
-    private static final String STREAM_EVENT_SCHEMA = "audit/audit-stream-event.schema.json";
-    private static final String WORKER_PROGRESS_SCHEMA = "audit/audit-worker-progress-event.schema.json";
+    private static final String SCHEMA_ID_PREFIX = "https://seogeo.dev/schemas/";
+    private static final String CLASSPATH_SCHEMA_PREFIX = "classpath:";
+    private static final String REPORT_SCHEMA = "https://seogeo.dev/schemas/audit/audit-report.schema.json";
+    private static final String STREAM_EVENT_SCHEMA = "https://seogeo.dev/schemas/audit/audit-stream-event.schema.json";
+    private static final String WORKER_PROGRESS_SCHEMA = "https://seogeo.dev/schemas/audit/audit-worker-progress-event.schema.json";
 
     private final ObjectMapper objectMapper;
     private final SchemaRegistry schemaRegistry;
@@ -32,7 +31,11 @@ public class AuditContractSchemaValidator {
     public AuditContractSchemaValidator(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper.copy()
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        this.schemaRegistry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
+        this.schemaRegistry = SchemaRegistry.withDefaultDialect(
+                SpecificationVersion.DRAFT_2020_12,
+                builder -> builder.schemaIdResolvers(schemaIdResolvers ->
+                        schemaIdResolvers.mapPrefix(SCHEMA_ID_PREFIX, CLASSPATH_SCHEMA_PREFIX))
+        );
     }
 
     public void validateReportPayload(Object payload) {
@@ -71,12 +74,9 @@ public class AuditContractSchemaValidator {
     }
 
     private Schema loadSchema(String schemaPath) {
-        return schemaCache.computeIfAbsent(schemaPath, path -> {
-            try (InputStream inputStream = new ClassPathResource(path).getInputStream()) {
-                return schemaRegistry.getSchema(inputStream);
-            } catch (IOException exception) {
-                throw new UncheckedIOException("Unable to load schema " + path, exception);
-            }
-        });
+        return schemaCache.computeIfAbsent(
+                schemaPath,
+                path -> schemaRegistry.getSchema(SchemaLocation.of(path))
+        );
     }
 }
