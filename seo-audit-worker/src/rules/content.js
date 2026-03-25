@@ -5,6 +5,7 @@ const primaryHeading = defineRule({
   id: "primary-heading",
   label: "Primary Heading",
   packId: "contentVisibility",
+  scoreWeight: 3,
   priority: 2,
   problemFamily: "heading_structure",
   relatedPacks: [],
@@ -35,6 +36,7 @@ const sourceVisibleText = defineRule({
   id: "source-visible-text",
   label: "Source Visible Text",
   packId: "contentVisibility",
+  scoreWeight: 5,
   priority: 1,
   relatedPacks: [],
   check: (facts) => {
@@ -64,6 +66,7 @@ const contentDepth = defineRule({
   id: "content-depth",
   label: "Content Depth",
   packId: "contentVisibility",
+  scoreWeight: 2,
   priority: 4,
   relatedPacks: [],
   check: (facts) => {
@@ -93,6 +96,7 @@ const headingStructure = defineRule({
   id: "heading-structure",
   label: "Heading Structure",
   packId: "contentVisibility",
+  scoreWeight: 2,
   priority: 3,
   problemFamily: "heading_structure",
   relatedPacks: [],
@@ -151,6 +155,7 @@ const bodyImageAlt = defineRule({
   id: "body-image-alt",
   label: "Body Image Alt",
   packId: "contentVisibility",
+  scoreWeight: 1,
   priority: 6,
   relatedPacks: [],
   check: (facts) => {
@@ -192,6 +197,7 @@ const headingOutlineQuality = defineRule({
   id: "heading-outline-quality",
   label: "Heading Outline Quality",
   packId: "contentVisibility",
+  scoreWeight: 1,
   priority: 5,
   problemFamily: "heading_structure",
   relatedPacks: [],

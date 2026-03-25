@@ -117,7 +117,14 @@ export function severityRank(severity?: string | null) {
   }
 }
 
-export function toneForScore(score: number): Exclude<AuditTone, "pending"> {
+export function toneForScore(
+  score: number,
+  options?: { confidence?: number | null }
+): Exclude<AuditTone, "pending"> {
+  if (options?.confidence === 0) {
+    return "neutral";
+  }
+
   if (score > 70) {
     return "success";
   }
@@ -127,6 +134,18 @@ export function toneForScore(score: number): Exclude<AuditTone, "pending"> {
   }
 
   return "critical";
+}
+
+function confidenceForCategory(
+  scoringCategories: AuditReport["rawSummary"]["scoring"] extends infer T
+    ? T extends { categories: infer Categories }
+      ? Categories | undefined
+      : undefined
+    : undefined,
+  key: string
+) {
+  const candidate = scoringCategories as Record<string, { confidence?: number }> | undefined;
+  return typeof candidate?.[key]?.confidence === "number" ? candidate[key].confidence : null;
 }
 
 export function formatSeverityLabel(severity?: string | null) {
@@ -563,28 +582,38 @@ export function buildCategoryScoreModels(report?: AuditReport): AuditCategorySco
     return [];
   }
 
+  const scoringCategories = report.rawSummary?.scoring?.categories;
+
   return [
     ...CATEGORY_ORDER.filter((key) =>
       Object.prototype.hasOwnProperty.call(report.categories, key)
-    ).map((key) => ({
-      key,
-      label: formatCategoryLabel(key),
-      score:
-        typeof report.categories?.[key] === "number" ? report.categories[key] : 0,
-      tone: toneForScore(
-        typeof report.categories?.[key] === "number" ? report.categories[key] : 0
-      ),
-    })),
+    ).map((key) => {
+      const score =
+        typeof report.categories?.[key] === "number" ? report.categories[key] : 0;
+      const confidence = confidenceForCategory(scoringCategories, key);
+
+      return {
+        key,
+        label: formatCategoryLabel(key),
+        score,
+        tone: toneForScore(score, { confidence }),
+      };
+    }),
     ...Object.entries(report.categories)
       .filter(
         ([key]) => !CATEGORY_ORDER.includes(key as (typeof CATEGORY_ORDER)[number])
       )
-      .map(([key, value]) => ({
-        key,
-        label: formatCategoryLabel(key),
-        score: typeof value === "number" ? value : 0,
-        tone: toneForScore(typeof value === "number" ? value : 0),
-      })),
+      .map(([key, value]) => {
+        const confidence = confidenceForCategory(scoringCategories, key);
+        const score = typeof value === "number" ? value : 0;
+
+        return {
+          key,
+          label: formatCategoryLabel(key),
+          score,
+          tone: toneForScore(score, { confidence }),
+        };
+      }),
   ];
 }
 

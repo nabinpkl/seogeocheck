@@ -196,6 +196,116 @@
         "discovery": { "type": "integer", "minimum": 0, "maximum": 100 }
       }
     },
+    "auditScoringExclusionReason": {
+      "type": "string",
+      "enum": ["not_applicable", "system_error"]
+    },
+    "auditScoringSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "score",
+        "confidence",
+        "earnedWeight",
+        "availableWeight",
+        "totalPossibleWeight"
+      ],
+      "properties": {
+        "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "earnedWeight": { "type": "number", "minimum": 0 },
+        "availableWeight": { "type": "number", "minimum": 0 },
+        "totalPossibleWeight": { "type": "number", "minimum": 0 }
+      }
+    },
+    "auditScoringCategoryBreakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "score",
+        "confidence",
+        "earnedWeight",
+        "availableWeight",
+        "totalPossibleWeight",
+        "categoryWeight"
+      ],
+      "properties": {
+        "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "earnedWeight": { "type": "number", "minimum": 0 },
+        "availableWeight": { "type": "number", "minimum": 0 },
+        "totalPossibleWeight": { "type": "number", "minimum": 0 },
+        "categoryWeight": { "type": "number", "minimum": 0 }
+      }
+    },
+    "auditScoringCategories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reachability",
+        "crawlability",
+        "indexability",
+        "contentVisibility",
+        "metadata",
+        "discovery"
+      ],
+      "properties": {
+        "reachability": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
+        "crawlability": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
+        "indexability": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
+        "contentVisibility": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
+        "metadata": { "$ref": "#/$defs/auditScoringCategoryBreakdown" },
+        "discovery": { "$ref": "#/$defs/auditScoringCategoryBreakdown" }
+      }
+    },
+    "auditScoringRuleBreakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ruleId",
+        "categoryId",
+        "status",
+        "ruleWeight",
+        "earnedWeight",
+        "includedInScore",
+        "scoreImpact"
+      ],
+      "properties": {
+        "ruleId": { "type": "string", "minLength": 1 },
+        "categoryId": { "type": "string", "minLength": 1 },
+        "status": { "$ref": "#/$defs/checkStatus" },
+        "severity": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/severity" }
+          ]
+        },
+        "ruleWeight": { "type": "number", "minimum": 0 },
+        "earnedWeight": { "type": "number", "minimum": 0 },
+        "includedInScore": { "type": "boolean" },
+        "exclusionReason": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/auditScoringExclusionReason" }
+          ]
+        },
+        "scoreImpact": { "type": "number", "minimum": 0 }
+      }
+    },
+    "auditScoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "overall", "categories", "rules"],
+      "properties": {
+        "model": { "type": "string", "const": "weighted_rule_scoring" },
+        "overall": { "$ref": "#/$defs/auditScoringSummary" },
+        "categories": { "$ref": "#/$defs/auditScoringCategories" },
+        "rules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/auditScoringRuleBreakdown" }
+        }
+      }
+    },
     "redirectStep": {
       "type": "object",
       "additionalProperties": false,
@@ -1332,6 +1442,7 @@
         "robotsTxt": { "$ref": "#/$defs/robotsTxt" },
         "redirectChain": { "$ref": "#/$defs/redirectChain" },
         "indexabilityVerdict": { "$ref": "#/$defs/indexabilityVerdict" },
+        "scoring": { "$ref": "#/$defs/auditScoring" },
         "renderedDom": {
           "oneOf": [
             { "type": "null" },

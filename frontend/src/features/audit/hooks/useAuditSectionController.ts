@@ -184,6 +184,10 @@ export function useAuditSectionController(): AuditSectionViewProps {
   );
   const reportScore =
     typeof report?.summary?.score === "number" ? report.summary.score : 0;
+  const reportScoreConfidence =
+    typeof report?.rawSummary?.scoring?.overall?.confidence === "number"
+      ? report.rawSummary.scoring.overall.confidence
+      : null;
   const issueCount =
     typeof report?.summary?.issueCount === "number"
       ? report.summary.issueCount
@@ -418,6 +422,7 @@ export function useAuditSectionController(): AuditSectionViewProps {
     results: report
         ? {
           reportScore,
+          reportScoreConfidence,
           issueCount,
           passedCheckCount,
           notApplicableCount,

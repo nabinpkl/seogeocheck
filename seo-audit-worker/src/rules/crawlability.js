@@ -14,6 +14,7 @@ const robotsDirectiveConflicts = defineRule({
   id: "robots-directive-conflicts",
   label: "Robots Directive Conflicts",
   packId: "indexability",
+  scoreWeight: 3,
   priority: 4,
   problemFamily: "robots_controls",
   check: (facts) => {
@@ -47,6 +48,7 @@ const robotsIndexing = defineRule({
   id: "robots-indexing",
   label: "Robots Indexing",
   packId: "indexability",
+  scoreWeight: 5,
   priority: 5,
   problemFamily: "robots_controls",
   check: (facts) => {
@@ -109,6 +111,7 @@ const robotsDirectiveHygiene = defineRule({
   id: "robots-directive-hygiene",
   label: "Robots Directive Hygiene",
   packId: "indexability",
+  scoreWeight: 3,
   priority: 6,
   problemFamily: "robots_controls",
   check: (facts) => {
@@ -145,6 +148,7 @@ const robotsNoarchive = defineRule({
   id: "robots-noarchive",
   label: "Robots Noarchive",
   packId: "crawlability",
+  scoreWeight: 1,
   priority: 6,
   problemFamily: "robots_controls",
   check: (facts) => {
@@ -183,6 +187,7 @@ const robotsNotranslate = defineRule({
   id: "robots-notranslate",
   label: "Robots Notranslate",
   packId: "crawlability",
+  scoreWeight: 1,
   priority: 6,
   problemFamily: "robots_controls",
   check: (facts) => {
@@ -221,6 +226,7 @@ const metaRefreshRedirect = defineRule({
   id: "meta-refresh-redirect",
   label: "Meta Refresh Redirect",
   packId: "indexability",
+  scoreWeight: 4,
   priority: 7,
   problemFamily: "meta_refresh",
   check: (facts) => {
@@ -291,6 +297,7 @@ const canonicalSignals = defineRule({
   id: "canonical-signals",
   label: "Canonical Signals",
   packId: "indexability",
+  scoreWeight: 3,
   priority: 7,
   problemFamily: "canonical_controls",
   check: (facts) => {
@@ -367,6 +374,7 @@ const canonicalIndexabilityConsistency = defineRule({
   id: "canonical-indexability-consistency",
   label: "Canonical Indexability Consistency",
   packId: "indexability",
+  scoreWeight: 5,
   priority: 8,
   problemFamily: "canonical_controls",
   check: (facts) => {
@@ -448,6 +456,7 @@ const canonicalTargetHealth = defineRule({
   id: "canonical-target-health",
   label: "Canonical Target Health",
   packId: "indexability",
+  scoreWeight: 4,
   priority: 9,
   problemFamily: "canonical_controls",
   check: (facts) => {
@@ -600,6 +609,7 @@ const robotsTxtCrawlability = defineRule({
   id: "robots-txt-crawlability",
   label: "robots.txt Crawlability",
   packId: "indexability",
+  scoreWeight: 5,
   priority: 10,
   problemFamily: "robots_txt",
   check: (facts) => {
@@ -653,6 +663,7 @@ const redirectChainClarity = defineRule({
   id: "redirect-chain-clarity",
   label: "Redirect Chain Clarity",
   packId: "indexability",
+  scoreWeight: 3,
   priority: 11,
   problemFamily: "redirect_chain",
   check: (facts) => {
@@ -704,6 +715,7 @@ const alternateLanguageSignals = defineRule({
   id: "alternate-language-signals",
   label: "Alternate Language Signals",
   packId: "metadata",
+  scoreWeight: 2,
   priority: 11,
   problemFamily: "alternate_language_controls",
   check: (facts) => {
@@ -766,6 +778,7 @@ const htmlLang = defineRule({
   id: "html-lang",
   label: "HTML Language",
   packId: "crawlability",
+  scoreWeight: 1,
   priority: 25,
   problemFamily: "html_lang",
   check: (facts) => {
@@ -806,6 +819,7 @@ const sourceCrawlableLinks = defineRule({
   id: "source-crawlable-links",
   label: "Source Crawlable Links",
   packId: "crawlability",
+  scoreWeight: 5,
   priority: 12,
   problemFamily: "source_link_presence",
   check: (facts) => {
@@ -838,6 +852,7 @@ const internalLinkRelDiscovery = defineRule({
   id: "internal-link-rel-discovery",
   label: "Internal Link Discovery",
   packId: "crawlability",
+  scoreWeight: 2,
   priority: 13,
   problemFamily: "internal_link_discovery",
   check: (facts) => {
@@ -887,6 +902,7 @@ const internalLinkCoverage = defineRule({
   id: "internal-link-coverage",
   label: "Internal Link Coverage",
   packId: "crawlability",
+  scoreWeight: 2,
   priority: 14,
   problemFamily: "internal_link_discovery",
   check: (facts) => {
@@ -950,6 +966,7 @@ const anchorTextQuality = defineRule({
   id: "anchor-text-quality",
   label: "Anchor Text Quality",
   packId: "crawlability",
+  scoreWeight: 2,
   priority: 18,
   problemFamily: "anchor_text_quality",
   check: (facts) => {
@@ -1018,6 +1035,7 @@ const fragmentRouteHygiene = defineRule({
   id: "fragment-route-hygiene",
   label: "Fragment Route Hygiene",
   packId: "crawlability",
+  scoreWeight: 1,
   priority: 22,
   problemFamily: "fragment_routes",
   check: (facts) => {

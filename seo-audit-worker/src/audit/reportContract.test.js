@@ -203,4 +203,7 @@ test("worker rawSummary top-level keys stay aligned with the shared report schem
 
   assert.deepEqual(Object.keys(result.rawSummary).sort(), rawSummarySchemaKeys);
   assert.equal(result.categoryScores.discovery, 0);
+  assert.equal(result.rawSummary.scoring.model, "weighted_rule_scoring");
+  assert.equal(typeof result.rawSummary.scoring.overall.confidence, "number");
+  assert.equal(Array.isArray(result.rawSummary.scoring.rules), true);
 });

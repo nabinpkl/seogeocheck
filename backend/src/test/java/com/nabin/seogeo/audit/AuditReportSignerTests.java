@@ -190,6 +190,150 @@ class AuditReportSignerTests {
         }
     }
 
+    @Test
+    void signerChoosesTopIssueByScoreImpactBeforeSeverity() throws Exception {
+        AuditProperties auditProperties = new AuditProperties();
+        auditProperties.setReportSigningSecret("test-signing-secret");
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        AuditReportSigner signer = new AuditReportSigner(
+                auditProperties,
+                objectMapper,
+                new AuditContractSchemaValidator(objectMapper)
+        );
+
+        RawSummary rawSummary = objectMapper.readValue(
+                """
+                {
+                  "worker": "seo-audit-worker",
+                  "scoring": {
+                    "model": "weighted_rule_scoring",
+                    "overall": {
+                      "score": 78,
+                      "confidence": 100,
+                      "earnedWeight": 31.5,
+                      "availableWeight": 40,
+                      "totalPossibleWeight": 40
+                    },
+                    "categories": {
+                      "reachability": {
+                        "score": 100,
+                        "confidence": 100,
+                        "earnedWeight": 5,
+                        "availableWeight": 5,
+                        "totalPossibleWeight": 5,
+                        "categoryWeight": 20
+                      },
+                      "crawlability": {
+                        "score": 70,
+                        "confidence": 100,
+                        "earnedWeight": 7,
+                        "availableWeight": 10,
+                        "totalPossibleWeight": 10,
+                        "categoryWeight": 25
+                      },
+                      "indexability": {
+                        "score": 100,
+                        "confidence": 100,
+                        "earnedWeight": 5,
+                        "availableWeight": 5,
+                        "totalPossibleWeight": 5,
+                        "categoryWeight": 25
+                      },
+                      "contentVisibility": {
+                        "score": 100,
+                        "confidence": 100,
+                        "earnedWeight": 5,
+                        "availableWeight": 5,
+                        "totalPossibleWeight": 5,
+                        "categoryWeight": 15
+                      },
+                      "metadata": {
+                        "score": 70,
+                        "confidence": 100,
+                        "earnedWeight": 7,
+                        "availableWeight": 10,
+                        "totalPossibleWeight": 10,
+                        "categoryWeight": 10
+                      },
+                      "discovery": {
+                        "score": 50,
+                        "confidence": 100,
+                        "earnedWeight": 2.5,
+                        "availableWeight": 5,
+                        "totalPossibleWeight": 5,
+                        "categoryWeight": 5
+                      }
+                    },
+                    "rules": [
+                      {
+                        "ruleId": "high-impact-medium-issue",
+                        "categoryId": "crawlability",
+                        "status": "issue",
+                        "severity": "medium",
+                        "ruleWeight": 5,
+                        "earnedWeight": 0,
+                        "includedInScore": true,
+                        "exclusionReason": null,
+                        "scoreImpact": 5
+                      },
+                      {
+                        "ruleId": "low-impact-high-issue",
+                        "categoryId": "metadata",
+                        "status": "issue",
+                        "severity": "high",
+                        "ruleWeight": 3,
+                        "earnedWeight": 0,
+                        "includedInScore": true,
+                        "exclusionReason": null,
+                        "scoreImpact": 3
+                      }
+                    ]
+                  }
+                }
+                """,
+                RawSummary.class
+        );
+
+        SeoAuditResult result = new SeoAuditResult(
+                "https://example.com",
+                "https://example.com/",
+                "At Risk",
+                78,
+                categoryScores(100, 70, 100, 100, 70, 50),
+                List.of(
+                        new SeoAuditCheck(
+                                "low-impact-high-issue",
+                                "High severity but lower score impact",
+                                "issue",
+                                "high",
+                                "Resolve this metadata problem.",
+                                "This issue is severe, but it affects a lower-weight rule.",
+                                "head > title",
+                                null,
+                                metadata("document_title", "source_html", (entry) -> entry.setLength(0))
+                        ),
+                        new SeoAuditCheck(
+                                "high-impact-medium-issue",
+                                "Medium severity with the highest score impact",
+                                "issue",
+                                "medium",
+                                "Resolve this crawlability problem.",
+                                "This issue affects a higher-weight rule.",
+                                "head > meta[name=\"robots\"]",
+                                null,
+                                metadata("robots_controls", "source_html", (entry) -> {})
+                        )
+                ),
+                rawSummary
+        );
+
+        var report = signer.buildReport("audit_top_issue", "https://example.com", result);
+        AuditReportSchema payload = objectMapper.readValue(report.reportJson(), AuditReportSchema.class);
+
+        assertThat(payload.getSummary().getTopIssue())
+                .isEqualTo("Medium severity with the highest score impact");
+    }
+
     private static CategoryScores categoryScores(
             int reachability,
             int crawlability,

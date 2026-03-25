@@ -1,6 +1,7 @@
 package com.nabin.seogeo.audit.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -22,7 +23,9 @@ import java.security.GeneralSecurityException;
 import java.util.Date;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AuditReportSigner {
@@ -75,11 +78,7 @@ public class AuditReportSigner {
         long systemErrorCount = result.checks().stream()
             .filter(check -> "system_error".equals(check.status()))
             .count();
-        String topIssue = result.checks().stream()
-                .filter(check -> "issue".equals(check.status()))
-                .min(Comparator.comparingInt(this::severityRank))
-                .map(SeoAuditCheck::label)
-                .orElse("No major issues detected");
+        String topIssue = selectTopIssue(result);
 
         ReportSummary summary = new ReportSummary();
         summary.setScore(result.score());
@@ -159,6 +158,62 @@ public class AuditReportSigner {
             case "medium" -> 1;
             default -> 2;
         };
+    }
+
+    private String selectTopIssue(SeoAuditResult result) {
+        List<SeoAuditCheck> issues = result.checks().stream()
+                .filter(check -> "issue".equals(check.status()))
+                .toList();
+        if (issues.isEmpty()) {
+            return "No major issues detected";
+        }
+
+        Map<String, Double> scoreImpacts = extractScoreImpacts(result.rawSummary());
+        if (scoreImpacts.isEmpty()) {
+            return issues.stream()
+                    .min(Comparator.comparingInt(this::severityRank))
+                    .map(SeoAuditCheck::label)
+                    .orElse("No major issues detected");
+        }
+
+        SeoAuditCheck bestCheck = null;
+        double bestImpact = Double.NEGATIVE_INFINITY;
+        int bestSeverityRank = Integer.MAX_VALUE;
+        for (SeoAuditCheck issue : issues) {
+            double scoreImpact = scoreImpacts.getOrDefault(issue.id(), 0.0d);
+            int issueSeverityRank = severityRank(issue);
+            if (bestCheck == null
+                    || Double.compare(scoreImpact, bestImpact) > 0
+                    || (Double.compare(scoreImpact, bestImpact) == 0
+                    && issueSeverityRank < bestSeverityRank)) {
+                bestCheck = issue;
+                bestImpact = scoreImpact;
+                bestSeverityRank = issueSeverityRank;
+            }
+        }
+
+        return bestCheck != null ? bestCheck.label() : "No major issues detected";
+    }
+
+    private Map<String, Double> extractScoreImpacts(Object rawSummary) {
+        JsonNode rulesNode = objectMapper.valueToTree(rawSummary).at("/scoring/rules");
+        if (!rulesNode.isArray()) {
+            return Map.of();
+        }
+
+        Map<String, Double> scoreImpacts = new HashMap<>();
+        for (JsonNode ruleNode : rulesNode) {
+            JsonNode ruleIdNode = ruleNode.get("ruleId");
+            JsonNode scoreImpactNode = ruleNode.get("scoreImpact");
+            if (ruleIdNode == null || !ruleIdNode.isTextual() || scoreImpactNode == null
+                    || !scoreImpactNode.isNumber()) {
+                continue;
+            }
+
+            scoreImpacts.put(ruleIdNode.asText(), scoreImpactNode.asDouble());
+        }
+
+        return scoreImpacts;
     }
 
     private String sign(String canonicalJson) {

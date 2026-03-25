@@ -1,10 +1,9 @@
-import { CheerioCrawler, Configuration, PlaywrightCrawler } from "crawlee";
+import { CheerioCrawler, PlaywrightCrawler } from "crawlee";
 import { rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { NativeConnection, Worker } from "@temporalio/worker";
 import { buildSeoAuditResultFromEvaluation, evaluateAudit } from "./audit/buildAuditResult.js";
 import { collectRenderedDomSignals } from "./audit/collectRenderedDomSignals.js";
+import { createAuditPhaseConfig, getAuditStorageRoot } from "./audit/crawlerStorage.js";
 import { collectIndexabilityPreflight } from "./audit/indexabilityPreflight.js";
 import { collectSourceHtmlSignals } from "./audit/collectPageSignals.js";
 import { toSeoAuditFailure } from "./errors.js";
@@ -97,11 +96,13 @@ async function runSeoAudit(jobId, targetUrl) {
   console.log(`[seo-audit-worker] starting audit ${jobId} for ${targetUrl}`);
 
   let auditResult = null;
-    const storageDir = join(tmpdir(), `seogeo-audit-${jobId}`);
+  const storageDir = getAuditStorageRoot(jobId);
 
   try {
-    const config = new Configuration({ storageDir });
-    const sourceSignals = await captureSourceHtmlSignals(targetUrl, config);
+    const sourceSignals = await captureSourceHtmlSignals(
+      targetUrl,
+      createAuditPhaseConfig(jobId, "source")
+    );
     await emitProgressEvent(
       createStageEvent(jobId, "source_capture_complete", "Collected source HTML signals.")
     );
@@ -119,7 +120,10 @@ async function runSeoAudit(jobId, targetUrl) {
     let renderedError = null;
 
     try {
-      renderedSignals = await captureRenderedDomSignals(targetUrl, config);
+      renderedSignals = await captureRenderedDomSignals(
+        targetUrl,
+        createAuditPhaseConfig(jobId, "rendered")
+      );
       await emitProgressEvent(
         createStageEvent(jobId, "rendered_capture_complete", "Rendered comparison is ready.")
       );

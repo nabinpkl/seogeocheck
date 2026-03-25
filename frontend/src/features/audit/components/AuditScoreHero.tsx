@@ -6,6 +6,7 @@ import { SurfaceCard } from "./primitives";
 
 type AuditScoreHeroProps = {
   reportScore: number;
+  scoreConfidence: number | null;
   issueCount: number;
   passedCheckCount: number;
   notApplicableCount: number;
@@ -36,6 +37,19 @@ function formatScoreLabel(tone: "success" | "info" | "critical") {
   return "Needs Attention";
 }
 
+function resolveHeroTone(
+  reportScore: number,
+  scoreConfidence: number | null
+): "success" | "info" | "critical" | "neutral" {
+  if (scoreConfidence === 0) {
+    return "neutral";
+  }
+
+  if (reportScore > 70) return "success";
+  if (reportScore > 40) return "info";
+  return "critical";
+}
+
 function buildOutcomeHeadline(args: {
   issueCount: number;
   passedCheckCount: number;
@@ -55,6 +69,7 @@ function buildOutcomeHeadline(args: {
 
 export function AuditScoreHero({
   reportScore,
+  scoreConfidence,
   issueCount,
   passedCheckCount,
   notApplicableCount,
@@ -62,8 +77,7 @@ export function AuditScoreHero({
   onScrollToIssues,
   onScrollToFamilies,
 }: AuditScoreHeroProps) {
-  const tone =
-    reportScore > 70 ? "success" : reportScore > 40 ? "info" : "critical";
+  const tone = resolveHeroTone(reportScore, scoreConfidence);
   const totalCheckCount =
     issueCount + passedCheckCount + notApplicableCount + systemErrorCount;
   const headline = buildOutcomeHeadline({
@@ -78,12 +92,16 @@ export function AuditScoreHero({
       ? "text-emerald-500"
       : tone === "info"
         ? "text-primary"
+        : tone === "neutral"
+          ? "text-slate-400"
         : "text-rose-500";
   const toneLabelColor =
     tone === "success"
       ? "text-emerald-600"
       : tone === "info"
         ? "text-primary"
+        : tone === "neutral"
+          ? "text-slate-500"
         : "text-rose-600";
 
   const circumference = 2 * Math.PI * 54;
@@ -94,6 +112,7 @@ export function AuditScoreHero({
     { label: "skipped", count: notApplicableCount, tone: "neutral" as const },
     { label: "couldn't run", count: systemErrorCount, tone: "warning" as const },
   ].filter((s) => s.count > 0);
+  const toneLabel = tone === "neutral" ? "Unverified" : formatScoreLabel(tone);
 
   return (
     <SurfaceCard className="group/hub relative overflow-hidden p-0">
@@ -146,7 +165,7 @@ export function AuditScoreHero({
 
             {/* Tone label + check count — below the ring */}
             <span className={cn("mt-2.5 text-xs font-bold tracking-wide", toneLabelColor)}>
-              {formatScoreLabel(tone)}
+              {toneLabel}
             </span>
             <span className="mt-0.5 text-[10px] font-medium text-slate-400">
               {totalCheckCount} checks evaluated

@@ -16,6 +16,7 @@ export type AuditSectionActions = {
 
 export type AuditResultsSectionProps = {
   reportScore: number;
+  reportScoreConfidence: number | null;
   issueCount: number;
   passedCheckCount: number;
   notApplicableCount: number;

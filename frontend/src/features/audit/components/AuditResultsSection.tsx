@@ -10,6 +10,7 @@ import type { AuditResultsSectionProps } from "../types/section";
 
 export function AuditResultsSection({
   reportScore,
+  reportScoreConfidence,
   issueCount,
   passedCheckCount,
   notApplicableCount,
@@ -27,6 +28,7 @@ export function AuditResultsSection({
     <>
       <AuditScoreHero
         reportScore={reportScore}
+        scoreConfidence={reportScoreConfidence}
         issueCount={issueCount}
         passedCheckCount={passedCheckCount}
         notApplicableCount={notApplicableCount}

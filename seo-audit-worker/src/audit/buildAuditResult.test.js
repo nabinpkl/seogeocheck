@@ -106,17 +106,21 @@ test("buildAuditResult compares source and rendered signals and activates discov
   assert.equal(result.rawSummary.renderComparison.sourceOnlyCriticalIssues, 2);
   assert.equal(result.rawSummary.renderComparison.renderedOnlySignals, 0);
   assert.equal(result.rawSummary.renderComparison.mismatches, 1);
-  assert.equal(result.categoryScores.discovery, 0);
+  assert.equal(result.categoryScores.discovery, 65);
+  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 100);
 
   const comparisonChecks = result.checks.filter(
     (check) => check.metadata?.evidenceSource === "surface_comparison"
   );
 
-  assert.equal(comparisonChecks.length, 3);
+  assert.equal(comparisonChecks.length, 8);
   assert.equal(comparisonChecks[0].id, "rendered-visible-text");
   assert.equal(comparisonChecks[0].status, "issue");
   assert.match(comparisonChecks[0].instruction, /Google may need rendering/i);
-  assert.equal(comparisonChecks.at(-1)?.id, "rendered-meta-description-mismatch");
+  assert.equal(
+    comparisonChecks.some((check) => check.id === "rendered-meta-description-mismatch"),
+    true
+  );
 
   const sourceCheck = result.checks.find((check) => check.id === "source-visible-text");
   assert.equal(sourceCheck?.metadata?.evidenceSource, "source_html");
@@ -136,7 +140,35 @@ test("buildAuditResult returns a partial result when the rendered pass fails", (
   const comparisonWarning = result.checks.find(
     (check) => check.id === "rendered-pass-unavailable"
   );
-  assert.equal(comparisonWarning?.status, "issue");
-  assert.equal(comparisonWarning?.severity, "low");
+  assert.equal(comparisonWarning?.status, "system_error");
+  assert.equal(comparisonWarning?.severity, null);
   assert.equal(comparisonWarning?.metadata?.evidenceSource, "surface_comparison");
+  assert.equal(result.categoryScores.discovery, 0);
+  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 0);
+});
+
+test("buildAuditResult marks discovery as healthy when rendered comparison finds no gaps", () => {
+  const sourceInput = createSourceSignals({
+    wordCount: 180,
+    metaDescription: "Example summary",
+    openGraphDescription: "Example summary",
+  });
+
+  const result = buildAuditResult({
+    sourceInput,
+    renderedInput: {
+      ...sourceInput,
+    },
+  });
+
+  assert.deepEqual(result.rawSummary.capturePasses, ["source_html", "rendered_dom"]);
+  assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "low");
+  assert.equal(result.categoryScores.discovery, 100);
+  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 100);
+
+  const discoveryCheck = result.checks.find((check) => check.id === "rendered-visible-text");
+
+  assert.equal(discoveryCheck?.status, "passed");
+  assert.equal(discoveryCheck?.metadata?.evidenceSource, "surface_comparison");
+  assert.equal(discoveryCheck?.metadata?.problemFamily, "render_dependency");
 });

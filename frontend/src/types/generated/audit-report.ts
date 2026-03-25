@@ -42,6 +42,7 @@ export type ReasonCode = 'missing_prerequisite' | 'invalid_prerequisite' | 'upst
 export type NullableString = string | null;
 export type NullableInteger = number | null;
 export type NullableBoolean = boolean | null;
+export type AuditScoringExclusionReason = 'not_applicable' | 'system_error';
 
 export interface AuditReport {
   jobId: string;
@@ -639,6 +640,7 @@ export interface RawSummary {
   robotsTxt?: RobotsTxt;
   redirectChain?: RedirectChain;
   indexabilityVerdict?: IndexabilityVerdict;
+  scoring?: AuditScoring;
   renderedDom?: null | SurfaceSummary;
   renderComparison?: RenderComparison;
 }
@@ -675,6 +677,46 @@ export interface IndexabilityVerdict {
   blockingSignals: string[];
   riskSignals: string[];
   unknownSignals: string[];
+}
+export interface AuditScoring {
+  model: 'weighted_rule_scoring';
+  overall: AuditScoringSummary;
+  categories: AuditScoringCategories;
+  rules: AuditScoringRuleBreakdown[];
+}
+export interface AuditScoringSummary {
+  score: number;
+  confidence: number;
+  earnedWeight: number;
+  availableWeight: number;
+  totalPossibleWeight: number;
+}
+export interface AuditScoringCategories {
+  reachability: AuditScoringCategoryBreakdown;
+  crawlability: AuditScoringCategoryBreakdown;
+  indexability: AuditScoringCategoryBreakdown;
+  contentVisibility: AuditScoringCategoryBreakdown;
+  metadata: AuditScoringCategoryBreakdown;
+  discovery: AuditScoringCategoryBreakdown;
+}
+export interface AuditScoringCategoryBreakdown {
+  score: number;
+  confidence: number;
+  earnedWeight: number;
+  availableWeight: number;
+  totalPossibleWeight: number;
+  categoryWeight: number;
+}
+export interface AuditScoringRuleBreakdown {
+  ruleId: string;
+  categoryId: string;
+  status: CheckStatus;
+  severity?: null | Severity;
+  ruleWeight: number;
+  earnedWeight: number;
+  includedInScore: boolean;
+  exclusionReason?: null | AuditScoringExclusionReason;
+  scoreImpact: number;
 }
 export interface RenderComparison {
   sourceOnlyCriticalIssues: number;

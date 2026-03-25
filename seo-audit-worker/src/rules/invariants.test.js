@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ACTIVE_PACKS, PACKS, SORTED_RULES } from "./registry.js";
+import { DISCOVERY_RULES } from "./compareSurfaces.js";
 
 test("registry exposes the canonical packs in product order", () => {
   assert.deepEqual(
@@ -24,11 +25,20 @@ test("registered rules have unique ids and valid pack relationships", () => {
   for (const rule of SORTED_RULES) {
     assert.equal(typeof rule.packId, "string");
     assert.equal(packIds.has(rule.packId), true);
+    assert.equal(typeof rule.scoreWeight, "number");
+    assert.equal(Number.isFinite(rule.scoreWeight), true);
     assert.ok(Array.isArray(rule.relatedPacks));
     for (const relatedPack of rule.relatedPacks) {
       assert.equal(packIds.has(relatedPack), true);
       assert.notEqual(relatedPack, rule.packId);
     }
+  }
+});
+
+test("discovery scoring rules declare numeric score weights", () => {
+  for (const rule of DISCOVERY_RULES) {
+    assert.equal(typeof rule.scoreWeight, "number");
+    assert.equal(Number.isFinite(rule.scoreWeight), true);
   }
 });
 

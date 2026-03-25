@@ -167,14 +167,6 @@ export function AuditCheckRow({ model }: { model: AuditCheckRowModel }) {
               </p>
             </div>
           ) : null}
-          {model.metric ? (
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                Metric
-              </span>
-              <p className="mt-1 font-mono text-xs tabular-nums">{model.metric}</p>
-            </div>
-          ) : null}
         </div>
       </div>
     </details>

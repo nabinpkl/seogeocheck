@@ -62,17 +62,21 @@ export function AuditCategoryScoreGrid({
               className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/30 p-5 transition-all duration-200 hover:border-slate-200/80 hover:bg-white hover:shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[13px] font-bold tracking-tight text-slate-700">
-                  {category.label}
-                </span>
-                <span
-                  className={cn(
-                    "font-mono text-lg font-black tabular-nums transition-transform duration-200 group-hover:scale-110",
-                    toneStyles.text
-                  )}
-                >
-                  {category.score}
-                </span>
+                <div className="min-w-0">
+                  <span className="text-[13px] font-bold tracking-tight text-slate-700">
+                    {category.label}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span
+                    className={cn(
+                      "font-mono text-lg font-black tabular-nums transition-transform duration-200 group-hover:scale-110",
+                      toneStyles.text
+                    )}
+                  >
+                    {category.score}
+                  </span>
+                </div>
               </div>
               <div className="mt-3.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                 <div

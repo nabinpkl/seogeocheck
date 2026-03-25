@@ -112,6 +112,7 @@ test("normalizeSeoAuditResult maps collected evidence into the new pack scores a
   assert.equal(result.rawSummary.robotsControl.hasNoarchiveDirective, true);
   assert.equal(result.rawSummary.robotsControl.hasNotranslateDirective, true);
   assert.equal(result.categoryScores.discovery, 0);
+  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 0);
   assert.equal(result.rawSummary.sourceHtml.headingHierarchySkipCount, 1);
   assert.equal(result.rawSummary.sourceHtml.bodyImageMissingAltCount, 1);
   assert.equal(result.checks.some((check) => check.id === "document-title-quality"), true);
@@ -453,7 +454,8 @@ test("normalizeSeoAuditResult includes rendered DOM summaries and comparison fin
   assert.equal(result.rawSummary.renderedDom.bodyImageCount, 0);
   assert.equal(result.rawSummary.renderComparison.renderDependencyRisk, "medium");
   assert.equal(result.rawSummary.indexabilityVerdict.verdict, "Indexable");
-  assert.equal(result.categoryScores.discovery, 0);
+  assert.equal(result.categoryScores.discovery, 98);
+  assert.equal(result.rawSummary.scoring.categories.discovery.confidence, 100);
   assert.equal(
     result.checks.some((check) => check.metadata?.evidenceSource === "surface_comparison"),
     true

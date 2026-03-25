@@ -125,9 +125,24 @@ export function DesignSystemGallery() {
   };
 
   const sampleCategories = [
-    { key: "reachability", label: "Reachability", score: 82, tone: "success" as const },
-    { key: "metadata", label: "Metadata", score: 61, tone: "info" as const },
-    { key: "discovery", label: "Discovery", score: 34, tone: "critical" as const },
+    {
+      key: "reachability",
+      label: "Reachability",
+      score: 82,
+      tone: "success" as const,
+    },
+    {
+      key: "metadata",
+      label: "Metadata",
+      score: 61,
+      tone: "info" as const,
+    },
+    {
+      key: "discovery",
+      label: "Discovery",
+      score: 0,
+      tone: "neutral" as const,
+    },
   ];
 
   return (
@@ -463,6 +478,7 @@ export function DesignSystemGallery() {
 
           <AuditScoreHero
             reportScore={61}
+            scoreConfidence={67}
             issueCount={4}
             passedCheckCount={11}
             notApplicableCount={3}

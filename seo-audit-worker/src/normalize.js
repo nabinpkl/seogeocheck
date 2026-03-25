@@ -1,38 +1,7 @@
-import { PACKS, SORTED_RULES } from "./rules/index.js";
+import { SORTED_RULES } from "./rules/index.js";
 import { deriveFacts } from "./rules/deriveFacts.js";
 import { compareSurfaces } from "./rules/compareSurfaces.js";
-
-function clampScore(score) {
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
-
-function averageScore(scores) {
-  if (scores.length === 0) {
-    return 0;
-  }
-
-  const total = scores.reduce((sum, score) => sum + score, 0);
-  return clampScore(total / scores.length);
-}
-
-function averageFamilyScore(checks) {
-  if (checks.length === 0) {
-    return 0;
-  }
-
-  const evaluableChecks = checks.filter(
-    (check) => check.status === "issue" || check.status === "passed"
-  );
-  if (evaluableChecks.length === 0) {
-    return 0;
-  }
-
-  const familyScores = Object.values(
-    Object.groupBy(evaluableChecks, (check) => check.metadata?.problemFamily ?? check.id)
-  ).map((familyChecks) => familyChecks.some((check) => check.status === "issue") ? 0 : 100);
-
-  return averageScore(familyScores);
-}
+import { buildWeightedScoreBreakdown } from "./scoring.js";
 
 function statusRank(status) {
   switch (status) {
@@ -162,23 +131,10 @@ function toSourceCheck(rule, sourceFacts) {
       problemFamily: rule.problemFamily,
     },
     category: rule.packId,
+    scoreWeight: rule.scoreWeight,
     priority: rule.priority,
     relatedPacks: rule.relatedPacks,
   };
-}
-
-function buildCategoryScores(checks) {
-  const categoryIds = new Set([
-    ...PACKS.map((pack) => pack.id),
-    ...checks.map((check) => check.category).filter(Boolean),
-  ]);
-
-  return Object.fromEntries(
-    [...categoryIds].map((categoryId) => [
-      categoryId,
-      averageFamilyScore(checks.filter((check) => check.category === categoryId)),
-    ])
-  );
 }
 
 function sortChecks(checks) {
@@ -202,7 +158,7 @@ function sortChecks(checks) {
       // 4. Label
       return left.label.localeCompare(right.label);
     })
-    .map(({ category, priority, relatedPacks, ...check }) => check);
+    .map(({ category, priority, relatedPacks, scoreWeight, ...check }) => check);
 }
 
 export function evaluateSeoAudit(input) {
@@ -221,8 +177,15 @@ export function evaluateSeoAudit(input) {
     renderedError: input.renderedError,
   });
   const checks = [...sourceChecks, ...comparison.checks];
+  const scoringChecks = [...sourceChecks, ...comparison.scoringChecks];
   const indexabilityVerdict = deriveIndexabilityVerdict(sourceFacts);
-  const categoryScores = buildCategoryScores(checks);
+  const scoring = buildWeightedScoreBreakdown(scoringChecks);
+  const categoryScores = Object.fromEntries(
+    Object.entries(scoring.categories).map(([categoryId, breakdown]) => [
+      categoryId,
+      breakdown.score,
+    ])
+  );
 
   return {
     sourceFacts,
@@ -230,7 +193,9 @@ export function evaluateSeoAudit(input) {
     sourceChecks,
     comparison,
     checks,
+    scoringChecks,
     indexabilityVerdict,
+    scoring,
     categoryScores,
   };
 }
@@ -242,6 +207,7 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
     checks,
     comparison,
     indexabilityVerdict,
+    scoring,
     categoryScores,
   } = evaluation;
   const sortedChecks = sortChecks(checks);
@@ -250,7 +216,7 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
     requestedUrl: sourceFacts.requestedUrl,
     finalUrl: sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
     indexabilityVerdict: indexabilityVerdict.verdict,
-    score: averageScore(Object.values(categoryScores)),
+    score: scoring.overall.score,
     categoryScores,
     checks: sortedChecks,
     rawSummary: {
@@ -306,6 +272,7 @@ export function buildSeoAuditResultFromEvaluation(evaluation) {
       robotsTxt: sourceFacts.robotsTxt,
       redirectChain: sourceFacts.redirectChain,
       indexabilityVerdict,
+      scoring,
       renderedDom: renderedFacts
         ? {
             wordCount: renderedFacts.sourceWordCount,

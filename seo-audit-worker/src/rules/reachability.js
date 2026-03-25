@@ -5,6 +5,7 @@ const urlReachable = defineRule({
   id: "url-reachable",
   label: "URL Reachability",
   packId: "reachability",
+  scoreWeight: 5,
   priority: 90,
   relatedPacks: [],
   check: (facts) =>
