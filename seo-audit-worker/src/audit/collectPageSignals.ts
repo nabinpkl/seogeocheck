@@ -8,6 +8,56 @@ import {
   normalizeHref,
 } from "./signalUtils.js";
 
+type PreflightSignals = {
+  xRobotsTag?: string | null;
+  xRobotsTagHeaders?: string[];
+  headerCanonicalLinks?: Array<{
+    href?: string | null;
+    rel?: string | null;
+    hreflang?: string | null;
+    media?: string | null;
+    type?: string | null;
+  }>;
+  headerAlternateLinks?: Array<{
+    href?: string | null;
+    rel?: string | null;
+    hreflang?: string | null;
+    media?: string | null;
+    type?: string | null;
+  }>;
+  redirectChain?: {
+    status?: string;
+    totalRedirects?: number;
+    finalUrlChanged?: boolean;
+    finalUrl?: string | null;
+    chain?: Array<{
+      url?: string | null;
+      statusCode?: number | null;
+      location?: string | null;
+    }>;
+    error?: string | null;
+  } | null;
+  robotsTxt?: {
+    status?: string;
+    allowsCrawl?: boolean | null;
+    evaluatedUserAgent?: string | null;
+    matchedDirective?: string | null;
+    matchedPattern?: string | null;
+    fetchStatusCode?: number | null;
+    url?: string | null;
+    finalUrl?: string | null;
+    error?: string | null;
+  } | null;
+  canonicalTargetInspection?: {
+    inspectedUrl?: string | null;
+    status?: string;
+    finalUrl?: string | null;
+    statusCode?: number | null;
+    contentType?: string | null;
+    reusedCurrentPageInspection?: boolean;
+  } | null;
+};
+
 function readNamedMeta($, name) {
   const value = $(`meta[name="${name}"]`).attr("content");
   return normalizeText(value);
@@ -230,6 +280,7 @@ function collectStructuredDataJsonLdBlocks($) {
 }
 
 export function collectSourceHtmlSignals({ requestedUrl, request, response, $, preflight = {} }) {
+  const preflightSignals = preflight as PreflightSignals;
   const finalUrl = request.loadedUrl ?? request.url;
   const metaRobotsTags = readNamedMetaValues($, "robots");
   const googlebotRobotsTags = readNamedMetaValues($, "googlebot");
@@ -282,13 +333,13 @@ export function collectSourceHtmlSignals({ requestedUrl, request, response, $, p
     twitterImageValues: readNamedMetaValues($, "twitter:image"),
     htmlCanonicalLinks,
     htmlAlternateLinks,
-    xRobotsTag: preflight.xRobotsTag ?? null,
-    xRobotsTagHeaders: preflight.xRobotsTagHeaders ?? [],
-    headerCanonicalLinks: preflight.headerCanonicalLinks ?? [],
-    headerAlternateLinks: preflight.headerAlternateLinks ?? [],
-    redirectChain: preflight.redirectChain ?? null,
-    robotsTxt: preflight.robotsTxt ?? null,
-    canonicalTargetInspection: preflight.canonicalTargetInspection ?? null,
+    xRobotsTag: preflightSignals.xRobotsTag ?? null,
+    xRobotsTagHeaders: preflightSignals.xRobotsTagHeaders ?? [],
+    headerCanonicalLinks: preflightSignals.headerCanonicalLinks ?? [],
+    headerAlternateLinks: preflightSignals.headerAlternateLinks ?? [],
+    redirectChain: preflightSignals.redirectChain ?? null,
+    robotsTxt: preflightSignals.robotsTxt ?? null,
+    canonicalTargetInspection: preflightSignals.canonicalTargetInspection ?? null,
   };
 }
 

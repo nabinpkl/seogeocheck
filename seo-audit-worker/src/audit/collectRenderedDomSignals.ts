@@ -41,7 +41,7 @@ export async function collectRenderedDomSignals({
         document.querySelectorAll("body h1, body h2, body h3, body h4, body h5, body h6")
       ).map((heading) => ({
         level: Number.parseInt(heading.tagName.slice(1), 10),
-        text: textOf(heading.innerText || heading.textContent),
+        text: textOf((heading as HTMLElement).innerText || heading.textContent),
       })),
       bodyImages: Array.from(document.querySelectorAll("body img")).map((image) => ({
         src: image.getAttribute("src"),

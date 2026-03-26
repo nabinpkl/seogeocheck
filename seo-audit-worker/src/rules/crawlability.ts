@@ -6,11 +6,18 @@ import {
   systemErrorCheck,
 } from "./utils.js";
 
+type MetadataExtraValue =
+  | string
+  | number
+  | boolean
+  | null
+  | Array<string | number | boolean | null>;
+
 function formatConflictDetail(conflict) {
   return `${conflict.target} has conflicting ${conflict.field} directives: ${conflict.values.join(", ")}.`;
 }
 
-function canonicalTargetMetadata(control, extra = {}) {
+function canonicalTargetMetadata(control, extra: Record<string, MetadataExtraValue> = {}) {
   return {
     status: control.status ?? null,
     targetUrl: control.targetUrl ?? null,

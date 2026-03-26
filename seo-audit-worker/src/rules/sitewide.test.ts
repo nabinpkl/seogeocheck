@@ -135,8 +135,10 @@ function createSitewideSummary(overrides = {}) {
   };
 }
 
-function getRule(id) {
-  return sitewideRules.find((rule) => rule.id === id);
+function getRule(id: string) {
+  const rule = sitewideRules.find((entry) => entry.id === id);
+  assert.ok(rule, `Missing sitewide rule: ${id}`);
+  return rule;
 }
 
 test("site host canonicalization flags split preferred origins as high severity", () => {

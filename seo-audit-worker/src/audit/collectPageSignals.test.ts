@@ -2,7 +2,26 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { collectPageSignals } from "./collectPageSignals.js";
 
-function createElement(type, options = {}) {
+type TestNode = {
+  type: string;
+  tagName: string;
+  name: string;
+  attrs: Record<string, string | null | undefined>;
+  textValue: string;
+  htmlValue: string | null;
+  children: TestNode[];
+};
+
+type ElementOptions = {
+  tagName?: string;
+  name?: string;
+  attrs?: Record<string, string | null | undefined>;
+  textValue?: string;
+  htmlValue?: string | null;
+  children?: TestNode[];
+};
+
+function createElement(type: string, options: ElementOptions = {}): TestNode {
   return {
     type,
     tagName: options.tagName ?? type,

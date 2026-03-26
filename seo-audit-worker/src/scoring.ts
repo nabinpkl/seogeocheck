@@ -14,19 +14,39 @@ const ISSUE_EARNED_WEIGHT_MULTIPLIERS = {
   high: 0.2,
 };
 
-function roundWeight(value) {
+type CategoryId = keyof typeof CATEGORY_WEIGHTS;
+type Severity = string;
+type CheckStatus = string;
+
+type ScoredCheck = {
+  id: string;
+  category: string;
+  status: CheckStatus;
+  severity?: Severity | null;
+  scoreWeight: number;
+};
+
+type CategoryAccumulator = {
+  categoryId: string;
+  categoryWeight: number;
+  earnedWeight: number;
+  availableWeight: number;
+  totalPossibleWeight: number;
+};
+
+function roundWeight(value: number) {
   return Number(value.toFixed(2));
 }
 
-function clampScore(score) {
+function clampScore(score: number) {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-function isIncludedInScore(status) {
+function isIncludedInScore(status: CheckStatus) {
   return status === "passed" || status === "issue";
 }
 
-function getExclusionReason(status) {
+function getExclusionReason(status: CheckStatus) {
   if (status === "not_applicable") {
     return "not_applicable";
   }
@@ -38,7 +58,7 @@ function getExclusionReason(status) {
   return null;
 }
 
-function getEarnedWeight({ status, severity, scoreWeight, id }) {
+function getEarnedWeight({ status, severity, scoreWeight, id }: ScoredCheck) {
   if (status === "passed") {
     return scoreWeight;
   }
@@ -59,17 +79,17 @@ function getEarnedWeight({ status, severity, scoreWeight, id }) {
   return 0;
 }
 
-function createCategoryAccumulator(categoryId) {
+function createCategoryAccumulator(categoryId: string): CategoryAccumulator {
   return {
     categoryId,
-    categoryWeight: CATEGORY_WEIGHTS[categoryId] ?? 0,
+    categoryWeight: CATEGORY_WEIGHTS[categoryId as CategoryId] ?? 0,
     earnedWeight: 0,
     availableWeight: 0,
     totalPossibleWeight: 0,
   };
 }
 
-function createCategoryBreakdown(accumulator) {
+function createCategoryBreakdown(accumulator: CategoryAccumulator) {
   const { earnedWeight, availableWeight, totalPossibleWeight } = accumulator;
 
   return {
@@ -86,7 +106,7 @@ function createCategoryBreakdown(accumulator) {
   };
 }
 
-export function buildWeightedScoreBreakdown(checks) {
+export function buildWeightedScoreBreakdown(checks: ScoredCheck[]) {
   const categoryAccumulators = Object.fromEntries(
     Object.keys(CATEGORY_WEIGHTS).map((categoryId) => [
       categoryId,
@@ -94,7 +114,7 @@ export function buildWeightedScoreBreakdown(checks) {
     ])
   );
 
-  const ruleBreakdowns = checks.map((check) => {
+  const ruleBreakdowns = checks.map((check: ScoredCheck) => {
     if (typeof check.scoreWeight !== "number") {
       throw new Error(`Scored rule ${check.id} is missing scoreWeight.`);
     }

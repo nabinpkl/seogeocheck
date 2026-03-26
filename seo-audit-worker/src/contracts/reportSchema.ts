@@ -1,13 +1,30 @@
 import { readFileSync, readdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import type { ErrorObject } from "ajv";
 
 const reportSchemaPath = new URL("../../../schemas/audit/audit-report.schema.json", import.meta.url);
 const reportModuleDirectoryUrl = new URL("../../../schemas/audit/report/", import.meta.url);
+const require = createRequire(import.meta.url);
 
-function readJson(filePath) {
+type JsonData = ReturnType<typeof JSON.parse>;
+type ValidateFunction = {
+  (payload: JsonData): boolean;
+  errors?: ErrorObject[] | null;
+};
+type AjvApi = {
+  addSchema: (schema: JsonData) => AjvApi;
+  compile: (schema: JsonData) => ValidateFunction;
+  errorsText: (errors: ErrorObject[] | null | undefined, options?: { separator?: string }) => string;
+};
+type AjvConstructor = new (options: { allErrors: boolean; strict: boolean }) => AjvApi;
+type AddFormats = (instance: AjvApi) => void;
+
+const Ajv2020 = require("ajv/dist/2020.js").default as AjvConstructor;
+const addFormats = require("ajv-formats").default as AddFormats;
+
+function readJson(filePath: string | URL) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 

@@ -166,8 +166,8 @@ export function evaluateSeoAudit(input) {
   const renderedFacts = input.renderedDom
     ? deriveFacts({
         ...input.renderedDom,
-        requestedUrl: sourceFacts.requestedUrl,
-        finalUrl: input.renderedDom.finalUrl ?? sourceFacts.finalUrl ?? sourceFacts.requestedUrl,
+        requestedUrl: input.requestedUrl,
+        finalUrl: input.renderedDom.finalUrl ?? input.finalUrl ?? input.requestedUrl,
       })
     : null;
   const sourceChecks = SORTED_RULES

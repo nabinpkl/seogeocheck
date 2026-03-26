@@ -33,11 +33,14 @@ import {
 const PLACEHOLDER_TITLES = new Set(["home", "index", "untitled"]);
 const GENERIC_ANCHOR_TEXT = new Set(["click here", "read more", "learn more"]);
 
-function uniqueValues(values) {
-  return [...new Set(values.filter(Boolean))];
+type AnyValue = ReturnType<typeof JSON.parse>;
+type AnyObject = Record<string, AnyValue>;
+
+function uniqueValues(values: Array<string | null | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
-function normalizeAnchor(anchor) {
+function normalizeAnchor(anchor: AnyObject | null | undefined) {
   return {
     href: normalizeText(anchor?.href),
     resolvedHref: normalizeText(anchor?.resolvedHref),
@@ -55,7 +58,7 @@ function normalizeAnchor(anchor) {
   };
 }
 
-function normalizeLinkedImage(image) {
+function normalizeLinkedImage(image: AnyObject | null | undefined) {
   return {
     href: normalizeText(image?.href),
     resolvedHref: normalizeText(image?.resolvedHref),
@@ -63,18 +66,21 @@ function normalizeLinkedImage(image) {
   };
 }
 
-function normalizeHeading(heading) {
-  const level = Number.isFinite(heading?.level) ? Math.round(heading.level) : null;
+function normalizeHeading(heading: AnyObject | null | undefined) {
+  const rawLevel = heading?.level;
+  const level = Number.isFinite(rawLevel) ? Math.round(rawLevel) : null;
 
   return {
-    level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : null,
+    level: level !== null && Number.isInteger(level) && level >= 1 && level <= 6 ? level : null,
     text: normalizeText(heading?.text),
   };
 }
 
-function normalizeBodyImage(image) {
-  const width = Number.isFinite(image?.width) ? Math.round(image.width) : null;
-  const height = Number.isFinite(image?.height) ? Math.round(image.height) : null;
+function normalizeBodyImage(image: AnyObject | null | undefined) {
+  const rawWidth = image?.width;
+  const rawHeight = image?.height;
+  const width = Number.isFinite(rawWidth) ? Math.round(rawWidth) : null;
+  const height = Number.isFinite(rawHeight) ? Math.round(rawHeight) : null;
 
   return {
     src: normalizeText(image?.src),
@@ -90,7 +96,7 @@ function normalizeBodyImage(image) {
   };
 }
 
-export function deriveFacts(input) {
+export function deriveFacts(input: AnyObject) {
   const title = normalizeText(input.title);
   const metaDescription = normalizeText(input.metaDescription);
   const lang = normalizeText(input.lang);

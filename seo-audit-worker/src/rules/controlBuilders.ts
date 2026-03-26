@@ -1,5 +1,9 @@
 import { normalizeText } from "./utils.js";
 
+type AnyValue = ReturnType<typeof JSON.parse>;
+type AnyObject = Record<string, AnyValue>;
+type LooseValue = ReturnType<typeof JSON.parse>;
+
 const HTML_CONTENT_TYPE_PATTERN = /^(text\/html|application\/xhtml\+xml)\b/i;
 const REL_BLOCKING_TOKENS = new Set(["nofollow", "ugc", "sponsored"]);
 const ROBOTS_STATUS_FIELDS = [
@@ -78,8 +82,8 @@ const SOFT_404_ERROR_PATTERNS = [
   /\bcouldn['’]t find\b/i,
 ];
 
-function splitCommaDelimited(value) {
-  if (!value) {
+function splitCommaDelimited(value: LooseValue): string[] {
+  if (typeof value !== "string" || value === "") {
     return [];
   }
 
@@ -110,11 +114,11 @@ function splitCommaDelimited(value) {
   return parts;
 }
 
-function uniqueValues(values) {
-  return [...new Set(values.filter(Boolean))];
+function uniqueValues(values: Array<string | null | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
-function tokenizeComparableText(value) {
+function tokenizeComparableText(value: LooseValue): string[] {
   const normalized = normalizeText(value);
   if (!normalized) {
     return [];
@@ -130,7 +134,7 @@ function tokenizeComparableText(value) {
   );
 }
 
-function matchedSoft404Phrases(value) {
+function matchedSoft404Phrases(value: LooseValue): string[] {
   const normalized = normalizeText(value);
   if (!normalized) {
     return [];
@@ -143,12 +147,12 @@ function matchedSoft404Phrases(value) {
   );
 }
 
-function countSharedTokens(leftTokens, rightTokens) {
+function countSharedTokens(leftTokens: string[], rightTokens: string[]): number {
   const rightSet = new Set(rightTokens);
   return leftTokens.filter((token) => rightSet.has(token)).length;
 }
 
-function statusFromValues(values) {
+function statusFromValues(values: string[]): string | null {
   if (values.length === 0) {
     return null;
   }
@@ -156,7 +160,7 @@ function statusFromValues(values) {
   return values.length === 1 ? values[0] : "conflict";
 }
 
-function summarizeTarget(entries) {
+function summarizeTarget(entries: AnyObject[]) {
   const indexingValues = uniqueValues(entries.flatMap((entry) => entry.indexingValues));
   const followingValues = uniqueValues(entries.flatMap((entry) => entry.followingValues));
   const snippetValues = uniqueValues(entries.flatMap((entry) => entry.snippetValues));
@@ -187,7 +191,7 @@ function summarizeTarget(entries) {
   };
 }
 
-function parseDirectiveText(rawValue) {
+function parseDirectiveText(rawValue: LooseValue) {
   const directives = [];
   const indexingValues = [];
   const followingValues = [];
@@ -275,7 +279,11 @@ function parseDirectiveText(rawValue) {
   };
 }
 
-function parseXRobotsTagHeaders(headers) {
+function parseXRobotsTagHeaders(headers: LooseValue) {
+  if (!Array.isArray(headers)) {
+    return [];
+  }
+
   const entries = [];
 
   for (const rawHeader of headers) {
@@ -310,8 +318,8 @@ function parseXRobotsTagHeaders(headers) {
   return entries;
 }
 
-export function comparableUrl(value) {
-  if (!value) {
+export function comparableUrl(value: LooseValue) {
+  if (typeof value !== "string" || value === "") {
     return null;
   }
 
@@ -324,7 +332,7 @@ export function comparableUrl(value) {
   }
 }
 
-export function normalizeRedirectChain(value) {
+export function normalizeRedirectChain(value: AnyObject | null | undefined) {
   const chain = Array.isArray(value?.chain)
     ? value.chain
         .map((step) => ({
@@ -347,7 +355,7 @@ export function normalizeRedirectChain(value) {
   };
 }
 
-export function normalizeRobotsTxt(value) {
+export function normalizeRobotsTxt(value: AnyObject | null | undefined) {
   return {
     status: normalizeText(value?.status) ?? "unavailable",
     allowsCrawl:
@@ -364,7 +372,7 @@ export function normalizeRobotsTxt(value) {
   };
 }
 
-export function normalizeLinkAnnotations(value) {
+export function normalizeLinkAnnotations(value: LooseValue) {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -378,7 +386,7 @@ export function normalizeLinkAnnotations(value) {
   }));
 }
 
-export function normalizeStructuredDataKinds(value) {
+export function normalizeStructuredDataKinds(value: LooseValue): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -386,7 +394,7 @@ export function normalizeStructuredDataKinds(value) {
   return [...new Set(value.map((kind) => normalizeText(kind)).filter(Boolean))];
 }
 
-function normalizeIconLinks(value) {
+function normalizeIconLinks(value: LooseValue) {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -401,7 +409,7 @@ function normalizeIconLinks(value) {
     .filter((link) => link.href || link.rel || link.sizes || link.type);
 }
 
-function normalizeDuplicateHeadCounts(value) {
+function normalizeDuplicateHeadCounts(value: LooseValue) {
   return Object.fromEntries(
     DUPLICATE_HEAD_FIELDS.map((field) => [
       field,
@@ -410,7 +418,7 @@ function normalizeDuplicateHeadCounts(value) {
   );
 }
 
-function normalizeStructuredDataJsonLdBlocks(value) {
+function normalizeStructuredDataJsonLdBlocks(value: LooseValue): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -421,11 +429,11 @@ function normalizeStructuredDataJsonLdBlocks(value) {
     .filter((block) => typeof block === "string");
 }
 
-export function isHtmlContentType(contentType) {
+export function isHtmlContentType(contentType: string | null | undefined) {
   return Boolean(contentType && HTML_CONTENT_TYPE_PATTERN.test(contentType));
 }
 
-function resolveLinkStatus(href, baseUrl) {
+function resolveLinkStatus(href: string | null | undefined, baseUrl: string | null | undefined) {
   if (!href) {
     return {
       status: "missing",
@@ -461,7 +469,7 @@ function resolveLinkStatus(href, baseUrl) {
   }
 }
 
-function normalizeCanonicalCandidates(candidates, surface, baseUrl) {
+function normalizeCanonicalCandidates(candidates: AnyObject[], surface: string, baseUrl: string) {
   return candidates.map((candidate) => {
     const href = normalizeText(candidate?.href);
     const resolution = resolveLinkStatus(href, baseUrl);
@@ -479,7 +487,12 @@ function normalizeCanonicalCandidates(candidates, surface, baseUrl) {
   });
 }
 
-export function buildCanonicalControl(htmlCanonicalLinks, headerCanonicalLinks, baseUrl, finalUrl) {
+export function buildCanonicalControl(
+  htmlCanonicalLinks: AnyObject[],
+  headerCanonicalLinks: AnyObject[],
+  baseUrl: string,
+  finalUrl: string | null
+) {
   const candidates = [
     ...normalizeCanonicalCandidates(htmlCanonicalLinks, "html", baseUrl),
     ...normalizeCanonicalCandidates(headerCanonicalLinks, "http_header", baseUrl),
@@ -526,7 +539,7 @@ export function buildCanonicalControl(htmlCanonicalLinks, headerCanonicalLinks, 
   };
 }
 
-function normalizeAlternateCandidates(candidates, surface, baseUrl) {
+function normalizeAlternateCandidates(candidates: AnyObject[], surface: string, baseUrl: string) {
   return candidates.map((candidate) => {
     const href = normalizeText(candidate?.href);
     const hreflang = normalizeText(candidate?.hreflang)?.toLowerCase() ?? null;
@@ -545,7 +558,11 @@ function normalizeAlternateCandidates(candidates, surface, baseUrl) {
   });
 }
 
-export function buildAlternateLanguageControl(htmlAlternateLinks, headerAlternateLinks, baseUrl) {
+export function buildAlternateLanguageControl(
+  htmlAlternateLinks: AnyObject[],
+  headerAlternateLinks: AnyObject[],
+  baseUrl: string
+) {
   const annotations = [
     ...normalizeAlternateCandidates(htmlAlternateLinks, "html", baseUrl),
     ...normalizeAlternateCandidates(headerAlternateLinks, "http_header", baseUrl),
@@ -581,7 +598,12 @@ export function buildAlternateLanguageControl(htmlAlternateLinks, headerAlternat
   };
 }
 
-function resolveEffectiveField(allTarget, targetedTarget, field, valuesField) {
+function resolveEffectiveField(
+  allTarget: AnyObject,
+  targetedTarget: AnyObject,
+  field: string,
+  valuesField: string
+) {
   if (Array.isArray(targetedTarget?.[valuesField]) && targetedTarget[valuesField].length > 0) {
     return {
       value: targetedTarget[field] ?? null,
@@ -602,7 +624,11 @@ function resolveEffectiveField(allTarget, targetedTarget, field, valuesField) {
   };
 }
 
-export function buildRobotsControl(metaRobotsTags, googlebotRobotsTags, xRobotsTagHeaders) {
+export function buildRobotsControl(
+  metaRobotsTags: string[],
+  googlebotRobotsTags: string[],
+  xRobotsTagHeaders: string[]
+) {
   const entries = [
     ...(Array.isArray(metaRobotsTags) ? metaRobotsTags : []).map((rawValue) => ({
       surface: "meta_robots",
@@ -716,7 +742,7 @@ export function buildRobotsControl(metaRobotsTags, googlebotRobotsTags, xRobotsT
   };
 }
 
-export function buildLinkDiscoveryControl(sourceAnchors) {
+export function buildLinkDiscoveryControl(sourceAnchors: AnyObject[]) {
   const internalCrawlableLinks = sourceAnchors.filter((anchor) => anchor.sameOrigin && anchor.crawlable);
   const internalNofollowLinks = internalCrawlableLinks.filter((anchor) =>
     anchor.relTokens.includes("nofollow")
@@ -742,7 +768,7 @@ export function buildLinkDiscoveryControl(sourceAnchors) {
   };
 }
 
-export function buildTitleControl(title) {
+export function buildTitleControl(title: string | null) {
   const length = title ? title.length : 0;
 
   return {
@@ -760,7 +786,7 @@ export function buildTitleControl(title) {
   };
 }
 
-export function buildMetaDescriptionControl(metaDescription) {
+export function buildMetaDescriptionControl(metaDescription: string | null) {
   const length = metaDescription ? metaDescription.length : 0;
 
   return {
@@ -778,7 +804,7 @@ export function buildMetaDescriptionControl(metaDescription) {
   };
 }
 
-export function buildHeadingControl(h1Count, headingOutline = []) {
+export function buildHeadingControl(h1Count: number, headingOutline: AnyObject[] = []) {
   const normalizedOutline = Array.isArray(headingOutline)
     ? headingOutline.filter((heading) => Number.isInteger(heading?.level) && heading.level >= 1 && heading.level <= 6)
     : [];
@@ -820,7 +846,7 @@ export function buildHeadingControl(h1Count, headingOutline = []) {
   };
 }
 
-export function buildBodyImageAltControl(bodyImages = []) {
+export function buildBodyImageAltControl(bodyImages: AnyObject[] = []) {
   const normalizedImages = Array.isArray(bodyImages) ? bodyImages : [];
   const eligibleImages = normalizedImages.filter(
     (image) => image?.hasUsableSrc && !image?.isExplicitlyDecorative && !image?.isTrackingPixel
@@ -856,7 +882,7 @@ export function buildSoft404Control({
   headingOutline = [],
   wordCount,
   canonicalSelfReferenceControl,
-}) {
+}: AnyObject) {
   if (statusCode !== 200 || isReachable !== true || isHtmlResponse !== true) {
     return {
       status: "not_applicable",
@@ -935,7 +961,7 @@ export function buildSoft404Control({
   };
 }
 
-export function buildLangControl(lang) {
+export function buildLangControl(lang: LooseValue) {
   const raw = normalizeText(lang);
   if (!raw) {
     return {
@@ -984,7 +1010,7 @@ export function buildCanonicalSelfReferenceControl({
   isReachable,
   isHtmlResponse,
   robotsControl,
-}) {
+}: AnyObject) {
   const hasIndexingConflict = (robotsControl?.sameTargetConflicts ?? []).some(
     (conflict) => conflict.field === "indexing"
   );
@@ -1056,7 +1082,7 @@ export function buildCanonicalSelfReferenceControl({
   };
 }
 
-export function buildMetaRefreshControl(metaRefreshTags = [], baseUrl) {
+export function buildMetaRefreshControl(metaRefreshTags: string[] = [], baseUrl: string) {
   const entries = (Array.isArray(metaRefreshTags) ? metaRefreshTags : []).map((rawValue) => {
     const normalized = normalizeText(rawValue);
     if (!normalized) {
@@ -1145,7 +1171,7 @@ export function buildMetaRefreshControl(metaRefreshTags = [], baseUrl) {
   };
 }
 
-export function buildSocialUrlControl({ openGraphUrl, openGraphImage, twitterImage, baseUrl }) {
+export function buildSocialUrlControl({ openGraphUrl, openGraphImage, twitterImage, baseUrl }: AnyObject) {
   const fields = [
     { field: "openGraphUrl", value: openGraphUrl },
     { field: "openGraphImage", value: openGraphImage },
@@ -1178,7 +1204,7 @@ export function buildSocialUrlControl({ openGraphUrl, openGraphImage, twitterIma
         resolvedUrl: resolution.resolvedUrl,
       };
     })
-    .filter(Boolean);
+    .filter((field): field is { field: string; rawValue: string; status: string; resolvedUrl: string | null } => Boolean(field));
 
   return {
     status:
@@ -1189,7 +1215,7 @@ export function buildSocialUrlControl({ openGraphUrl, openGraphImage, twitterIma
   };
 }
 
-export function buildMetadataAlignmentControl({ title, metaDescription, headingOutline = [] }) {
+export function buildMetadataAlignmentControl({ title, metaDescription, headingOutline = [] }: AnyObject) {
   const firstH1Text = normalizeText(
     headingOutline.find((heading) => heading?.level === 1)?.text ?? null
   );
@@ -1238,7 +1264,7 @@ export function buildInternalLinkCoverageControl({
   isHtmlResponse,
   sourceWordCount,
   sameOriginCrawlableLinkCount,
-}) {
+}: AnyObject) {
   if (!isReachable || !isHtmlResponse || sourceWordCount < 100) {
     return {
       status: "not_applicable",
@@ -1262,7 +1288,7 @@ export function buildInternalLinkCoverageControl({
   };
 }
 
-export function buildHeadingQualityControl(headingOutline = []) {
+export function buildHeadingQualityControl(headingOutline: AnyObject[] = []) {
   const normalizedOutline = Array.isArray(headingOutline)
     ? headingOutline.filter((heading) => Number.isInteger(heading?.level) && heading.level >= 1 && heading.level <= 6)
     : [];
@@ -1278,12 +1304,11 @@ export function buildHeadingQualityControl(headingOutline = []) {
   }
 
   const emptyHeadingCount = normalizedOutline.filter((heading) => !normalizeText(heading.text)).length;
-  const repeatedHeadings = Object.entries(
-    Object.groupBy(
-      normalizedOutline.filter((heading) => normalizeText(heading.text)),
-      (heading) => tokenizeComparableText(heading.text).join(" ")
-    )
-  )
+  const groupedHeadings = Object.groupBy(
+    normalizedOutline.filter((heading) => normalizeText(heading.text)),
+    (heading) => tokenizeComparableText(heading.text).join(" ")
+  ) as Record<string, AnyObject[]>;
+  const repeatedHeadings = Object.entries(groupedHeadings)
     .filter(([key, group]) => key && group.length > 1)
     .map(([, group]) => ({
       text: normalizeText(group[0]?.text),
@@ -1301,7 +1326,7 @@ export function buildHeadingQualityControl(headingOutline = []) {
   };
 }
 
-function summarizeSocialFields(values, duplicateHeadCounts, fieldMap) {
+function summarizeSocialFields(values: AnyObject, duplicateHeadCounts: AnyObject, fieldMap: AnyObject) {
   const fields = Object.entries(fieldMap).map(([key, duplicateKey]) => ({
     key,
     value: normalizeText(values?.[key]),
@@ -1330,7 +1355,7 @@ function summarizeSocialFields(values, duplicateHeadCounts, fieldMap) {
   };
 }
 
-export function buildSocialMetadataControl(input = {}) {
+export function buildSocialMetadataControl(input: AnyObject = {}) {
   const duplicateHeadCounts = normalizeDuplicateHeadCounts(input.duplicateHeadCounts);
   const openGraph = summarizeSocialFields(
     {
@@ -1377,7 +1402,7 @@ export function buildSocialMetadataControl(input = {}) {
   };
 }
 
-export function buildRobotsPreviewControl(robotsControl) {
+export function buildRobotsPreviewControl(robotsControl: AnyObject) {
   const conflicts = (robotsControl?.sameTargetConflicts ?? []).filter((conflict) =>
     ["snippet", "maxSnippet", "maxImagePreview", "maxVideoPreview"].includes(conflict.field)
   );
@@ -1419,7 +1444,7 @@ export function buildRobotsPreviewControl(robotsControl) {
   };
 }
 
-export function buildViewportControl(viewportContent) {
+export function buildViewportControl(viewportContent: LooseValue) {
   const content = normalizeText(viewportContent);
   if (!content) {
     return {
@@ -1447,7 +1472,7 @@ export function buildViewportControl(viewportContent) {
   };
 }
 
-export function buildFaviconControl(iconLinks) {
+export function buildFaviconControl(iconLinks: LooseValue) {
   const normalizedLinks = normalizeIconLinks(iconLinks);
   const linksWithHref = normalizedLinks.filter((link) => link.href);
 
@@ -1459,7 +1484,7 @@ export function buildFaviconControl(iconLinks) {
   };
 }
 
-export function buildHeadHygieneControl(duplicateHeadCounts) {
+export function buildHeadHygieneControl(duplicateHeadCounts: LooseValue) {
   const normalizedCounts = normalizeDuplicateHeadCounts(duplicateHeadCounts);
   const problematicFields = Object.entries(normalizedCounts)
     .filter(([, count]) => count > 1)
@@ -1472,7 +1497,7 @@ export function buildHeadHygieneControl(duplicateHeadCounts) {
   };
 }
 
-export function buildStructuredDataControl(structuredDataJsonLdBlocks) {
+export function buildStructuredDataControl(structuredDataJsonLdBlocks: LooseValue) {
   const blocks = normalizeStructuredDataJsonLdBlocks(structuredDataJsonLdBlocks);
   const blockSummaries = [];
   let validJsonLdBlocks = 0;
@@ -1569,7 +1594,7 @@ export function buildStructuredDataControl(structuredDataJsonLdBlocks) {
   };
 }
 
-export function normalizeUrlInspection(value) {
+export function normalizeUrlInspection(value: AnyObject | null | undefined) {
   const contentType = normalizeText(value?.contentType);
   const statusCode = Number.isFinite(value?.statusCode) ? Math.round(value.statusCode) : null;
   const redirectChain = normalizeRedirectChain(value?.redirectChain);
@@ -1615,7 +1640,7 @@ export function buildCanonicalTargetControl({
   canonicalControl,
   pageFinalUrl,
   canonicalTargetInspection,
-}) {
+}: AnyObject) {
   const targetUrl = canonicalControl?.resolvedCanonicalUrl ?? null;
   if (!targetUrl) {
     return {

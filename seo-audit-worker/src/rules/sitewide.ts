@@ -1,15 +1,22 @@
 import { defineRule } from "./defineRule.js";
 import { issueCheck, notApplicableCheck, passedCheck, systemErrorCheck } from "./utils.js";
 
-function percentLabel(value) {
+type MetadataExtraValue =
+  | string
+  | number
+  | boolean
+  | null
+  | Array<string | number | boolean | null>;
+
+function percentLabel(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
-function pluralize(count, singular, plural = `${singular}s`) {
+function pluralize(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-function sitewideMetadata(sitewide, extra = {}) {
+function sitewideMetadata(sitewide, extra: Record<string, MetadataExtraValue> = {}) {
   return {
     targetUrl: sitewide.siteRootUrl ?? null,
     finalUrl: sitewide.preferredOrigin ?? null,

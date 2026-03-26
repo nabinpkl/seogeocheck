@@ -12,11 +12,13 @@ RUN corepack enable && \
 
 WORKDIR /workspace/seo-audit-worker
 
-COPY seo-audit-worker/package.json seo-audit-worker/pnpm-lock.yaml ./
-RUN pnpm install --prod --frozen-lockfile && \
+COPY seo-audit-worker/package.json seo-audit-worker/pnpm-lock.yaml seo-audit-worker/tsconfig.json ./
+RUN pnpm install --frozen-lockfile && \
     pnpm exec playwright install --with-deps chromium
 
 COPY seo-audit-worker/src ./src
 COPY schemas ../schemas
+
+RUN pnpm run build
 
 CMD ["pnpm", "start"]

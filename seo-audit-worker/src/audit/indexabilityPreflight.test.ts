@@ -2,19 +2,27 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { collectIndexabilityPreflight, evaluateRobotsTxt, inspectUrl } from "./indexabilityPreflight.js";
 
-function createResponse(url, status, headers = {}, body = "") {
-  return {
-    status,
-    ok: status >= 200 && status < 300,
-    url,
-    headers: new Headers(headers),
-    async text() {
-      return body;
-    },
-    body: {
-      async cancel() {},
-    },
-  };
+function createResponse(
+  url: string,
+  status: number,
+  headers: Record<string, string> = {},
+  body = ""
+): Response {
+  const response = new Response(body, { status, headers });
+  Object.defineProperty(response, "url", { value: url });
+  return response;
+}
+
+function toRequestUrl(input: URL | string | Request): string {
+  if (typeof input === "string") {
+    return input;
+  }
+
+  if (input instanceof URL) {
+    return input.toString();
+  }
+
+  return input.url;
 }
 
 test("evaluateRobotsTxt prefers Googlebot rules before wildcard rules", () => {
@@ -39,8 +47,9 @@ test("evaluateRobotsTxt prefers Googlebot rules before wildcard rules", () => {
 });
 
 test("inspectUrl captures redirects, header controls, and head robots metadata", async () => {
-  const fetchCalls = [];
-  const fetchImpl = async (url) => {
+  const fetchCalls: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = toRequestUrl(input as URL | string | Request);
     fetchCalls.push(url);
 
     if (url === "https://example.com/start") {
@@ -131,7 +140,8 @@ test("inspectUrl captures redirects, header controls, and head robots metadata",
 });
 
 test("collectIndexabilityPreflight reuses current page inspection for a self canonical target", async () => {
-  const fetchImpl = async (url) => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = toRequestUrl(input as URL | string | Request);
     if (url === "https://example.com/start") {
       return createResponse(
         url,
@@ -170,8 +180,9 @@ test("collectIndexabilityPreflight reuses current page inspection for a self can
 });
 
 test("collectIndexabilityPreflight inspects an external canonical target once", async () => {
-  const fetchCalls = [];
-  const fetchImpl = async (url) => {
+  const fetchCalls: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = toRequestUrl(input as URL | string | Request);
     fetchCalls.push(url);
 
     if (url === "https://example.com/page") {

@@ -1,4 +1,5 @@
 import { CheerioCrawler, PlaywrightCrawler } from "crawlee";
+import type { Configuration } from "crawlee";
 import { rm } from "node:fs/promises";
 import { NativeConnection, Worker } from "@temporalio/worker";
 import { buildSeoAuditResultFromEvaluation, evaluateAudit } from "./audit/buildAuditResult.js";
@@ -29,8 +30,15 @@ const RENDERED_SETTLE_TIME_MS = 1500;
 const RENDERED_REQUEST_TIMEOUT_SECS = 10;
 const RENDERED_NAVIGATION_TIMEOUT_SECS = 8;
 
-async function captureSourceHtmlSignals(targetUrl, config, preflight = {}) {
-  let sourceSignals = null;
+type AnyValue = ReturnType<typeof JSON.parse>;
+type AnyObject = Record<string, AnyValue>;
+
+async function captureSourceHtmlSignals(
+  targetUrl: string,
+  config: Configuration,
+  preflight: AnyObject = {}
+) {
+  let sourceSignals: AnyObject | null = null;
   const crawler = new CheerioCrawler(
     {
       maxConcurrency: 1,
@@ -57,8 +65,8 @@ async function captureSourceHtmlSignals(targetUrl, config, preflight = {}) {
   return sourceSignals;
 }
 
-async function captureRenderedDomSignals(targetUrl, config) {
-  let renderedSignals = null;
+async function captureRenderedDomSignals(targetUrl: string, config: Configuration) {
+  let renderedSignals: AnyObject | null = null;
   const crawler = new PlaywrightCrawler(
     {
       maxConcurrency: 1,
@@ -92,7 +100,7 @@ async function captureRenderedDomSignals(targetUrl, config) {
   return renderedSignals;
 }
 
-async function runSeoAudit(jobId, targetUrl) {
+async function runSeoAudit(jobId: string, targetUrl: string) {
   if (typeof targetUrl !== "string" || targetUrl.trim() === "") {
     throw new Error("A target URL is required.");
   }
@@ -144,8 +152,8 @@ async function runSeoAudit(jobId, targetUrl) {
       )
     );
 
-    let renderedSignals = null;
-    let renderedError = null;
+    let renderedSignals: AnyObject | null = null;
+    let renderedError: Error | { message: string } | null = null;
 
     try {
       renderedSignals = await captureRenderedDomSignals(
@@ -156,7 +164,7 @@ async function runSeoAudit(jobId, targetUrl) {
         createStageEvent(jobId, "rendered_capture_complete", "Rendered comparison is ready.")
       );
     } catch (error) {
-      renderedError = error;
+      renderedError = error instanceof Error ? error : new Error(String(error));
       console.warn(`[seo-audit-worker] rendered DOM comparison unavailable for ${jobId}:`, error);
       await emitProgressEvent(
         createStageEvent(

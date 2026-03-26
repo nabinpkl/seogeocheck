@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { crawlabilityRules } from "./crawlability.js";
 
-function getRule(id) {
-  return crawlabilityRules.find((rule) => rule.id === id);
+function getRule(id: string) {
+  const rule = crawlabilityRules.find((entry) => entry.id === id);
+  assert.ok(rule, `Missing crawlability rule: ${id}`);
+  return rule;
 }
 
 function createFacts(overrides = {}) {
