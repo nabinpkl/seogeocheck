@@ -13,8 +13,8 @@ type AuditProgressSidebarProps = {
   connectionLabel: string;
   hasAuditFailed: boolean;
   targetUrlLabel: string;
-  gapsCount: number;
-  signalsCount: number;
+  gapsCount: number | string;
+  signalsCount: number | string;
   progressValue: number;
   progressLabel: string;
   progressBarClassName: string;
@@ -65,13 +65,17 @@ export function AuditProgressSidebar({
               <div className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] text-rose-400">
                 Gaps
               </div>
-              <div className="text-3xl font-black text-rose-500">{gapsCount}</div>
+              <div className="text-3xl font-black text-rose-500">
+                {operationState === "active" && gapsCount === 0 ? "—" : gapsCount}
+              </div>
             </div>
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
               <div className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] text-emerald-400">
                 Signals
               </div>
-              <div className="text-3xl font-black text-emerald-500">{signalsCount}</div>
+              <div className="text-3xl font-black text-emerald-500">
+                {operationState === "active" && signalsCount === 0 ? "—" : signalsCount}
+              </div>
             </div>
           </div>
 

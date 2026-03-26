@@ -8,7 +8,7 @@
     "dev": "concurrently -k \"pnpm run generate:audit-types:watch\" \"next dev\"",
     "build": "pnpm run generate:audit-types && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
@@ -36,8 +36,11 @@
     "@types/react-dom": "^19.2.3",
     "babel-plugin-react-compiler": "1.0.0",
     "concurrently": "^9.2.1",
-    "eslint": "^10.1.0",
+    "eslint": "^9.7.0",
     "eslint-config-next": "16.2.1",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "eslint-plugin-jsx-a11y": "6.10.2",
     "json-schema-to-typescript": "^15.0.4",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2"

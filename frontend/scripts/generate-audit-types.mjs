@@ -47,7 +47,7 @@ async function generateTypes() {
   for (const schema of schemas) {
     const compiled = await compileFromFile(schema.source, {
       bannerComment:
-        "/* eslint-disable */\n/**\n * This file is generated from JSON Schema.\n * Do not edit it by hand.\n */",
+        "/**\n * This file is generated from JSON Schema.\n * Do not edit it by hand.\n */",
       style: {
         singleQuote: true,
       },

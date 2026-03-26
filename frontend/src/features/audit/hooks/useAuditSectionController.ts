@@ -216,8 +216,19 @@ export function useAuditSectionController(): AuditSectionViewProps {
     !(reportQuery.error instanceof ReportPendingError)
       ? reportQuery.error.message
       : null);
+
+  const isInitialProgress =
+    !report && !hasAuditFailed && currentProgress === 0 && status !== "COMPLETE";
+
   const progressValue = hasAuditFailed ? 100 : report ? 100 : currentProgress;
-  const progressLabel = hasAuditFailed ? "Failed" : report ? "Ready" : `${currentProgress}%`;
+  const progressLabel = hasAuditFailed
+    ? "Failed"
+    : report
+      ? "Ready"
+      : isInitialProgress
+        ? "Starting..."
+        : `${currentProgress}%`;
+
   const progressBarClassName = hasAuditFailed ? "bg-rose-500" : "bg-primary";
   const currentStepMessage = hasAuditFailed
     ? userFacingError ?? "We couldn't finish reviewing this site."
