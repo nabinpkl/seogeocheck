@@ -1,4 +1,7 @@
 
+# email + password + verification link
+
+vs magic link directly as login
 
 # So you got magic link? But here is the architecture choice that might be worth to consider and how to make it safe?
 
@@ -21,7 +24,8 @@ That same idea applies here: landing on the frontend first is okay if the token 
 ## Safe pattern
 
 The safest frontend-first pattern for your stack is:
-- Email link lands on `site.com/auth/magic?token=...`. [owasp](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url)
+
+- Email link lands on `site.com/auth/magic#token=...`. [owasp](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url)
 - That page loads with no analytics or third-party assets. [owasp](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url)
 - Next.js immediately sends the token to Spring in a POST request body, not in another URL. OWASP guidance says sensitive data should be sent in the HTTP body or headers, not in query strings. [github](https://github.com/OWASP/ASVS/issues/1313)
 - Spring validates the one-time token, invalidates it, and sets the session cookie. [docs.spring](https://docs.spring.io/spring-security/reference/servlet/authentication/onetimetoken.html)
