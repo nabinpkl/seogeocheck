@@ -46,6 +46,7 @@ The sections below describe both the logical execution tiers and the deployment 
 ### Current Deployment Topology (Current State)
 - **Backend Service (`backend/`):** Currently hosts both API responsibilities (audit start, SSE stream delivery, report retrieval) and Java workflow responsibilities (Temporal orchestration, persistence coordination, report signing).
 - **Node Worker Service (`seo-audit-worker/`):** Runs custom SEO-signal extraction and publishes structured worker progress events.
+- **Auth Slice (`backend/`):** Email/password auth is implemented in the Java backend with Postgres-backed Spring Session, SMTP-delivered verification and password-reset links, verified-email-required login, CSRF protection on browser-facing auth mutations, and non-mutating verification/reset GET links that only hand off tokens to the frontend. Audit APIs remain anonymous until a future slice explicitly assigns audits to accounts.
 
 ### Target Worker Topology
 - **API Tier:** Owns external HTTP contracts, audit initiation, SSE stream delivery, and final report retrieval.
@@ -70,6 +71,7 @@ The sections below describe both the logical execution tiers and the deployment 
 - The Server Action is the trusted boundary that can hold Java backend signing credentials, HMAC material, or other privileged secrets.
 - Its responsibility is to request audit start from the Java backend and return a `jobId`.
 - External agents are still allowed to call the backend directly, but they must converge on the same audit-start contract and receive the same durable `jobId` semantics.
+- Authentication is a separate backend contract. Human-facing web auth should still cross the trusted Next.js server boundary first when frontend auth UI is introduced, while non-browser agents may call the backend auth API directly if they intentionally handle the same session or future token contract. Browser-facing auth mutations require CSRF tokens. Verification and password-reset email links must not mutate backend state on `GET`; they hand off the one-time token to the frontend using URL fragments, and the actual verification/reset happens on explicit POST. Password reset still follows the same pattern: generic initiation response, one-time hashed reset token, frontend form handoff, and server-side password mutation.
 
 #### Phase B: The Momentum (Zustand + SSE)
 - Once the UI has the `jobId`, it must open the SSE stream for that audit.
@@ -124,6 +126,7 @@ The sections below describe both the logical execution tiers and the deployment 
 - **TanStack Query:** Owns synchronized server data.
 - **Zustand:** Owns client-side UI/user state.
 - **SSE Stream Payloads:** Treat as transient interaction state until a signed report is persisted.
+- **Backend Sessions:** Authenticated browser/server sessions are durable backend state stored in Postgres through Spring Session JDBC, not frontend-managed client state.
 
 ---
 

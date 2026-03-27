@@ -148,6 +148,15 @@ services:
       - KAFKA_CLUSTERS_0_NAME=local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
 
+  mailpit:
+    image: axllent/mailpit:${MAILPIT_VERSION:-latest}
+    container_name: mailpit
+    networks:
+      - temporal-network
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   temporal-ui:
     image: temporalio/ui:${TEMPORAL_UI_VERSION}
     container_name: temporal-ui
@@ -201,6 +210,8 @@ services:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     ports:
       - "8080:8080"
     networks:
@@ -217,6 +228,11 @@ services:
       - KAFKA_PROGRESS_TOPIC=${KAFKA_PROGRESS_TOPIC:-seogeo.audit.progress.v1}
       - KAFKA_PROGRESS_DLQ_TOPIC=${KAFKA_PROGRESS_DLQ_TOPIC:-seogeo.audit.progress.dlq.v1}
       - KAFKA_PROGRESS_GROUP_ID=${KAFKA_PROGRESS_GROUP_ID:-seogeo-audit-progress-projector}
+      - SPRING_MAIL_HOST=${SPRING_MAIL_HOST:-mailpit}
+      - SPRING_MAIL_PORT=${SPRING_MAIL_PORT:-1025}
+      - SEO_GEO_AUTH_PUBLIC_APP_URL=${SEO_GEO_AUTH_PUBLIC_APP_URL:-http://localhost:3000}
+      - SEO_GEO_AUTH_FROM_EMAIL=${SEO_GEO_AUTH_FROM_EMAIL:-no-reply@seogeocheck.local}
+      - SERVER_SERVLET_SESSION_COOKIE_SECURE=${SERVER_SERVLET_SESSION_COOKIE_SECURE:-false}
 
 networks:
   temporal-network:
