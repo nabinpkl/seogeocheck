@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * This file is generated from JSON Schema.
  * Do not edit it by hand.
