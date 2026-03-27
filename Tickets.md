@@ -6,6 +6,11 @@ to explicit contract
 
 # Improve 11 things need your attention and 18 checks passed to include other numbers such as not applicable or how many were skipped find better user wording or better desgin for mission control dashboard
 
+# Password reset/forgot password and password change flow
+
+# Link audits with users when they would like to continue to save the progress
+
+
 # BLOG-POST 5
 # How llm generates code that seems to work test passed - but is entirely fake
 
