@@ -18,55 +18,39 @@ export function AuditClaimPanel({
   signInHref,
 }: AuditClaimPanelProps) {
   return (
-    <section className="rounded-[2rem] border border-emerald-200/70 bg-[linear-gradient(135deg,rgba(16,185,129,0.08),rgba(255,255,255,0.96))] p-6 shadow-sm">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-2xl space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700">
-            <Save className="size-3.5" />
-            Save This Audit
-          </div>
-          <h3 className="text-2xl font-semibold text-slate-950">
-            Keep this result and continue into multi-site tracking.
-          </h3>
-          <p className="text-sm leading-6 text-slate-600">
-            Create an account or sign in to attach this audit to your workspace, reopen it later, and keep auditing more pages.
-          </p>
-        </div>
-
-        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <Button
-            asChild={Boolean(signUpHref)}
-            disabled={loading || !signUpHref}
-            className="h-12 rounded-xl px-5 text-sm font-semibold"
-          >
-            {signUpHref ? (
-              <Link href={signUpHref}>
-                Create account
-                <ArrowRight className="size-4" />
-              </Link>
+    <div className="flex items-center rounded-full border border-slate-200/60 bg-white/50 px-1 py-0.5 shadow-sm transition-all duration-300 hover:border-slate-300 hover:bg-white hover:shadow-md">
+      <Button
+        asChild={Boolean(signUpHref)}
+        disabled={loading}
+        variant="ghost"
+        className="h-6 rounded-full px-2.5 text-[11px] font-medium text-slate-500 transition-all hover:bg-transparent hover:text-slate-900 active:scale-95 disabled:opacity-50"
+      >
+        {signUpHref ? (
+          <Link href={signUpHref}>
+            {loading ? (
+              <Loader2 className="mr-1.5 size-3 animate-spin" />
             ) : (
-              <span>
-                {loading ? <Loader2 className="size-4 animate-spin" /> : null}
-                Create account
-              </span>
+              <Save className="mr-1.5 size-3 opacity-60" />
             )}
-          </Button>
-          <Button
-            asChild={Boolean(signInHref)}
-            disabled={loading || !signInHref}
-            variant="outline"
-            className="h-12 rounded-xl px-5 text-sm font-semibold"
-          >
-            {signInHref ? <Link href={signInHref}>Sign in instead</Link> : <span>Sign in instead</span>}
-          </Button>
-        </div>
-      </div>
+            Monitor this site?
+          </Link>
+        ) : (
+          <span>
+            {loading ? (
+              <Loader2 className="mr-1.5 size-3 animate-spin" />
+            ) : (
+              <Save className="mr-1.5 size-3 opacity-60" />
+            )}
+            Preparing...
+          </span>
+        )}
+      </Button>
 
       {error ? (
-        <p className="mt-4 text-sm font-medium text-rose-600">
+        <p className="absolute -bottom-4 right-0 text-[10px] font-semibold text-rose-500">
           {error}
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }

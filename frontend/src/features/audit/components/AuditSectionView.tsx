@@ -57,6 +57,7 @@ export function AuditSectionView({
               <div className="flex flex-col gap-6">
                 <AuditStatusHeader
                   model={statusHeader.model}
+                  claimPanel={results?.claimPanel}
                   actions={
                     statusHeader.showCompactActions ? (
                       <AuditResultActions

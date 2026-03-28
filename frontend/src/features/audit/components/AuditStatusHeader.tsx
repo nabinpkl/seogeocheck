@@ -1,15 +1,22 @@
 import * as React from "react";
 import { StatusPill, SurfaceCard } from "./primitives";
+import { AuditClaimPanel } from "./AuditClaimPanel";
 import type { AuditHeaderModel } from "../types/models";
 
-type AuditStatusHeaderProps = {
+export type AuditStatusHeaderProps = {
   model: AuditHeaderModel;
   actions?: React.ReactNode;
+  claimPanel?: {
+    loading: boolean;
+    error: string | null;
+    signUpHref: string | null;
+  } | null;
 };
 
 export function AuditStatusHeader({
   model,
   actions,
+  claimPanel,
 }: AuditStatusHeaderProps) {
   const TitleIcon = model.titleIcon;
 
@@ -23,20 +30,35 @@ export function AuditStatusHeader({
           {model.statusLabel}
         </StatusPill>
 
-        {model.targetUrlHref ? (
-          <a
-            href={model.targetUrlHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="max-w-[240px] truncate text-sm text-slate-400 underline decoration-slate-200 underline-offset-4 transition-all hover:text-primary hover:decoration-primary/50 sm:max-w-md lg:max-w-xl"
-          >
-            {model.targetUrlLabel}
-          </a>
-        ) : (
-          <span className="text-sm text-slate-400">{model.targetUrlLabel}</span>
-        )}
+        <div className="flex items-center gap-3">
+          {model.targetUrlHref ? (
+            <a
+              href={model.targetUrlHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="max-w-[200px] truncate text-sm text-slate-400 underline decoration-slate-200 underline-offset-4 transition-all hover:text-primary hover:decoration-primary/50 sm:max-w-md lg:max-w-lg"
+            >
+              {model.targetUrlLabel}
+            </a>
+          ) : (
+            <span className="text-sm text-slate-400">{model.targetUrlLabel}</span>
+          )}
 
-        {actions}
+          {claimPanel ? (
+            <div className="flex items-center gap-3 border-l border-slate-100 pl-3">
+              <AuditClaimPanel
+                loading={claimPanel.loading}
+                error={claimPanel.error}
+                signUpHref={claimPanel.signUpHref}
+                signInHref={null}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="ml-auto flex items-center gap-3">
+          {actions}
+        </div>
       </div>
 
       <div className="mt-6 flex items-center gap-3 text-slate-900">

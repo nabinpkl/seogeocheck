@@ -8,6 +8,10 @@ type RouteContext = {
 
 export async function POST(_request: Request, { params }: RouteContext) {
   const { jobId } = await params;
+  if (!jobId) {
+    return Response.json({ message: "Job ID is required" }, { status: 400 });
+  }
+
   const response = await backendFetchWithSession(`/audits/${jobId}/claim-tokens`, {
     method: "POST",
   });

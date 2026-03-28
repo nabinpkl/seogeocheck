@@ -56,8 +56,6 @@ export function AuditResultsSection({
       <AuditFamilyChecklistSection groups={familyGroups} />
 
       <AuditResultActions onReAudit={onReAudit} onReset={onReset} />
-
-      {claimPanel ? <AuditClaimPanel {...claimPanel} /> : null}
     </>
   );
 }

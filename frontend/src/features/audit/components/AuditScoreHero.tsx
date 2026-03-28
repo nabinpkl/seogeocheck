@@ -116,12 +116,6 @@ export function AuditScoreHero({
 
   return (
     <SurfaceCard className="group/hub relative overflow-hidden p-0">
-      {/* ambient */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50/40 to-slate-100/60" />
-        <div className="absolute -left-20 top-1/4 h-64 w-64 rounded-full bg-primary/[0.06] blur-[80px]" />
-        <div className="absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-emerald-400/[0.06] blur-[80px]" />
-      </div>
 
       <div className="relative p-6 md:p-8 lg:p-10">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
