@@ -46,7 +46,8 @@ The sections below describe both the logical execution tiers and the deployment 
 ### Current Deployment Topology (Current State)
 - **Backend Service (`backend/`):** Currently hosts both API responsibilities (audit start, SSE stream delivery, report retrieval) and Java workflow responsibilities (Temporal orchestration, persistence coordination, report signing).
 - **Node Worker Service (`seo-audit-worker/`):** Runs custom SEO-signal extraction and publishes structured worker progress events.
-- **Auth Slice (`backend/`):** Email/password auth is implemented in the Java backend with Postgres-backed Spring Session, SMTP-delivered verification and password-reset links, verified-email-required login, CSRF protection on browser-facing auth mutations, and non-mutating verification/reset GET links that only hand off tokens to the frontend. Audit APIs remain anonymous until a future slice explicitly assigns audits to accounts.
+- **Auth Slice (`backend/`):** Email/password auth is implemented in the Java backend with Postgres-backed Spring Session, SMTP-delivered verification and password-reset links, verified-email-required login, CSRF protection on browser-facing auth mutations, and non-mutating verification/reset GET links that only hand off tokens to the frontend.
+- **Audit Ownership Slice (`backend/` + `frontend/`):** Audits may start anonymously from the homepage, but authenticated starts must immediately attach the new run to the signed-in account. Persist ownership on `audit_runs.owner_user_id`; once an audit is claimed, report and stream access become owner-only and non-owner access must resolve as `404`.
 
 ### Target Worker Topology
 - **API Tier:** Owns external HTTP contracts, audit initiation, SSE stream delivery, and final report retrieval.

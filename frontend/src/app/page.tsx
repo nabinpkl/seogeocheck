@@ -12,7 +12,7 @@ export default async function Page() {
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
       <Navbar viewer={viewer} />
-      <Hero />
+      <Hero viewer={viewer} />
       <Features />
       <CTABanner />
       <Footer />

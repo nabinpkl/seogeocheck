@@ -216,13 +216,33 @@ export async function getCurrentUser() {
 }
 
 export async function registerAccount(email: string, password: string) {
-  return postJsonWithCsrf<{ message?: string }>("/auth/register", { email, password });
+  return postJsonWithCsrf<{ message?: string }>("/auth/register", {
+    email,
+    password,
+  });
 }
 
-export async function loginWithPassword(email: string, password: string) {
+export async function registerAccountWithClaim(
+  email: string,
+  password: string,
+  claimToken: string | null
+) {
+  return postJsonWithCsrf<{ message?: string }>("/auth/register", {
+    email,
+    password,
+    claimToken,
+  });
+}
+
+export async function loginWithPassword(
+  email: string,
+  password: string,
+  claimToken?: string | null
+) {
   return postJsonWithCsrf<{ authenticated?: boolean; user?: AuthUser }>("/auth/login", {
     email,
     password,
+    claimToken,
   });
 }
 
@@ -235,7 +255,10 @@ export async function resetPasswordWithToken(token: string, password: string) {
 }
 
 export async function verifyEmailWithToken(token: string) {
-  return postJsonWithCsrf<{ verified?: boolean }>("/auth/verify-email", { token });
+  return postJsonWithCsrf<{ verified?: boolean; authenticated?: boolean }>(
+    "/auth/verify-email",
+    { token }
+  );
 }
 
 export async function logoutBackendSession() {

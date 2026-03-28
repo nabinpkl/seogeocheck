@@ -11,8 +11,13 @@ import {
 } from "@/components/ui/card";
 import { PageShell } from "@/components/ui/page-shell";
 import { AuditSection } from "@/features/audit/AuditSection";
+import type { AuthUser } from "@/features/auth/lib/server-auth";
 
-export function Hero() {
+type HeroProps = {
+  viewer: AuthUser | null;
+};
+
+export function Hero({ viewer }: HeroProps) {
   return (
     <section className="relative -mt-16 pt-32 pb-16 lg:pt-40 lg:pb-24">
       <div className="pointer-events-none absolute inset-0 z-10 bg-blue-950/95 backdrop-blur-[8px]" />
@@ -45,9 +50,7 @@ export function Hero() {
             </Button>
           </div>
 
-
-
-          <AuditSection />
+          <AuditSection isAuthenticated={Boolean(viewer)} />
 
           {/* Explanation Sections: SEO, GEO, AEO */}
           <div className="mt-20 grid w-full gap-8 md:grid-cols-3">

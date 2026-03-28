@@ -1,5 +1,6 @@
 package com.nabin.seogeo.auth.service;
 
+import com.nabin.seogeo.audit.service.AuditClaimService;
 import com.nabin.seogeo.auth.config.AuthProperties;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
 import com.nabin.seogeo.auth.mail.AuthEmailSender;
@@ -11,6 +12,7 @@ import com.nabin.seogeo.auth.persistence.AuthUserEntity;
 import com.nabin.seogeo.auth.persistence.AuthUserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -61,6 +63,7 @@ public class AuthService {
     private static final int MAX_PASSWORD_LENGTH = 255;
     private static final Duration UNKNOWN_USER_LOGIN_DELAY = Duration.ofMillis(500);
     private static final Duration PUBLIC_AUTH_RESPONSE_FLOOR = Duration.ofMillis(400);
+    private static final String PENDING_VERIFICATION_USER_ID_SESSION_KEY = "seogeo.auth.pendingVerificationUserId";
 
     private final AuthUserRepository authUserRepository;
     private final AuthEmailVerificationTokenRepository authEmailVerificationTokenRepository;
@@ -68,6 +71,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthEmailSender authEmailSender;
     private final AuthProperties authProperties;
+    private final AuditClaimService auditClaimService;
     private final Clock clock;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
@@ -82,6 +86,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             AuthEmailSender authEmailSender,
             AuthProperties authProperties,
+            AuditClaimService auditClaimService,
             Clock clock,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
@@ -95,6 +100,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.authEmailSender = authEmailSender;
         this.authProperties = authProperties;
+        this.auditClaimService = auditClaimService;
         this.clock = clock;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -103,7 +109,7 @@ public class AuthService {
         this.securityContextHolderStrategy = securityContextHolderStrategy;
     }
 
-    public void register(String rawEmail, String rawPassword) {
+    public RegistrationResult register(String rawEmail, String rawPassword, String claimToken) {
         OffsetDateTime startedAt = now();
         String emailOriginal = normalizeOriginalEmail(rawEmail);
         String emailNormalized = normalizeEmail(rawEmail);
@@ -112,8 +118,9 @@ public class AuthService {
         try {
             for (int attempt = 0; attempt < 2; attempt++) {
                 try {
-                    transactionTemplate.executeWithoutResult(status -> registerInTransaction(emailOriginal, emailNormalized, rawPassword));
-                    return;
+                    return transactionTemplate.execute(
+                            status -> registerInTransaction(emailOriginal, emailNormalized, rawPassword, claimToken)
+                    );
                 } catch (DataIntegrityViolationException dataIntegrityViolationException) {
                     if (attempt == 1) {
                         throw dataIntegrityViolationException;
@@ -123,16 +130,22 @@ public class AuthService {
         } finally {
             enforcePublicResponseFloor(startedAt);
         }
+        return RegistrationResult.noop();
     }
 
     @Transactional
-    void registerInTransaction(String emailOriginal, String emailNormalized, String rawPassword) {
+    RegistrationResult registerInTransaction(
+            String emailOriginal,
+            String emailNormalized,
+            String rawPassword,
+            String claimToken
+    ) {
         OffsetDateTime now = now();
         Optional<AuthUserEntity> existingUser = authUserRepository.findByEmailNormalizedForUpdate(emailNormalized);
         if (existingUser.isPresent()) {
             AuthUserEntity user = existingUser.get();
             if (isVerified(user)) {
-                return;
+                return RegistrationResult.noop();
             }
 
             user.setEmailOriginal(emailOriginal);
@@ -140,7 +153,8 @@ public class AuthService {
             user.setUpdatedAt(now);
             authUserRepository.save(user);
             issueVerificationIfAllowed(user, now);
-            return;
+            auditClaimService.tryReserveClaim(claimToken, user.getId());
+            return RegistrationResult.pendingVerification(user.getId());
         }
 
         AuthUserEntity user = new AuthUserEntity();
@@ -154,12 +168,15 @@ public class AuthService {
         user.setFailedLoginCount(0);
         authUserRepository.saveAndFlush(user);
         issueVerificationIfAllowed(user, now);
+        auditClaimService.tryReserveClaim(claimToken, user.getId());
+        return RegistrationResult.pendingVerification(user.getId());
     }
 
     @Transactional
     public AuthenticatedUser login(
             String rawEmail,
             String rawPassword,
+            String claimToken,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
@@ -191,19 +208,10 @@ public class AuthService {
         user.setUpdatedAt(now);
         authUserRepository.save(user);
 
-        AuthenticatedUser authenticatedUser = toAuthenticatedUser(user);
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                authenticatedUser,
-                null,
-                AuthorityUtils.createAuthorityList("ROLE_USER")
-        );
-        sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
-
-        SecurityContext context = securityContextHolderStrategy.createEmptyContext();
-        context.setAuthentication(authentication);
-        securityContextHolderStrategy.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
-
+        AuthenticatedUser authenticatedUser = authenticateUser(user, request, response);
+        clearPendingVerificationUser(request);
+        auditClaimService.tryClaimAudit(claimToken, user.getId());
+        auditClaimService.consumeReservedClaimsForUser(user.getId());
         return authenticatedUser;
     }
 
@@ -237,7 +245,11 @@ public class AuthService {
     }
 
     @Transactional
-    public void verifyEmailToken(String rawToken) {
+    public VerificationResult verifyEmailToken(
+            String rawToken,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
         OffsetDateTime now = now();
         AuthEmailVerificationTokenEntity token = claimVerificationToken(rawToken, now);
         AuthUserEntity user = authUserRepository.findById(token.getUserId())
@@ -249,6 +261,11 @@ public class AuthService {
         authUserRepository.save(user);
 
         supersedeActiveVerificationTokens(user.getId(), now, token.getId());
+        boolean authenticated = tryAutoAuthenticateVerifiedUser(user, request, response);
+        if (authenticated) {
+            auditClaimService.consumeReservedClaimsForUser(user.getId());
+        }
+        return new VerificationResult(authenticated);
     }
 
     public void assertVerificationTokenIsUsable(String rawToken) {
@@ -311,6 +328,61 @@ public class AuthService {
             return authenticatedUser;
         }
         throw new InvalidCredentialsException();
+    }
+
+    public void rememberPendingVerificationUser(HttpServletRequest request, UUID userId) {
+        request.getSession(true).setAttribute(PENDING_VERIFICATION_USER_ID_SESSION_KEY, userId.toString());
+    }
+
+    private AuthenticatedUser authenticateUser(
+            AuthUserEntity user,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        AuthenticatedUser authenticatedUser = toAuthenticatedUser(user);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                authenticatedUser,
+                null,
+                AuthorityUtils.createAuthorityList("ROLE_USER")
+        );
+        sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
+
+        SecurityContext context = securityContextHolderStrategy.createEmptyContext();
+        context.setAuthentication(authentication);
+        securityContextHolderStrategy.setContext(context);
+        securityContextRepository.saveContext(context, request, response);
+        return authenticatedUser;
+    }
+
+    private boolean tryAutoAuthenticateVerifiedUser(
+            AuthUserEntity user,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return false;
+        }
+
+        Object pendingUserId = session.getAttribute(PENDING_VERIFICATION_USER_ID_SESSION_KEY);
+        if (!(pendingUserId instanceof String pendingUserIdString)) {
+            return false;
+        }
+
+        if (!user.getId().toString().equals(pendingUserIdString)) {
+            return false;
+        }
+
+        authenticateUser(user, request, response);
+        session.removeAttribute(PENDING_VERIFICATION_USER_ID_SESSION_KEY);
+        return true;
+    }
+
+    private void clearPendingVerificationUser(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.removeAttribute(PENDING_VERIFICATION_USER_ID_SESSION_KEY);
+        }
     }
 
     private void issueVerificationIfAllowed(AuthUserEntity user, OffsetDateTime now) {
@@ -626,6 +698,19 @@ public class AuthService {
                 user.getEmailVerifiedAt() != null,
                 user.getCreatedAt()
         );
+    }
+
+    public record RegistrationResult(UUID pendingUserId) {
+        static RegistrationResult pendingVerification(UUID userId) {
+            return new RegistrationResult(userId);
+        }
+
+        static RegistrationResult noop() {
+            return new RegistrationResult(null);
+        }
+    }
+
+    public record VerificationResult(boolean authenticated) {
     }
 
     public enum VerificationFailureReason {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
 import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
+import com.nabin.seogeo.audit.domain.AccountAuditSummary;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
@@ -20,7 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuditPersistenceService {
@@ -47,6 +50,11 @@ public class AuditPersistenceService {
 
     @Transactional
     public void createPendingRun(String jobId, String targetUrl, OffsetDateTime createdAt) {
+        createPendingRun(jobId, targetUrl, createdAt, null);
+    }
+
+    @Transactional
+    public void createPendingRun(String jobId, String targetUrl, OffsetDateTime createdAt, UUID ownerUserId) {
         if (auditRunRepository.existsById(jobId)) {
             return;
         }
@@ -56,6 +64,10 @@ public class AuditPersistenceService {
         entity.setTargetUrl(targetUrl);
         entity.setStatus(AuditStatus.QUEUED);
         entity.setCreatedAt(createdAt);
+        entity.setOwnerUserId(ownerUserId);
+        if (ownerUserId != null) {
+            entity.setClaimedAt(createdAt);
+        }
         auditRunRepository.save(entity);
     }
 
@@ -178,6 +190,11 @@ public class AuditPersistenceService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<AuditRunEntity> findVisibleRun(String jobId, UUID requesterUserId) {
+        return findRun(jobId).filter(run -> isVisibleTo(run, requesterUserId));
+    }
+
+    @Transactional(readOnly = true)
     public List<AuditEventRecord> findEvents(String jobId) {
         return auditEventRepository.findByJobIdOrderBySequenceAsc(jobId).stream()
                 .map(this::toRecord)
@@ -231,11 +248,60 @@ public class AuditPersistenceService {
         auditRunRepository.save(run);
     }
 
+    @Transactional
+    public void claimRun(String jobId, UUID ownerUserId) {
+        AuditRunEntity run = auditRunRepository.findByIdForUpdate(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Audit not found: " + jobId));
+
+        if (run.getOwnerUserId() == null) {
+            run.setOwnerUserId(ownerUserId);
+            run.setClaimedAt(OffsetDateTime.now());
+            auditRunRepository.save(run);
+            return;
+        }
+
+        if (Objects.equals(run.getOwnerUserId(), ownerUserId)) {
+            if (run.getClaimedAt() == null) {
+                run.setClaimedAt(OffsetDateTime.now());
+                auditRunRepository.save(run);
+            }
+            return;
+        }
+
+        throw new AuditAlreadyClaimedException(jobId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AccountAuditSummary> listOwnedAudits(UUID ownerUserId) {
+        return auditRunRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId).stream()
+                .map(run -> new AccountAuditSummary(
+                        run.getJobId(),
+                        run.getTargetUrl(),
+                        run.getStatus(),
+                        run.getCreatedAt(),
+                        run.getCompletedAt(),
+                        extractScore(run.getJobId())
+                ))
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public AuditReportSchema readReportPayload(String jobId) {
         AuditReportRecord report = findReport(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Report not found for audit " + jobId));
         return readJson(report.reportJson(), AuditReportSchema.class);
+    }
+
+    public boolean isVisibleTo(AuditRunEntity run, UUID requesterUserId) {
+        return run.getOwnerUserId() == null || Objects.equals(run.getOwnerUserId(), requesterUserId);
+    }
+
+    private Integer extractScore(String jobId) {
+        return auditReportRepository.findById(jobId)
+                .map(AuditReportEntity::getReportJson)
+                .map(reportJson -> readJson(reportJson, AuditReportSchema.class))
+                .map(report -> report.getSummary() == null ? null : report.getSummary().getScore())
+                .orElse(null);
     }
 
     private AuditRunEntity getRunOrThrow(String jobId) {
@@ -292,6 +358,12 @@ public class AuditPersistenceService {
             return objectMapper.readValue(payloadJson, type);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Unable to read audit payload.", exception);
+        }
+    }
+
+    public static final class AuditAlreadyClaimedException extends RuntimeException {
+        public AuditAlreadyClaimedException(String jobId) {
+            super("Audit already claimed: " + jobId);
         }
     }
 }

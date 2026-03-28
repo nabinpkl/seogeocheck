@@ -1,10 +1,10 @@
 import * as React from "react";
 import { PageShell } from "@/components/ui/page-shell";
-import { getCurrentUser } from "@/features/auth/lib/server-auth";
 import { ProjectDashboard } from "@/features/dashboard/components/ProjectDashboard";
+import { getAccountAudits } from "@/lib/backend-server";
 
 export default async function DashboardPage() {
-  const viewer = await getCurrentUser();
+  const audits = await getAccountAudits();
 
   return (
     <div className="min-h-screen pb-24 bg-slate-50/50">
@@ -15,7 +15,7 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <ProjectDashboard />
+        <ProjectDashboard audits={audits} />
       </PageShell>
     </div>
   );

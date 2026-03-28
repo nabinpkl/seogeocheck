@@ -5,7 +5,7 @@ import {
   clearFrontendSessionCookie,
   loginWithPassword,
   logoutBackendSession,
-  registerAccount,
+  registerAccountWithClaim,
   requestPasswordReset,
   resetPasswordWithToken,
   verifyEmailWithToken,
@@ -43,6 +43,7 @@ export async function signInAction(
   const email = readString(formData, "email");
   const password = readPassword(formData, "password");
   const nextPath = sanitizeNextPath(readString(formData, "next") || DASHBOARD_PATH);
+  const claimToken = readString(formData, "claimToken") || null;
 
   if (!email || !password) {
     return {
@@ -51,7 +52,7 @@ export async function signInAction(
     };
   }
 
-  const result = await loginWithPassword(email, password);
+  const result = await loginWithPassword(email, password, claimToken);
   if (!result.ok) {
     return {
       ...initialAuthActionState,
@@ -69,6 +70,7 @@ export async function signUpAction(
   const email = readString(formData, "email");
   const password = readPassword(formData, "password");
   const confirmPassword = readPassword(formData, "confirmPassword");
+  const claimToken = readString(formData, "claimToken") || null;
 
   if (!email || !password || !confirmPassword) {
     return {
@@ -92,7 +94,7 @@ export async function signUpAction(
     };
   }
 
-  const result = await registerAccount(email, password);
+  const result = await registerAccountWithClaim(email, password, claimToken);
   if (!result.ok) {
     return {
       ...initialAuthActionState,
@@ -187,6 +189,10 @@ export async function verifyEmailAction(
   const result = await verifyEmailWithToken(token);
   if (!result.ok) {
     redirect(`${VERIFY_EMAIL_PATH}?status=invalid`);
+  }
+
+  if (result.data.authenticated) {
+    redirect(DASHBOARD_PATH);
   }
 
   redirect(`${VERIFY_EMAIL_PATH}?status=success`);

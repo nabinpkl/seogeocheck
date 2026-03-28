@@ -13,8 +13,15 @@ import { initialAuthActionState } from "@/app/actions/auth-state";
 import { signUpAction } from "@/app/actions/auth";
 import { SIGN_IN_PATH } from "@/lib/routes";
 
-export function SignUpForm() {
+type SignUpFormProps = {
+  claimToken: string;
+};
+
+export function SignUpForm({ claimToken }: SignUpFormProps) {
   const [state, formAction] = useActionState(signUpAction, initialAuthActionState);
+  const signInHref = claimToken
+    ? `${SIGN_IN_PATH}?claim=${encodeURIComponent(claimToken)}`
+    : SIGN_IN_PATH;
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -31,6 +38,8 @@ export function SignUpForm() {
       </CardHeader>
       <CardContent className="space-y-6 p-6">
         <form action={formAction} className="space-y-5">
+          <input type="hidden" name="claimToken" value={claimToken} />
+
           <div className="space-y-2">
             <Label htmlFor="sign-up-email">Email</Label>
             <Input
@@ -126,7 +135,7 @@ export function SignUpForm() {
             </span>
           </div>
           <Link
-            href={SIGN_IN_PATH}
+            href={signInHref}
             className="inline-flex items-center gap-2 font-semibold text-primary transition hover:text-primary/80"
           >
             Already Have an Account? Sign in instead

@@ -27,6 +27,12 @@ export type AuditResultsSectionProps = {
   familyGroups: AuditFamilyChecklistGroupModel[];
   onScrollToIssues: () => void;
   onScrollToFamilies: () => void;
+  claimPanel: {
+    loading: boolean;
+    error: string | null;
+    signUpHref: string | null;
+    signInHref: string | null;
+  } | null;
 } & AuditSectionActions;
 
 export type AuditSectionViewProps = {

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { AuditCategoryScoreGrid } from "./AuditCategoryScoreGrid";
 import { AuditChecksSection } from "./AuditChecksSection";
+import { AuditClaimPanel } from "./AuditClaimPanel";
 import { AuditFamilyChecklistSection } from "./AuditFamilyChecklistSection";
 import { AuditResultActions } from "./AuditResultActions";
 import { AuditScoreHero } from "./AuditScoreHero";
@@ -21,6 +22,7 @@ export function AuditResultsSection({
   familyGroups,
   onScrollToIssues,
   onScrollToFamilies,
+  claimPanel,
   onReAudit,
   onReset,
 }: AuditResultsSectionProps) {
@@ -54,6 +56,8 @@ export function AuditResultsSection({
       <AuditFamilyChecklistSection groups={familyGroups} />
 
       <AuditResultActions onReAudit={onReAudit} onReset={onReset} />
+
+      {claimPanel ? <AuditClaimPanel {...claimPanel} /> : null}
     </>
   );
 }

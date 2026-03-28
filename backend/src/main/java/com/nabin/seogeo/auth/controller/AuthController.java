@@ -35,11 +35,18 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(
+    public ResponseEntity<Map<String, String>> register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        AuthService.RegistrationResult result = authService.register(
                 request.email(),
-                request.password()
+                request.password(),
+                request.claimToken()
         );
+        if (result.pendingUserId() != null) {
+            authService.rememberPendingVerificationUser(httpServletRequest, result.pendingUserId());
+        }
         return ResponseEntity.accepted().body(Map.of("message", AuthService.GENERIC_REGISTER_MESSAGE));
     }
 
@@ -52,6 +59,7 @@ public class AuthController {
         AuthenticatedUser user = authService.login(
                 request.email(),
                 request.password(),
+                request.claimToken(),
                 httpServletRequest,
                 httpServletResponse
         );
@@ -77,9 +85,20 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    public Map<String, Boolean> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
-        authService.verifyEmailToken(request.token());
-        return Map.of("verified", true);
+    public Map<String, Boolean> verifyEmail(
+            @Valid @RequestBody VerifyEmailRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
+    ) {
+        AuthService.VerificationResult result = authService.verifyEmailToken(
+                request.token(),
+                httpServletRequest,
+                httpServletResponse
+        );
+        return Map.of(
+                "verified", true,
+                "authenticated", result.authenticated()
+        );
     }
 
     @GetMapping("/csrf")
@@ -126,13 +145,15 @@ public class AuthController {
 
     public record RegisterRequest(
             @NotBlank @Email @Size(max = 320) String email,
-            @NotBlank String password
+            @NotBlank String password,
+            String claimToken
     ) {
     }
 
     public record LoginRequest(
             @NotBlank @Email @Size(max = 320) String email,
-            @NotBlank String password
+            @NotBlank String password,
+            String claimToken
     ) {
     }
 

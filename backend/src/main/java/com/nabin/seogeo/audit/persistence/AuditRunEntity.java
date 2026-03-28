@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "audit_runs")
@@ -36,6 +37,12 @@ public class AuditRunEntity {
 
     @Column(name = "failure_message", columnDefinition = "text")
     private String failureMessage;
+
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
+
+    @Column(name = "claimed_at")
+    private OffsetDateTime claimedAt;
 
     public String getJobId() {
         return jobId;
@@ -91,5 +98,21 @@ public class AuditRunEntity {
 
     public void setFailureMessage(String failureMessage) {
         this.failureMessage = failureMessage;
+    }
+
+    public UUID getOwnerUserId() {
+        return ownerUserId;
+    }
+
+    public void setOwnerUserId(UUID ownerUserId) {
+        this.ownerUserId = ownerUserId;
+    }
+
+    public OffsetDateTime getClaimedAt() {
+        return claimedAt;
+    }
+
+    public void setClaimedAt(OffsetDateTime claimedAt) {
+        this.claimedAt = claimedAt;
     }
 }

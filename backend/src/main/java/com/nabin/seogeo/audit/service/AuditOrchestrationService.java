@@ -7,6 +7,7 @@ import io.temporal.client.WorkflowOptions;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 import com.nabin.seogeo.temporal.audit.AuditWorkflow;
 import com.nabin.seogeo.temporal.audit.AuditWorkflowRequest;
@@ -31,8 +32,8 @@ public class AuditOrchestrationService {
         this.seoSignalsProperties = seoSignalsProperties;
     }
 
-    public void startAudit(String jobId, String targetUrl, OffsetDateTime createdAt) {
-        auditPersistenceService.createPendingRun(jobId, targetUrl, createdAt);
+    public void startAudit(String jobId, String targetUrl, OffsetDateTime createdAt, UUID ownerUserId) {
+        auditPersistenceService.createPendingRun(jobId, targetUrl, createdAt, ownerUserId);
 
         AuditWorkflow workflow = workflowClient.newWorkflowStub(
                 AuditWorkflow.class,

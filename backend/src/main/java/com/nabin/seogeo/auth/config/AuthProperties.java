@@ -42,6 +42,9 @@ public class AuthProperties {
     @NotNull
     private Duration failedLoginMaxDelay = Duration.ofSeconds(30);
 
+    @NotNull
+    private Duration auditClaimTokenTtl = Duration.ofDays(7);
+
     public String getPublicAppUrl() {
         return publicAppUrl;
     }
@@ -120,5 +123,13 @@ public class AuthProperties {
 
     public void setFailedLoginMaxDelay(Duration failedLoginMaxDelay) {
         this.failedLoginMaxDelay = failedLoginMaxDelay;
+    }
+
+    public Duration getAuditClaimTokenTtl() {
+        return auditClaimTokenTtl;
+    }
+
+    public void setAuditClaimTokenTtl(Duration auditClaimTokenTtl) {
+        this.auditClaimTokenTtl = auditClaimTokenTtl;
     }
 }

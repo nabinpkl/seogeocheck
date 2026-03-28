@@ -8,6 +8,7 @@ import { DASHBOARD_PATH } from "@/lib/routes";
 type SignInPageProps = {
   searchParams: Promise<{
     next?: string;
+    claim?: string;
   }>;
 };
 
@@ -17,14 +18,15 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     redirect(DASHBOARD_PATH);
   }
 
-  const { next } = await searchParams;
+  const { next, claim } = await searchParams;
   const nextPath = typeof next === "string" && next.startsWith("/")
     ? next
     : DASHBOARD_PATH;
+  const claimToken = typeof claim === "string" ? claim : "";
 
   return (
     <AuthPageFrame viewer={viewer} minimal>
-      <SignInForm nextPath={nextPath} />
+      <SignInForm nextPath={nextPath} claimToken={claimToken} />
     </AuthPageFrame>
   );
 }

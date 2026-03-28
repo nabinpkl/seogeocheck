@@ -1,5 +1,6 @@
 "use server";
 
+import { backendFetchWithSession, parseJsonResponse } from "@/lib/backend-server";
 import {
   initialAuditActionState,
   type StartAuditActionState,
@@ -32,22 +33,17 @@ export async function startAuditAction(
     };
   }
 
-  const backendUrl =
-    process.env.BACKEND_URL ??
-    process.env.NEXT_PUBLIC_BACKEND_URL ??
-    "http://localhost:8080";
-
   try {
-    const response = await fetch(`${backendUrl}/audits`, {
+    const response = await backendFetchWithSession("/audits", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ url: targetUrl }),
-      cache: "no-store",
     });
 
-    const payload = (await response.json()) as Record<string, unknown>;
+    const payload =
+      (await parseJsonResponse<Record<string, unknown>>(response)) ?? {};
 
     if (!response.ok) {
       return {
@@ -66,8 +62,14 @@ export async function startAuditAction(
       jobId: typeof payload.jobId === "string" ? payload.jobId : null,
       status: typeof payload.status === "string" ? payload.status : null,
       targetUrl,
-      streamUrl: typeof payload.streamUrl === "string" ? payload.streamUrl : null,
-      reportUrl: typeof payload.reportUrl === "string" ? payload.reportUrl : null,
+      streamUrl:
+        typeof payload.jobId === "string"
+          ? `/api/audits/${payload.jobId}/stream`
+          : null,
+      reportUrl:
+        typeof payload.jobId === "string"
+          ? `/api/audits/${payload.jobId}/report`
+          : null,
     };
   } catch {
     return {

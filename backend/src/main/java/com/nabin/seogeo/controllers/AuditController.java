@@ -5,10 +5,13 @@ import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.persistence.AuditRunEntity;
+import com.nabin.seogeo.audit.service.AuditClaimService;
 import com.nabin.seogeo.audit.service.AuditOrchestrationService;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
+import com.nabin.seogeo.auth.domain.AuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -38,37 +41,44 @@ public class AuditController {
 
     private final AuditOrchestrationService auditOrchestrationService;
     private final AuditPersistenceService auditPersistenceService;
+    private final AuditClaimService auditClaimService;
     private final AuditProperties auditProperties;
 
     public AuditController(
             AuditOrchestrationService auditOrchestrationService,
             AuditPersistenceService auditPersistenceService,
+            AuditClaimService auditClaimService,
             AuditProperties auditProperties
     ) {
         this.auditOrchestrationService = auditOrchestrationService;
         this.auditPersistenceService = auditPersistenceService;
+        this.auditClaimService = auditClaimService;
         this.auditProperties = auditProperties;
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createAudit(@Valid @RequestBody StartAuditRequest request) {
+    public ResponseEntity<Map<String, Object>> createAudit(
+            @Valid @RequestBody StartAuditRequest request,
+            Authentication authentication
+    ) {
         String normalizedUrl = normalizeUrl(request.url());
         String jobId = "audit_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         OffsetDateTime createdAt = OffsetDateTime.now();
+        UUID ownerUserId = authenticatedUserId(authentication);
 
-        auditOrchestrationService.startAudit(jobId, normalizedUrl, createdAt);
+        auditOrchestrationService.startAudit(jobId, normalizedUrl, createdAt, ownerUserId);
 
         return ResponseEntity.accepted().body(Map.of(
                 "jobId", jobId,
                 "status", AuditStatus.QUEUED.name(),
-                "streamUrl", buildAuditUrl(jobId, "stream"),
-                "reportUrl", buildAuditUrl(jobId, "report")
+                "streamUrl", buildAuditPath(jobId, "stream"),
+                "reportUrl", buildAuditPath(jobId, "report")
         ));
     }
 
     @GetMapping(path = "/{jobId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamAudit(@PathVariable String jobId) {
-        AuditRunEntity run = auditPersistenceService.findRun(jobId)
+    public SseEmitter streamAudit(@PathVariable String jobId, Authentication authentication) {
+        AuditRunEntity run = auditPersistenceService.findVisibleRun(jobId, authenticatedUserId(authentication))
                 .orElseThrow(() -> new AuditNotFoundException(jobId));
 
         SseEmitter emitter = new SseEmitter(0L);
@@ -89,8 +99,8 @@ public class AuditController {
     }
 
     @GetMapping("/{jobId}/report")
-    public ResponseEntity<Object> getReport(@PathVariable String jobId) {
-        AuditRunEntity run = auditPersistenceService.findRun(jobId)
+    public ResponseEntity<Object> getReport(@PathVariable String jobId, Authentication authentication) {
+        AuditRunEntity run = auditPersistenceService.findVisibleRun(jobId, authenticatedUserId(authentication))
                 .orElseThrow(() -> new AuditNotFoundException(jobId));
 
         if (auditPersistenceService.findReport(jobId).isPresent()) {
@@ -112,6 +122,15 @@ public class AuditController {
                 "status", run.getStatus().name(),
                 "message", "Your final report is still being prepared."
         ));
+    }
+
+    @PostMapping("/{jobId}/claim-tokens")
+    public ResponseEntity<Map<String, String>> createClaimToken(
+            @PathVariable String jobId,
+            Authentication authentication
+    ) {
+        String token = auditClaimService.issueClaimToken(jobId, authenticatedUserId(authentication));
+        return ResponseEntity.ok(Map.of("token", token));
     }
 
     private long replayExistingEvents(String jobId, SseEmitter emitter, AtomicBoolean active) {
@@ -194,9 +213,8 @@ public class AuditController {
         }
     }
 
-    private String buildAuditUrl(String jobId, String suffix) {
-        return ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/audits/{jobId}/" + suffix)
+    private String buildAuditPath(String jobId, String suffix) {
+        return ServletUriComponentsBuilder.fromPath("/audits/{jobId}/" + suffix)
                 .buildAndExpand(jobId)
                 .toUriString();
     }
@@ -213,6 +231,13 @@ public class AuditController {
     public record StartAuditRequest(@NotBlank String url) {
     }
 
+    private UUID authenticatedUserId(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+            return null;
+        }
+        return user.getId();
+    }
+
     private static final class AuditNotFoundException extends RuntimeException {
         private AuditNotFoundException(String jobId) {
             super("Audit not found: " + jobId);
@@ -224,6 +249,16 @@ public class AuditController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "error", "AUDIT_NOT_FOUND",
                 "message", notFoundException.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(AuditClaimService.AuditClaimNotAvailableException.class)
+    public ResponseEntity<Map<String, Object>> handleClaimNotFound(
+            AuditClaimService.AuditClaimNotAvailableException exception
+    ) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "error", "AUDIT_CLAIM_NOT_AVAILABLE",
+                "message", exception.getMessage()
         ));
     }
 

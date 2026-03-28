@@ -3,21 +3,20 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   LayoutDashboard,
-  Search,
   Settings,
   CreditCard,
   LogOut,
-  Globe,
-  Code2
+  FileSearch,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
 import type { AuthUser } from "@/features/auth/lib/server-auth";
 
 const NAV_ITEMS = [
-  { name: "Projects Overview", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Global Roster", href: "/dashboard/urls", icon: Globe },
-  { name: "Competitors", href: "/dashboard/competitors", icon: Search },
+  { name: "Audit History", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Saved Reports", href: "/dashboard", icon: FileSearch },
+  { name: "New Audits", href: "/dashboard#audit-section", icon: Sparkles },
 ];
 
 const SETTINGS_ITEMS = [
@@ -74,7 +73,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
-                item.name === "Projects Overview"
+                item.name === "Audit History"
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}

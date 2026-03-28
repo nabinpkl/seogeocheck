@@ -41,7 +41,13 @@ async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
   return (await response.json()) as AuditReport;
 }
 
-export function useAuditSectionController(): AuditSectionViewProps {
+type UseAuditSectionControllerOptions = {
+  isAuthenticated: boolean;
+};
+
+export function useAuditSectionController({
+  isAuthenticated,
+}: UseAuditSectionControllerOptions): AuditSectionViewProps {
   const [url, setUrl] = React.useState("");
   const [clientError, setClientError] = React.useState<string | null>(null);
   const [actionState, formAction, isPending] = React.useActionState(
@@ -52,6 +58,19 @@ export function useAuditSectionController(): AuditSectionViewProps {
   const [focusedResultJobId, setFocusedResultJobId] = React.useState<string | null>(
     null
   );
+  const [claimPanelState, setClaimPanelState] = React.useState<{
+    jobId: string | null;
+    loading: boolean;
+    error: string | null;
+    signUpHref: string | null;
+    signInHref: string | null;
+  }>({
+    jobId: null,
+    loading: false,
+    error: null,
+    signUpHref: null,
+    signInHref: null,
+  });
   const [isTyping, setIsTyping] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const resultPanelRef = React.useRef<HTMLDivElement | null>(null);
@@ -122,6 +141,13 @@ export function useAuditSectionController(): AuditSectionViewProps {
     });
     connectToStream();
     setHandoffJobId(null);
+    setClaimPanelState({
+      jobId: null,
+      loading: false,
+      error: null,
+      signUpHref: null,
+      signInHref: null,
+    });
     window.scrollTo(0, 0);
   }, [
     actionState.jobId,
@@ -160,6 +186,74 @@ export function useAuditSectionController(): AuditSectionViewProps {
       markVerified();
     }
   }, [markVerified, reportQuery.data, status]);
+
+  React.useEffect(() => {
+    if (
+      isAuthenticated ||
+      !reportQuery.data ||
+      !jobId ||
+      claimPanelState.jobId === jobId
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    setClaimPanelState({
+      jobId,
+      loading: true,
+      error: null,
+      signUpHref: null,
+      signInHref: null,
+    });
+
+    void fetch(`/api/audits/${jobId}/claim-token`, {
+      method: "POST",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as { token?: string; message?: string };
+        if (!response.ok || typeof payload.token !== "string" || !payload.token) {
+          throw new Error(
+            typeof payload.message === "string"
+              ? payload.message
+              : "We couldn't prepare the save link for this audit yet."
+          );
+        }
+
+        const token = encodeURIComponent(payload.token);
+        if (cancelled) {
+          return;
+        }
+
+        setClaimPanelState({
+          jobId,
+          loading: false,
+          error: null,
+          signUpHref: `/sign-up?claim=${token}`,
+          signInHref: `/sign-in?claim=${token}`,
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
+        setClaimPanelState({
+          jobId,
+          loading: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "We couldn't prepare the save link for this audit yet.",
+          signUpHref: null,
+          signInHref: null,
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [claimPanelState.jobId, isAuthenticated, jobId, reportQuery.data]);
 
   const currentProgress =
     [...events].reverse().find((event) => typeof event.progress === "number")
@@ -277,6 +371,13 @@ export function useAuditSectionController(): AuditSectionViewProps {
     setFocusedResultJobId(null);
     setUrl("");
     setClientError(null);
+    setClaimPanelState({
+      jobId: null,
+      loading: false,
+      error: null,
+      signUpHref: null,
+      signInHref: null,
+    });
     queryClient.removeQueries({
       queryKey: jobId ? auditReportQueryKey(jobId) : ["audit-report", "idle"],
     });
@@ -450,6 +551,14 @@ export function useAuditSectionController(): AuditSectionViewProps {
             document
               .getElementById("family-checklists")
               ?.scrollIntoView({ behavior: "smooth" }),
+          claimPanel: isAuthenticated
+            ? null
+            : {
+                loading: claimPanelState.loading,
+                error: claimPanelState.error,
+                signUpHref: claimPanelState.signUpHref,
+                signInHref: claimPanelState.signInHref,
+              },
           onReAudit: handleReAudit,
           onReset: handleReset,
         }

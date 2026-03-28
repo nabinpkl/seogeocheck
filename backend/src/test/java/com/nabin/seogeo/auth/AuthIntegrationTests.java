@@ -20,6 +20,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -71,6 +73,10 @@ class AuthIntegrationTests {
     void setUp() {
         jdbcTemplate.update("delete from spring_session_attributes");
         jdbcTemplate.update("delete from spring_session");
+        jdbcTemplate.update("delete from audit_claim_tokens");
+        jdbcTemplate.update("delete from audit_reports");
+        jdbcTemplate.update("delete from audit_events");
+        jdbcTemplate.update("delete from audit_runs");
         authPasswordResetTokenRepository.deleteAll();
         authEmailVerificationTokenRepository.deleteAll();
         authUserRepository.deleteAll();
@@ -253,6 +259,104 @@ class AuthIntegrationTests {
     }
 
     @Test
+    void sameBrowserVerificationAutoAuthenticatesAndClaimsReservedAudit() {
+        String jobId = startAnonymousAudit("example.com");
+        String claimToken = createClaimToken(jobId);
+
+        CsrfState registrationCsrf = fetchCsrfState();
+        var registerResult = restTestClient.post()
+                .uri("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-XSRF-TOKEN", registrationCsrf.token())
+                .header(HttpHeaders.COOKIE, registrationCsrf.cookie())
+                .body(Map.of(
+                        "email", "owner@example.com",
+                        "password", "CorrectHorse1!",
+                        "claimToken", claimToken
+                ))
+                .exchange()
+                .expectStatus().isAccepted()
+                .returnResult(Map.class);
+
+        String sessionCookie = extractCookie(registerResult.getResponseHeaders(), "seogeo_session");
+        awaitEmailsOfType(EmailType.VERIFICATION, 1);
+        String verificationToken = extractToken(authEmailSender.lastEmailOfType(EmailType.VERIFICATION).actionUrl());
+
+        CsrfState verificationCsrf = fetchCsrfState(sessionCookie);
+        var verificationResult = restTestClient.post()
+                .uri("/auth/verify-email")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-XSRF-TOKEN", verificationCsrf.token())
+                .header(HttpHeaders.COOKIE, verificationCsrf.cookie())
+                .body(Map.of("token", verificationToken))
+                .exchange()
+                .expectStatus().isOk()
+                .returnResult(Map.class);
+
+        assertThat(verificationResult.getResponseBody()).containsEntry("authenticated", true);
+
+        String verifiedSessionCookie = extractCookie(verificationResult.getResponseHeaders(), "seogeo_session");
+        expectAuthenticatedUser(verifiedSessionCookie, "owner@example.com");
+        expectOwnedAudits(verifiedSessionCookie, jobId);
+
+        restTestClient.get()
+                .uri("/audits/{jobId}/report", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void crossBrowserVerificationKeepsReservedClaimUntilLaterLogin() {
+        String jobId = startAnonymousAudit("example.com");
+        String claimToken = createClaimToken(jobId);
+
+        CsrfState registrationCsrf = fetchCsrfState();
+        restTestClient.post()
+                .uri("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-XSRF-TOKEN", registrationCsrf.token())
+                .header(HttpHeaders.COOKIE, registrationCsrf.cookie())
+                .body(Map.of(
+                        "email", "owner@example.com",
+                        "password", "CorrectHorse1!",
+                        "claimToken", claimToken
+                ))
+                .exchange()
+                .expectStatus().isAccepted();
+
+        awaitEmailsOfType(EmailType.VERIFICATION, 1);
+        String verificationToken = extractToken(authEmailSender.lastEmailOfType(EmailType.VERIFICATION).actionUrl());
+
+        Map<String, Object> verificationBody = verifyToken(verificationToken);
+        assertThat(verificationBody).containsEntry("authenticated", false);
+
+        String sessionCookie = loginAndExtractSessionCookie("owner@example.com", "CorrectHorse1!");
+        expectOwnedAudits(sessionCookie, jobId);
+
+        restTestClient.get()
+                .uri("/audits/{jobId}/report", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void existingUserSignInWithClaimTokenClaimsAnonymousAudit() {
+        register("owner@example.com", "CorrectHorse1!");
+        verifyLatestEmailToken();
+
+        String jobId = startAnonymousAudit("example.com");
+        String claimToken = createClaimToken(jobId);
+
+        String sessionCookie = loginAndExtractSessionCookie("owner@example.com", "CorrectHorse1!", claimToken);
+        expectOwnedAudits(sessionCookie, jobId);
+
+        restTestClient.get()
+                .uri("/audits/{jobId}/report", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void forgotPasswordCreatesResetTokenForVerifiedUserOnly() {
         register("owner@example.com", "CorrectHorse1!");
 
@@ -314,11 +418,19 @@ class AuthIntegrationTests {
         String verificationToken = extractToken(authEmailSender.lastEmailOfType(EmailType.VERIFICATION).actionUrl());
         List<Object> outcomes = runConcurrently(
                 () -> {
-                    authService.verifyEmailToken(verificationToken);
+                    authService.verifyEmailToken(
+                            verificationToken,
+                            new MockHttpServletRequest(),
+                            new MockHttpServletResponse()
+                    );
                     return "success";
                 },
                 () -> {
-                    authService.verifyEmailToken(verificationToken);
+                    authService.verifyEmailToken(
+                            verificationToken,
+                            new MockHttpServletRequest(),
+                            new MockHttpServletResponse()
+                    );
                     return "success";
                 }
         );
@@ -338,11 +450,11 @@ class AuthIntegrationTests {
 
         List<Object> outcomes = runConcurrently(
                 () -> {
-                    authService.register("owner@example.com", "CorrectHorse1!");
+                    authService.register("owner@example.com", "CorrectHorse1!", null);
                     return "done";
                 },
                 () -> {
-                    authService.register("owner@example.com", "CorrectHorse1!");
+                    authService.register("owner@example.com", "CorrectHorse1!", null);
                     return "done";
                 }
         );
@@ -546,22 +658,32 @@ class AuthIntegrationTests {
     }
 
     private String loginAndExtractSessionCookie(String email, String password) {
+        return loginAndExtractSessionCookie(email, password, null);
+    }
+
+    private String loginAndExtractSessionCookie(String email, String password, String claimToken) {
         CsrfState csrf = fetchCsrfState();
         var loginResult = restTestClient.post()
                 .uri("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-XSRF-TOKEN", csrf.token())
                 .header(HttpHeaders.COOKIE, csrf.cookie())
-                .body(Map.of(
-                        "email", email,
-                        "password", password
-                ))
+                .body(claimToken == null
+                        ? Map.of(
+                                "email", email,
+                                "password", password
+                        )
+                        : Map.of(
+                                "email", email,
+                                "password", password,
+                                "claimToken", claimToken
+                        ))
                 .exchange()
                 .expectStatus().isOk()
                 .returnResult(Map.class);
-        String cookie = loginResult.getResponseHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        String cookie = extractCookie(loginResult.getResponseHeaders(), "seogeo_session");
         assertThat(cookie).contains("seogeo_session=");
-        return cookie.split(";", 2)[0];
+        return cookie;
     }
 
     private void expectAuthenticatedUser(String sessionCookie, String expectedEmail) {
@@ -670,21 +792,80 @@ class AuthIntegrationTests {
                 .getFirst("token");
     }
 
-    private CsrfState fetchCsrfState() {
-        var result = restTestClient.get()
+    private CsrfState fetchCsrfState(String... existingCookies) {
+        var request = restTestClient.get()
                 .uri("/auth/csrf")
-                .exchange()
+                .accept(MediaType.APPLICATION_JSON);
+        if (existingCookies.length > 0) {
+            request.header(HttpHeaders.COOKIE, combineCookies(existingCookies));
+        }
+
+        var result = request.exchange()
                 .expectStatus().isOk()
                 .returnResult(Map.class);
 
-        String cookie = result.getResponseHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        List<String> responseCookies = result.getResponseHeaders().get(HttpHeaders.SET_COOKIE);
+        assertThat(responseCookies).isNotNull();
+        assertThat(responseCookies).isNotEmpty();
+        String cookie = combineCookies(
+                Arrays.stream(existingCookies).toArray(String[]::new)
+        );
+        String responseCookieHeader = responseCookies.stream()
+                .map(entry -> entry.split(";", 2)[0])
+                .collect(Collectors.joining("; "));
+        cookie = cookie.isBlank() ? responseCookieHeader : combineCookies(cookie, responseCookieHeader);
         assertThat(cookie).contains("XSRF-TOKEN=");
 
         Map<String, Object> body = result.getResponseBody();
         return new CsrfState(
                 body.get("token").toString(),
-                cookie.split(";", 2)[0]
+                cookie
         );
+    }
+
+    private String startAnonymousAudit(String url) {
+        Map<String, Object> responseBody = restTestClient.post()
+                .uri("/audits")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("url", url))
+                .exchange()
+                .expectStatus().isAccepted()
+                .returnResult(Map.class)
+                .getResponseBody();
+        return String.valueOf(responseBody.get("jobId"));
+    }
+
+    private String createClaimToken(String jobId) {
+        Map<String, Object> responseBody = restTestClient.post()
+                .uri("/audits/{jobId}/claim-tokens", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .returnResult(Map.class)
+                .getResponseBody();
+        return String.valueOf(responseBody.get("token"));
+    }
+
+    private void expectOwnedAudits(String sessionCookie, String expectedJobId) {
+        restTestClient.get()
+                .uri("/account/audits")
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(List.class)
+                .value(body -> assertThat(body).anySatisfy(item -> {
+                    Map<String, Object> audit = (Map<String, Object>) item;
+                    assertThat(audit.get("jobId")).isEqualTo(expectedJobId);
+                }));
+    }
+
+    private String extractCookie(HttpHeaders headers, String cookieName) {
+        List<String> cookies = headers.get(HttpHeaders.SET_COOKIE);
+        assertThat(cookies).isNotNull();
+        return cookies.stream()
+                .map(cookie -> cookie.split(";", 2)[0])
+                .filter(cookie -> cookie.startsWith(cookieName + "="))
+                .findFirst()
+                .orElseThrow();
     }
 
     private void awaitEmailsOfType(EmailType emailType, int expectedCount) {

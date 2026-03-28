@@ -15,10 +15,14 @@ import { RESET_PASSWORD_PATH, SIGN_UP_PATH } from "@/lib/routes";
 
 type SignInFormProps = {
   nextPath: string;
+  claimToken: string;
 };
 
-export function SignInForm({ nextPath }: SignInFormProps) {
+export function SignInForm({ nextPath, claimToken }: SignInFormProps) {
   const [state, formAction] = useActionState(signInAction, initialAuthActionState);
+  const signUpHref = claimToken
+    ? `${SIGN_UP_PATH}?claim=${encodeURIComponent(claimToken)}`
+    : SIGN_UP_PATH;
   const [showPassword, setShowPassword] = React.useState(false);
 
   return (
@@ -32,6 +36,7 @@ export function SignInForm({ nextPath }: SignInFormProps) {
       <CardContent className="space-y-6 p-6">
         <form action={formAction} className="space-y-5">
           <input type="hidden" name="next" value={nextPath} />
+          <input type="hidden" name="claimToken" value={claimToken} />
 
           <div className="space-y-2">
             <Label htmlFor="sign-in-email">Email</Label>
@@ -100,7 +105,7 @@ export function SignInForm({ nextPath }: SignInFormProps) {
             Create an account, to save your progress and track multiple pages of your site.
           </p>
           <Link
-            href={SIGN_UP_PATH}
+            href={signUpHref}
             className="mt-3 inline-flex items-center gap-2 font-semibold text-primary transition hover:text-primary/80"
           >
             Create an account
