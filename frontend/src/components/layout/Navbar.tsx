@@ -7,9 +7,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { UNDER_CONSTRUCTION_PATH } from "@/lib/routes";
+import {
+  DASHBOARD_PATH,
+  SIGN_IN_PATH,
+  SIGN_UP_PATH,
+  UNDER_CONSTRUCTION_PATH,
+} from "@/lib/routes";
 
-export function Navbar() {
+type NavbarProps = {
+  viewer?: {
+    email: string;
+  } | null;
+};
+
+export function Navbar({ viewer = null }: NavbarProps) {
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const pathname = usePathname();
@@ -110,23 +121,45 @@ export function Navbar() {
           }`} /> {/* Vertical Separator */}
 
           <div className="flex items-center gap-3">
-            <Button
-              asChild
-              variant="outline"
-              className={
-                isLightStyle
-                  ? "h-10 rounded-xl border-slate-200 bg-transparent px-5 text-sm font-semibold text-slate-700 hover:border-primary/50 hover:text-primary"
-                  : "h-10 rounded-xl border-white/30 bg-transparent px-5 text-sm font-semibold text-white hover:border-primary/50 hover:bg-white/5 hover:text-primary"
-              }
-            >
-              <Link href={UNDER_CONSTRUCTION_PATH}>Sign In</Link>
-            </Button>
-            <Button
-              asChild
-              className="h-10 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Link href={UNDER_CONSTRUCTION_PATH}>Try For Free</Link>
-            </Button>
+            {viewer ? (
+              <>
+                <div
+                  className={`hidden rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] lg:block ${
+                    isLightStyle
+                      ? "border-slate-200 bg-white/80 text-slate-500"
+                      : "border-white/20 bg-white/8 text-white/70"
+                  }`}
+                >
+                  {viewer.email}
+                </div>
+                <Button
+                  asChild
+                  className="h-10 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Link href={DASHBOARD_PATH}>Dashboard</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  asChild
+                  variant="outline"
+                  className={
+                    isLightStyle
+                      ? "h-10 rounded-xl border-slate-200 bg-transparent px-5 text-sm font-semibold text-slate-700 hover:border-primary/50 hover:text-primary"
+                      : "h-10 rounded-xl border-white/30 bg-transparent px-5 text-sm font-semibold text-white hover:border-primary/50 hover:bg-white/5 hover:text-primary"
+                  }
+                >
+                  <Link href={SIGN_IN_PATH}>Sign In</Link>
+                </Button>
+                <Button
+                  asChild
+                  className="h-10 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Link href={SIGN_UP_PATH}>Try For Free</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
         <Button
@@ -187,23 +220,25 @@ export function Navbar() {
                 }
               >
                 <Link
-                  href={UNDER_CONSTRUCTION_PATH}
+                  href={viewer ? DASHBOARD_PATH : SIGN_IN_PATH}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Sign In
+                  {viewer ? "Dashboard" : "Sign In"}
                 </Link>
               </Button>
-              <Button
-                asChild
-                className="h-12 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Link
-                  href={UNDER_CONSTRUCTION_PATH}
-                  onClick={() => setIsMobileMenuOpen(false)}
+              {!viewer ? (
+                <Button
+                  asChild
+                  className="h-12 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  Try For Free
-                </Link>
-              </Button>
+                  <Link
+                    href={SIGN_UP_PATH}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Try For Free
+                  </Link>
+                </Button>
+              ) : null}
             </div>
           </motion.div>
         )}

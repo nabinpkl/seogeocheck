@@ -7,13 +7,14 @@ import {
   CreditCard, 
   LogOut, 
   Globe,
-  Bell,
   Code2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logoutAction } from "@/app/actions/auth";
+import type { AuthUser } from "@/features/auth/lib/server-auth";
 
 const NAV_ITEMS = [
-  { name: "Projects Overview", href: "/dashboard/projects", icon: LayoutDashboard },
+  { name: "Projects Overview", href: "/dashboard", icon: LayoutDashboard },
   { name: "Global Roster", href: "/dashboard/urls", icon: Globe },
   { name: "Competitors", href: "/dashboard/competitors", icon: Search },
 ];
@@ -23,7 +24,25 @@ const SETTINGS_ITEMS = [
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
 ];
 
-export function DashboardSidebar() {
+type DashboardSidebarProps = {
+  user: AuthUser;
+};
+
+function getInitials(email: string) {
+  const localPart = email.split("@")[0] ?? "SG";
+  const parts = localPart
+    .split(/[\W_]+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (parts.length === 0) {
+    return "SG";
+  }
+
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
+}
+
+export function DashboardSidebar({ user }: DashboardSidebarProps) {
   return (
     <aside className="hidden lg:flex w-64 flex-col bg-sidebar border-r border-sidebar-border/50 min-h-screen fixed left-0 top-0">
       
@@ -75,17 +94,25 @@ export function DashboardSidebar() {
 
       {/* User Profile Footer */}
       <div className="p-4 border-t border-border/40">
-        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors group">
+        <div className="rounded-lg border border-border/50 bg-background/70 p-3">
           <div className="flex items-center gap-3">
             <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-xs text-primary">
-              JS
+              {getInitials(user.email)}
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold leading-none mb-1">Jane Smith</span>
-              <span className="text-xs text-muted-foreground leading-none">Pro Plan</span>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold leading-none mb-1">{user.email}</span>
+              <span className="text-xs text-muted-foreground leading-none">Verified workspace</span>
             </div>
           </div>
-          <LogOut className="size-4 text-muted-foreground group-hover:text-destructive transition-colors hidden sm:block" />
+          <form action={logoutAction} className="mt-3">
+            <button
+              type="submit"
+              className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted/60 hover:text-destructive"
+            >
+              <span>Sign Out</span>
+              <LogOut className="size-4" />
+            </button>
+          </form>
         </div>
       </div>
     </aside>

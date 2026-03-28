@@ -36,6 +36,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,7 +92,7 @@ class AuthIntegrationTests {
         assertThat(user.isEnabled()).isFalse();
         assertThat(user.getEmailVerifiedAt()).isNull();
         assertThat(user.getEmailNormalized()).isEqualTo("owner@example.com");
-        assertThat(user.getPasswordHash()).startsWith("{bcrypt}");
+        assertThat(user.getPasswordHash()).startsWith("$argon2id$");
 
         awaitEmailsOfType(EmailType.VERIFICATION, 1);
         List<AuthEmailVerificationTokenEntity> tokens = authEmailVerificationTokenRepository.findAll();
@@ -112,6 +113,67 @@ class AuthIntegrationTests {
                 ))
                 .exchange()
                 .expectStatus().isForbidden();
+
+        assertThat(authUserRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void registrationRejectsPasswordsShorterThanThirteenCharacters() {
+        CsrfState csrf = fetchCsrfState();
+
+        restTestClient.post()
+                .uri("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-XSRF-TOKEN", csrf.token())
+                .header(HttpHeaders.COOKIE, csrf.cookie())
+                .body(Map.of(
+                        "email", "owner@example.com",
+                        "password", "123456789012"
+                ))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(Map.class)
+                .value(body -> assertThat(body).containsEntry("message", "Password must be longer than 12 characters."));
+
+        assertThat(authUserRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void registrationAcceptsLongPasswordsWithinInternalLimit() {
+        String longPassword = IntStream.range(0, 255)
+                .mapToObj(index -> "a")
+                .collect(Collectors.joining());
+
+        var responseBody = register("owner@example.com", longPassword);
+
+        assertThat(responseBody).containsEntry(
+                "message",
+                "If the address can be used, we sent a verification email."
+        );
+        assertThat(authUserRepository.findAll()).hasSize(1);
+        assertThat(authUserRepository.findAll().getFirst().getPasswordHash()).startsWith("$argon2id$");
+    }
+
+    @Test
+    void registrationRejectsPasswordsLongerThanTwoHundredFiftyFiveCharacters() {
+        CsrfState csrf = fetchCsrfState();
+        String tooLongPassword = IntStream.range(0, 256)
+                .mapToObj(index -> "a")
+                .collect(Collectors.joining());
+
+        restTestClient.post()
+                .uri("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-XSRF-TOKEN", csrf.token())
+                .header(HttpHeaders.COOKIE, csrf.cookie())
+                .body(Map.of(
+                        "email", "owner@example.com",
+                        "password", tooLongPassword
+                ))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(Map.class)
+                .value(body -> assertThat(body).containsEntry("message", "Password must be 255 characters or fewer."));
 
         assertThat(authUserRepository.findAll()).isEmpty();
     }

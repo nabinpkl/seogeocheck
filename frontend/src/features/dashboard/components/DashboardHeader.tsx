@@ -1,8 +1,13 @@
 import * as React from "react";
 import { Bell, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { AuthUser } from "@/features/auth/lib/server-auth";
 
-export function DashboardHeader() {
+type DashboardHeaderProps = {
+  user: AuthUser;
+};
+
+export function DashboardHeader({ user }: DashboardHeaderProps) {
   return (
     <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border shadow-sm shadow-black/[0.03] h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
       {/* Mobile Menu Trigger & Breadcrumbs */}
@@ -34,6 +39,10 @@ export function DashboardHeader() {
           <span className="absolute top-2 right-2 size-2 rounded-full bg-destructive border-2 border-background animate-pulse" />
           <span className="sr-only">Notifications</span>
         </Button>
+
+        <div className="hidden min-w-0 rounded-full border border-border/60 bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground lg:block">
+          {user.email}
+        </div>
       </div>
     </header>
   );

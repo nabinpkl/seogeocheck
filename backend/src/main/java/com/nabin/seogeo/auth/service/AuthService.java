@@ -57,6 +57,8 @@ public class AuthService {
     public static final String GENERIC_RESET_MESSAGE = "The password reset link is invalid or has expired.";
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final int MIN_PASSWORD_LENGTH = 13;
+    private static final int MAX_PASSWORD_LENGTH = 255;
     private static final Duration UNKNOWN_USER_LOGIN_DELAY = Duration.ofMillis(500);
     private static final Duration PUBLIC_AUTH_RESPONSE_FLOOR = Duration.ofMillis(400);
 
@@ -465,9 +467,12 @@ public class AuthService {
     }
 
     private static void validatePassword(String rawPassword) {
-        int byteLength = rawPassword.getBytes(StandardCharsets.UTF_8).length;
-        if (byteLength < 12 || byteLength > 72) {
-            throw new InvalidPasswordException("Password must be between 12 and 72 bytes.");
+        int characterLength = rawPassword.codePointCount(0, rawPassword.length());
+        if (characterLength < MIN_PASSWORD_LENGTH) {
+            throw new InvalidPasswordException("Password must be longer than 12 characters.");
+        }
+        if (characterLength > MAX_PASSWORD_LENGTH) {
+            throw new InvalidPasswordException("Password must be 255 characters or fewer.");
         }
     }
 
