@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Loader2, Save } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type AuditClaimPanelProps = {
@@ -25,8 +25,8 @@ export function AuditClaimPanel({
         variant="ghost"
         className="h-6 rounded-full px-2.5 text-[11px] font-medium text-slate-500 transition-all hover:bg-transparent hover:text-slate-900 active:scale-95 disabled:opacity-50"
       >
-        {signUpHref ? (
-          <Link href={signUpHref}>
+        {signUpHref || signInHref ? (
+          <Link href={signUpHref ?? signInHref ?? "#"}>
             {loading ? (
               <Loader2 className="mr-1.5 size-3 animate-spin" />
             ) : (

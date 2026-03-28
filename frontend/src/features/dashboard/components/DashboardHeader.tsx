@@ -40,7 +40,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             Audit Workspace
           </p>
           <p className="text-sm font-semibold text-slate-900">
-            Claimed audit history and new runs
+            Audit history and new runs
           </p>
         </div>
       </div>
@@ -66,7 +66,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                 <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
               </div>
               <div className="p-5 text-sm text-slate-600">
-                Claimed audits and account activity will appear here in a later slice.
+                 Audits and account activity will appear here in a later slice.
               </div>
             </div>
           ) : null}

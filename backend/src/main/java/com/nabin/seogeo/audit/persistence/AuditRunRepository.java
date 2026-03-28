@@ -15,6 +15,8 @@ public interface AuditRunRepository extends JpaRepository<AuditRunEntity, String
 
     List<AuditRunEntity> findByOwnerUserIdOrderByCreatedAtDesc(UUID ownerUserId);
 
+    List<AuditRunEntity> findByJobIdIn(List<String> jobIds);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select run from AuditRunEntity run where run.jobId = :jobId")
     Optional<AuditRunEntity> findByIdForUpdate(@Param("jobId") String jobId);

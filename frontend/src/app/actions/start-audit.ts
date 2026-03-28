@@ -1,6 +1,12 @@
 "use server";
 
-import { backendFetchWithSession, parseJsonResponse } from "@/lib/backend-server";
+import { revalidatePath } from "next/cache";
+import {
+  attachAuditToProject,
+  backendFetchWithSession,
+  BackendRequestError,
+  parseJsonResponse,
+} from "@/lib/backend-server";
 import {
   initialAuditActionState,
   type StartAuditActionState,
@@ -11,6 +17,7 @@ export async function startAuditAction(
   formData: FormData
 ): Promise<StartAuditActionState> {
   const rawUrl = String(formData.get("url") ?? "").trim();
+  const projectSlug = String(formData.get("projectSlug") ?? "").trim() || null;
 
   if (!rawUrl) {
     return {
@@ -51,14 +58,30 @@ export async function startAuditAction(
         error:
           typeof payload.message === "string"
             ? payload.message
-            : "We couldn't start your audit right now.",
+          : "We couldn't start your audit right now.",
         targetUrl,
       };
+    }
+
+    let projectWarning: string | null = null;
+    if (projectSlug && typeof payload.jobId === "string") {
+      try {
+        await attachAuditToProject(projectSlug, payload.jobId);
+        revalidatePath("/dashboard");
+        revalidatePath(`/dashboard/projects/${projectSlug}`);
+      } catch (error) {
+        projectWarning =
+          error instanceof BackendRequestError
+            ? "Your audit started, but we couldn't add it to the selected project."
+            : "Your audit started, but we couldn't add it to the selected project.";
+      }
     }
 
     return {
       ok: true,
       error: null,
+      projectWarning,
+      projectSlug,
       jobId: typeof payload.jobId === "string" ? payload.jobId : null,
       status: typeof payload.status === "string" ? payload.status : null,
       targetUrl,

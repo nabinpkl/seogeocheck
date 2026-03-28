@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
 import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
+import com.nabin.seogeo.audit.contract.generated.ReportCheck;
 import com.nabin.seogeo.audit.domain.AccountAuditSummary;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
@@ -14,12 +15,19 @@ import com.nabin.seogeo.audit.persistence.AuditReportEntity;
 import com.nabin.seogeo.audit.persistence.AuditReportRepository;
 import com.nabin.seogeo.audit.persistence.AuditRunEntity;
 import com.nabin.seogeo.audit.persistence.AuditRunRepository;
+import com.nabin.seogeo.project.domain.NormalizedUrl;
+import com.nabin.seogeo.project.persistence.AuditRunSummaryEntity;
+import com.nabin.seogeo.project.persistence.AuditRunSummaryHighIssueEntity;
+import com.nabin.seogeo.project.persistence.AuditRunSummaryHighIssueRepository;
+import com.nabin.seogeo.project.persistence.AuditRunSummaryRepository;
+import com.nabin.seogeo.project.service.UrlNormalizationService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Date;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -33,19 +41,28 @@ public class AuditPersistenceService {
     private final AuditReportRepository auditReportRepository;
     private final ObjectMapper objectMapper;
     private final AuditContractSchemaValidator auditContractSchemaValidator;
+    private final UrlNormalizationService urlNormalizationService;
+    private final AuditRunSummaryRepository auditRunSummaryRepository;
+    private final AuditRunSummaryHighIssueRepository auditRunSummaryHighIssueRepository;
 
     public AuditPersistenceService(
             AuditRunRepository auditRunRepository,
             AuditEventRepository auditEventRepository,
             AuditReportRepository auditReportRepository,
             ObjectMapper objectMapper,
-            AuditContractSchemaValidator auditContractSchemaValidator
+            AuditContractSchemaValidator auditContractSchemaValidator,
+            UrlNormalizationService urlNormalizationService,
+            AuditRunSummaryRepository auditRunSummaryRepository,
+            AuditRunSummaryHighIssueRepository auditRunSummaryHighIssueRepository
     ) {
         this.auditRunRepository = auditRunRepository;
         this.auditEventRepository = auditEventRepository;
         this.auditReportRepository = auditReportRepository;
         this.objectMapper = objectMapper;
         this.auditContractSchemaValidator = auditContractSchemaValidator;
+        this.urlNormalizationService = urlNormalizationService;
+        this.auditRunSummaryRepository = auditRunSummaryRepository;
+        this.auditRunSummaryHighIssueRepository = auditRunSummaryHighIssueRepository;
     }
 
     @Transactional
@@ -62,6 +79,7 @@ public class AuditPersistenceService {
         AuditRunEntity entity = new AuditRunEntity();
         entity.setJobId(jobId);
         entity.setTargetUrl(targetUrl);
+        applyNormalizedUrl(entity, targetUrl);
         entity.setStatus(AuditStatus.QUEUED);
         entity.setCreatedAt(createdAt);
         entity.setOwnerUserId(ownerUserId);
@@ -83,11 +101,13 @@ public class AuditPersistenceService {
                     AuditRunEntity created = new AuditRunEntity();
                     created.setJobId(jobId);
                     created.setTargetUrl(targetUrl);
+                    applyNormalizedUrl(created, targetUrl);
                     created.setCreatedAt(requestedAt);
                     return created;
                 });
 
         run.setTargetUrl(targetUrl);
+        applyNormalizedUrl(run, targetUrl);
         if (run.getCreatedAt() == null) {
             run.setCreatedAt(requestedAt);
         }
@@ -229,6 +249,7 @@ public class AuditPersistenceService {
         entity.setSignatureAlgorithm(reportRecord.signatureAlgorithm());
         entity.setSignatureValue(reportRecord.signatureValue());
         auditReportRepository.save(entity);
+        persistRunSummary(reportRecord);
     }
 
     @Transactional
@@ -280,7 +301,10 @@ public class AuditPersistenceService {
                         run.getStatus(),
                         run.getCreatedAt(),
                         run.getCompletedAt(),
-                        extractScore(run.getJobId())
+                        extractScore(run.getJobId()),
+                        null,
+                        null,
+                        null
                 ))
                 .toList();
     }
@@ -307,6 +331,59 @@ public class AuditPersistenceService {
     private AuditRunEntity getRunOrThrow(String jobId) {
         return auditRunRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Audit not found: " + jobId));
+    }
+
+    private void applyNormalizedUrl(AuditRunEntity entity, String targetUrl) {
+        NormalizedUrl normalizedUrl = urlNormalizationService.normalizeUrl(targetUrl);
+        entity.setNormalizedUrl(normalizedUrl.normalizedUrl());
+        entity.setNormalizedHost(normalizedUrl.normalizedHost());
+        entity.setNormalizedPath(normalizedUrl.normalizedPath());
+    }
+
+    private void persistRunSummary(AuditReportRecord reportRecord) {
+        AuditReportSchema report = readJson(reportRecord.reportJson(), AuditReportSchema.class);
+        AuditRunSummaryEntity summary = new AuditRunSummaryEntity();
+        summary.setJobId(reportRecord.jobId());
+        summary.setScore(report.getSummary().getScore());
+        summary.setIssueCount(report.getSummary().getIssueCount());
+        summary.setPassedCheckCount(report.getSummary().getPassedCheckCount());
+        summary.setNotApplicableCount(report.getSummary().getNotApplicableCount());
+        summary.setSystemErrorCount(report.getSummary().getSystemErrorCount());
+        summary.setGeneratedAt(reportRecord.generatedAt());
+
+        List<ReportCheck> highIssues = report.getChecks() == null
+                ? List.of()
+                : report.getChecks().stream()
+                .filter(this::isHighIssue)
+                .sorted(Comparator.comparing(ReportCheck::getId, Comparator.nullsLast(String::compareTo)))
+                .toList();
+
+        summary.setHighIssueCount(highIssues.size());
+        ReportCheck topIssue = highIssues.stream().findFirst().orElse(null);
+        if (topIssue != null) {
+            summary.setTopIssueKey(topIssue.getId());
+            summary.setTopIssueLabel(topIssue.getLabel());
+            summary.setTopIssueInstruction(topIssue.getInstruction());
+        }
+
+        auditRunSummaryRepository.save(summary);
+        auditRunSummaryHighIssueRepository.deleteByJobId(reportRecord.jobId());
+        for (ReportCheck highIssue : highIssues) {
+            AuditRunSummaryHighIssueEntity issueEntity = new AuditRunSummaryHighIssueEntity();
+            issueEntity.setJobId(reportRecord.jobId());
+            issueEntity.setIssueKey(highIssue.getId());
+            issueEntity.setIssueLabel(highIssue.getLabel());
+            issueEntity.setIssueInstruction(highIssue.getInstruction());
+            issueEntity.setSeverity(String.valueOf(highIssue.getSeverity()));
+            auditRunSummaryHighIssueRepository.save(issueEntity);
+        }
+    }
+
+    private boolean isHighIssue(ReportCheck check) {
+        return check != null
+                && check.getStatus() != null
+                && "issue".equals(check.getStatus().value())
+                && "high".equals(check.getSeverity());
     }
 
     private AuditEventRecord toRecord(AuditEventEntity entity) {

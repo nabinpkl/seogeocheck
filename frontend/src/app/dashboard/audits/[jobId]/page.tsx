@@ -52,7 +52,7 @@ export default async function AuditDetailPage({ params }: AuditDetailPageProps) 
             </Button>
             <div className="space-y-2">
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
-                Claimed Audit Report
+                Audit Report
               </p>
               <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
                 {report.targetUrl}

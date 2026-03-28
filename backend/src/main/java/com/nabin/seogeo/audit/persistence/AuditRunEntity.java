@@ -22,6 +22,15 @@ public class AuditRunEntity {
     @Column(name = "target_url", nullable = false, columnDefinition = "text")
     private String targetUrl;
 
+    @Column(name = "normalized_url", columnDefinition = "text")
+    private String normalizedUrl;
+
+    @Column(name = "normalized_host", length = 255)
+    private String normalizedHost;
+
+    @Column(name = "normalized_path", columnDefinition = "text")
+    private String normalizedPath;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     private AuditStatus status;
@@ -58,6 +67,30 @@ public class AuditRunEntity {
 
     public void setTargetUrl(String targetUrl) {
         this.targetUrl = targetUrl;
+    }
+
+    public String getNormalizedUrl() {
+        return normalizedUrl;
+    }
+
+    public void setNormalizedUrl(String normalizedUrl) {
+        this.normalizedUrl = normalizedUrl;
+    }
+
+    public String getNormalizedHost() {
+        return normalizedHost;
+    }
+
+    public void setNormalizedHost(String normalizedHost) {
+        this.normalizedHost = normalizedHost;
+    }
+
+    public String getNormalizedPath() {
+        return normalizedPath;
+    }
+
+    public void setNormalizedPath(String normalizedPath) {
+        this.normalizedPath = normalizedPath;
     }
 
     public AuditStatus getStatus() {

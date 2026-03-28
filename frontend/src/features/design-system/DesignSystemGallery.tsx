@@ -420,7 +420,7 @@ export function DesignSystemGallery() {
                   Streaming
                 </StatusBadge>
                 <StatusBadge tone="success">Verified</StatusBadge>
-                <StatusBadge tone="warning">Review</StatusBadge>
+                <StatusBadge tone="warning">Warning</StatusBadge>
                 <StatusBadge tone="critical">Critical</StatusBadge>
                 <StatusBadge tone="pending">Queued</StatusBadge>
               </CardContent>

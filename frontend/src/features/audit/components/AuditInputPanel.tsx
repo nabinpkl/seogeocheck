@@ -13,6 +13,8 @@ type AuditInputPanelProps = {
   inputRef: React.RefObject<HTMLInputElement | null>;
   url: string;
   clientError: string | null;
+  notice: string | null;
+  projectSlug: string | null;
   isPending: boolean;
   isAuditActive: boolean;
   isTyping: boolean;
@@ -27,6 +29,8 @@ export function AuditInputPanel({
   inputRef,
   url,
   clientError,
+  notice,
+  projectSlug,
   isPending,
   isAuditActive,
   isTyping,
@@ -46,8 +50,25 @@ export function AuditInputPanel({
         isDashboard ? "mb-6" : "mx-auto max-w-2xl px-4 sm:px-0 mt-16 mb-12"
       )}
     >
+      <input type="hidden" name="projectSlug" value={projectSlug ?? ""} />
       <div className="group relative">
         <AnimatePresence>
+          {notice ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={cn(
+                "absolute left-0 right-0 z-20 flex justify-start px-2",
+                clientError ? "-top-20" : "-top-10"
+              )}
+            >
+              <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-xs font-bold text-amber-700 shadow-sm backdrop-blur-sm">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {notice}
+              </div>
+            </motion.div>
+          ) : null}
           {clientError ? (
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -90,7 +111,7 @@ export function AuditInputPanel({
               value={url}
               onChange={(event) => onUrlChange(event.target.value)}
               disabled={isDisabled}
-              placeholder={isDashboard ? "Audit any URL instantly..." : "Enter your website URL (e.g. example.com)"}
+              placeholder={isDashboard ? "Check any site or page..." : "Enter your website URL (for example, example.com)"}
               className={cn(
                 "min-w-0 flex-1 border-0 bg-transparent text-foreground shadow-none focus-visible:border-0 focus-visible:ring-0 font-medium sm:placeholder:text-sm",
                 isDashboard ? "h-10 px-3 text-sm" : "h-11 px-3 text-sm sm:text-base"
@@ -129,7 +150,7 @@ export function AuditInputPanel({
 
         {isDashboard ? (
           <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest text-left pl-2">
-            Unsaved check. Results will clear on refresh.
+            Quick check only. Refreshing the page clears these live results.
           </p>
         ) : (
           <div

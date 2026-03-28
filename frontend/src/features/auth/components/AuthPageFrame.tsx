@@ -55,7 +55,6 @@ export function AuthPageFrame({
         <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,34rem)] lg:items-start">
           <div className="space-y-6 pt-4">
             <div className="inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground shadow-sm backdrop-blur">
-              <Sparkles className="size-3.5 text-primary" />
               {eyebrow}
             </div>
 

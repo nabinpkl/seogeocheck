@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import { startAuditAction } from "@/app/actions/start-audit";
@@ -11,6 +12,7 @@ import {
 } from "@/lib/audit-query";
 import type { AuditReport } from "@/types/audit";
 import { useAuditStore } from "@/store/use-audit-store";
+import { buildProjectAuditHref } from "@/features/dashboard/lib/routes";
 import {
   buildFamilyChecklistGroups,
   buildAuditCheckRowModel,
@@ -43,11 +45,14 @@ async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
 
 type UseAuditSectionControllerOptions = {
   isAuthenticated: boolean;
+  projectSlug: string | null;
 };
 
 export function useAuditSectionController({
   isAuthenticated,
+  projectSlug,
 }: UseAuditSectionControllerOptions): AuditSectionViewProps {
+  const router = useRouter();
   const [url, setUrl] = React.useState("");
   const [clientError, setClientError] = React.useState<string | null>(null);
   const [actionState, formAction, isPending] = React.useActionState(
@@ -128,16 +133,22 @@ export function useAuditSectionController({
     });
     connectToStream();
     setHandoffJobId(null);
+    if (actionState.projectSlug) {
+      router.push(buildProjectAuditHref(actionState.projectSlug, actionState.targetUrl));
+      return;
+    }
     window.scrollTo(0, 0);
   }, [
     actionState.jobId,
     actionState.ok,
+    actionState.projectSlug,
     actionState.reportUrl,
     actionState.status,
     actionState.streamUrl,
     actionState.targetUrl,
     connectToStream,
     primeAudit,
+    router,
   ]);
 
   React.useEffect(() => {
@@ -428,14 +439,16 @@ export function useAuditSectionController({
       showLiveStream: !report,
       showProgressSidebar,
     },
-    inputPanel: {
-      action: formAction,
-      onSubmit: handleSubmit,
-      url,
-      clientError,
-      isPending,
-      isAuditActive,
-      isTyping,
+      inputPanel: {
+        action: formAction,
+        onSubmit: handleSubmit,
+        url,
+        clientError,
+        notice: actionState.projectWarning,
+        projectSlug,
+        isPending,
+        isAuditActive,
+        isTyping,
       onUrlChange: (value) => {
         setUrl(value);
         if (clientError) {

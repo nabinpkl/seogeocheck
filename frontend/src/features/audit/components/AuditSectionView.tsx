@@ -30,6 +30,8 @@ export function AuditSectionView({
         inputRef={inputRef}
         url={inputPanel.url}
         clientError={inputPanel.clientError}
+        notice={inputPanel.notice}
+        projectSlug={inputPanel.projectSlug}
         isPending={inputPanel.isPending}
         isAuditActive={inputPanel.isAuditActive}
         isTyping={inputPanel.isTyping}

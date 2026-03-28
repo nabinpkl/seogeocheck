@@ -8,6 +8,9 @@ public record AccountAuditSummary(
         AuditStatus status,
         OffsetDateTime createdAt,
         OffsetDateTime completedAt,
-        Integer score
+        Integer score,
+        String projectSlug,
+        String projectName,
+        String trackedUrl
 ) {
 }

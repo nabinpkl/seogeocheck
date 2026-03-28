@@ -206,7 +206,7 @@ export function AuditScoreHero({
                     onClick={onScrollToIssues}
                     className="h-9 gap-1.5 rounded-xl border border-rose-200/60 bg-rose-50 px-4 text-sm font-bold text-rose-600 shadow-none hover:bg-rose-100 active:scale-[0.98]"
                   >
-                    Review flagged checks
+                    Inspect flagged checks
                     <ArrowRight className="size-3.5" />
                   </Button>
                   <button

@@ -7,7 +7,9 @@ import {
   CreditCard,
   LogOut,
   FileSearch,
-  Sparkles
+  Sparkles,
+  FileAudio,
+  FileBadge
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
@@ -16,7 +18,7 @@ import type { AuthUser } from "@/features/auth/lib/server-auth";
 const NAV_ITEMS = [
   { name: "Audit History", href: "/dashboard", icon: LayoutDashboard },
   { name: "Saved Reports", href: "/dashboard", icon: FileSearch },
-  { name: "New Audits", href: "/dashboard#audit-section", icon: Sparkles },
+  { name: "New Audits", href: "/dashboard#audit-section", icon: FileBadge },
 ];
 
 const SETTINGS_ITEMS = [

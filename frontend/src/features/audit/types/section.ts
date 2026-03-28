@@ -48,6 +48,8 @@ export type AuditSectionViewProps = {
     onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
     url: string;
     clientError: string | null;
+    notice: string | null;
+    projectSlug: string | null;
     isPending: boolean;
     isAuditActive: boolean;
     isTyping: boolean;

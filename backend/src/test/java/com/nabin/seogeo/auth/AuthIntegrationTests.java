@@ -74,6 +74,11 @@ class AuthIntegrationTests {
         jdbcTemplate.update("delete from spring_session_attributes");
         jdbcTemplate.update("delete from spring_session");
         jdbcTemplate.update("delete from audit_claim_tokens");
+        jdbcTemplate.update("delete from audit_run_summary_high_issues");
+        jdbcTemplate.update("delete from audit_run_summaries");
+        jdbcTemplate.update("delete from audit_project_links");
+        jdbcTemplate.update("delete from project_tracked_urls");
+        jdbcTemplate.update("delete from projects");
         jdbcTemplate.update("delete from audit_reports");
         jdbcTemplate.update("delete from audit_events");
         jdbcTemplate.update("delete from audit_runs");

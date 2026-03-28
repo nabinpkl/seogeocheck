@@ -698,7 +698,7 @@ export function buildAuditHeaderModel(args: {
     statusTone: toneForAuditStatus(status, isPending),
     targetUrlLabel: effectiveTargetUrl || "Preparing your audit",
     targetUrlHref: effectiveTargetUrl || null,
-    title: "Reviewing Technical Search Signals",
+    title: "Auditing Technical Search Signals",
     titleTone: "default",
     titleIcon: Radar,
     titleIconClassName: "h-5 w-5 text-primary",
