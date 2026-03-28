@@ -15,6 +15,9 @@ import { SIGN_IN_PATH } from "@/lib/routes";
 
 export function SignUpForm() {
   const [state, formAction] = useActionState(signUpAction, initialAuthActionState);
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
 
@@ -37,6 +40,8 @@ export function SignUpForm() {
               autoComplete="email"
               placeholder="you@company.com"
               className="h-11 rounded-xl border-border/80 bg-white"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
             />
           </div>
@@ -51,6 +56,8 @@ export function SignUpForm() {
                 autoComplete="new-password"
                 placeholder="Create a strong password"
                 className="h-11 rounded-xl border-border/80 bg-white pr-11"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 required
               />
               <Button
@@ -79,6 +86,8 @@ export function SignUpForm() {
                 autoComplete="new-password"
                 placeholder="Confirm your password"
                 className="h-11 rounded-xl border-border/80 bg-white pr-11"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
                 required
               />
               <Button
@@ -103,7 +112,7 @@ export function SignUpForm() {
 
           <AuthSubmitButton
             type="submit"
-            idleLabel="Create Your Account"
+            idleLabel="Create Account"
             pendingLabel="Creating account"
             className="h-12 w-full rounded-xl text-sm font-semibold"
           />

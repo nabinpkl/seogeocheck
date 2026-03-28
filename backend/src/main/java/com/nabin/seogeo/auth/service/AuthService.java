@@ -438,21 +438,11 @@ public class AuthService {
     }
 
     private String buildVerificationUrl(String rawToken) {
-        return URI.create(authProperties.getBackendBaseUrl())
-                .resolve(ServletUriComponentsBuilder.fromPath("/auth/verify-email-link")
-                        .queryParam("token", rawToken)
-                        .build()
-                        .toUriString())
-                .toString();
+        return buildFrontendReadyUrl("/auth/verify-email", rawToken);
     }
 
     private String buildPasswordResetUrl(String rawToken) {
-        return URI.create(authProperties.getBackendBaseUrl())
-                .resolve(ServletUriComponentsBuilder.fromPath("/auth/reset-password-link")
-                        .queryParam("token", rawToken)
-                        .build()
-                        .toUriString())
-                .toString();
+        return buildFrontendReadyUrl("/auth/reset-password", rawToken);
     }
 
     private String appendStatusToFrontendPath(String path, String status, String rawToken) {
@@ -464,6 +454,10 @@ public class AuthService {
         return URI.create(authProperties.getPublicAppUrl())
                 .resolve(builder.build(true).toUriString())
                 .toString();
+    }
+
+    private String buildFrontendReadyUrl(String path, String rawToken) {
+        return appendStatusToFrontendPath(path, "ready", rawToken);
     }
 
     private static void validatePassword(String rawPassword) {

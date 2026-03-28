@@ -3,8 +3,8 @@
 import { AuditSectionView } from "./components/AuditSectionView";
 import { useAuditSectionController } from "./hooks/useAuditSectionController";
 
-export function AuditSection() {
+export function AuditSection({ variant = "hero" }: { variant?: "hero" | "dashboard" }) {
   const viewProps = useAuditSectionController();
 
-  return <AuditSectionView {...viewProps} />;
+  return <AuditSectionView {...viewProps} variant={variant} />;
 }

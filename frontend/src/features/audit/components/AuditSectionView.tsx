@@ -20,7 +20,8 @@ export function AuditSectionView({
   progressSidebar,
   results,
   actions,
-}: AuditSectionViewProps) {
+  variant = "hero",
+}: AuditSectionViewProps & { variant?: "hero" | "dashboard" }) {
   return (
     <div className="w-full self-stretch">
       <AuditInputPanel
@@ -34,6 +35,7 @@ export function AuditSectionView({
         isTyping={inputPanel.isTyping}
         onUrlChange={inputPanel.onUrlChange}
         onExampleAudit={inputPanel.onExampleAudit}
+        variant={variant}
       />
 
       <AnimatePresence initial={false}>

@@ -16,9 +16,6 @@ public class AuthProperties {
     private String publicAppUrl;
 
     @NotBlank
-    private String backendBaseUrl;
-
-    @NotBlank
     private String fromEmail;
 
     @NotNull
@@ -55,14 +52,6 @@ public class AuthProperties {
 
     public String getFromEmail() {
         return fromEmail;
-    }
-
-    public String getBackendBaseUrl() {
-        return backendBaseUrl;
-    }
-
-    public void setBackendBaseUrl(String backendBaseUrl) {
-        this.backendBaseUrl = backendBaseUrl;
     }
 
     public void setFromEmail(String fromEmail) {

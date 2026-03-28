@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useActionState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,8 @@ export function ResetPasswordReadyForm() {
     resetPasswordAction,
     initialAuthActionState
   );
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
 
   return (
     <Card className="border-white/80 bg-white/96 shadow-2xl shadow-emerald-950/10">
@@ -54,15 +57,27 @@ export function ResetPasswordReadyForm() {
 
           <div className="space-y-2">
             <Label htmlFor="reset-password-next">New password</Label>
-            <Input
-              id="reset-password-next"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Create a strong password"
-              className="h-11 rounded-xl border-border/80 bg-white"
-              required
-            />
+            <div className="relative">
+              <Input
+                id="reset-password-next"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder="Create a strong password"
+                className="h-11 rounded-xl border-border/80 bg-white pr-11"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </Button>
+            </div>
             <p className="text-xs leading-5 text-muted-foreground">
               Use more than 12 characters. Longer passphrases work well.
             </p>
@@ -70,15 +85,27 @@ export function ResetPasswordReadyForm() {
 
           <div className="space-y-2">
             <Label htmlFor="reset-password-confirm">Confirm password</Label>
-            <Input
-              id="reset-password-confirm"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Repeat your new password"
-              className="h-11 rounded-xl border-border/80 bg-white"
-              required
-            />
+            <div className="relative">
+              <Input
+                id="reset-password-confirm"
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder="Repeat your new password"
+                className="h-11 rounded-xl border-border/80 bg-white pr-11"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowConfirmPassword((value) => !value)}
+                className="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              >
+                {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </Button>
+            </div>
           </div>
 
           {!token ? (

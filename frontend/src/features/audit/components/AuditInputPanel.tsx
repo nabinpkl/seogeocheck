@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, ArrowRight, Globe, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 type AuditInputPanelProps = {
   action: (formData: FormData) => void;
@@ -17,6 +18,7 @@ type AuditInputPanelProps = {
   isTyping: boolean;
   onUrlChange: (value: string) => void;
   onExampleAudit: () => void;
+  variant?: "hero" | "dashboard";
 };
 
 export function AuditInputPanel({
@@ -30,14 +32,19 @@ export function AuditInputPanel({
   isTyping,
   onUrlChange,
   onExampleAudit,
+  variant = "hero",
 }: AuditInputPanelProps) {
   const isDisabled = isPending || isAuditActive || isTyping;
+  const isDashboard = variant === "dashboard";
 
   return (
     <form
       action={action}
       onSubmit={onSubmit}
-      className="mx-auto mt-16 mb-12 w-full max-w-2xl px-4 sm:px-0"
+      className={cn(
+        "w-full",
+        isDashboard ? "mb-6" : "mx-auto max-w-2xl px-4 sm:px-0 mt-16 mb-12"
+      )}
     >
       <div className="group relative">
         <AnimatePresence>
@@ -57,75 +64,96 @@ export function AuditInputPanel({
         </AnimatePresence>
 
         <div
-          className={`relative flex flex-col rounded-2xl border bg-white p-1.5 shadow-xl transition-all focus-within:ring-4 focus-within:ring-primary/5 sm:flex-row sm:items-center ${
-            clientError ? "border-rose-300 ring-4 ring-rose-500/10" : "border-slate-200"
-          }`}
+          className={cn(
+            "relative flex flex-col bg-white transition-all sm:flex-row sm:items-center",
+            isDashboard
+              ? "rounded-xl border border-slate-200/80 p-1 shadow-sm focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10"
+              : "rounded-2xl border border-slate-200 p-1.5 shadow-xl focus-within:ring-4 focus-within:ring-primary/5",
+            clientError && "border-rose-300 ring-4 ring-rose-500/10"
+          )}
         >
-          <div className="flex flex-1 items-center px-4 sm:px-6">
+          <div className={cn("flex flex-1 items-center", isDashboard ? "px-3" : "px-4 sm:px-6")}>
             <Globe
-              className={`h-5 w-5 transition-colors ${
+              className={cn(
+                "transition-colors",
+                isDashboard ? "h-4 w-4" : "h-5 w-5",
                 clientError
                   ? "text-rose-400"
                   : "text-slate-400 group-focus-within:text-primary"
-              }`}
+              )}
             />
             <Input
               ref={inputRef}
-              autoFocus
+              autoFocus={!isDashboard}
               type="text"
               name="url"
               value={url}
               onChange={(event) => onUrlChange(event.target.value)}
               disabled={isDisabled}
-              placeholder="Enter your website URL (e.g. example.com)"
-              className="h-11 min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-foreground shadow-none focus-visible:border-0 focus-visible:ring-0 sm:text-base sm:placeholder:text-sm"
+              placeholder={isDashboard ? "Audit any URL instantly..." : "Enter your website URL (e.g. example.com)"}
+              className={cn(
+                "min-w-0 flex-1 border-0 bg-transparent text-foreground shadow-none focus-visible:border-0 focus-visible:ring-0 font-medium sm:placeholder:text-sm",
+                isDashboard ? "h-10 px-3 text-sm" : "h-11 px-3 text-sm sm:text-base"
+              )}
             />
           </div>
           <Button
             type="submit"
             disabled={isDisabled}
-            className="group/btn relative mt-2 h-11 w-full min-w-[180px] justify-center gap-2 overflow-hidden whitespace-nowrap rounded-[10px] px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:bg-blue-300 disabled:text-blue-500 disabled:shadow-none disabled:hover:scale-100 sm:mt-0 sm:w-auto sm:text-base"
+            className={cn(
+              "group/btn relative w-full justify-center gap-2 overflow-hidden whitespace-nowrap text-sm font-bold text-white transition-all hover:scale-[1.01] active:scale-[0.98] disabled:hover:scale-100 sm:w-auto",
+              isDashboard
+                ? "h-10 rounded-lg px-6 shadow-sm min-w-[120px]"
+                : "h-11 mt-2 rounded-[10px] px-6 shadow-lg shadow-primary/20 sm:mt-0 min-w-[180px]"
+            )}
           >
             <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transition-transform group-hover/btn:translate-y-0" />
             {isPending ? (
               <>
-                <RotateCcw className="h-5 w-5 animate-spin" />
-                Planning...
+                <RotateCcw className={cn("animate-spin", isDashboard ? "size-4" : "size-5")} />
+                {isDashboard ? "Running..." : "Planning..."}
               </>
             ) : isAuditActive ? (
               <>
-                <RotateCcw className="h-5 w-5 animate-spin" />
-                Analyzing Visibility
+                <RotateCcw className={cn("animate-spin", isDashboard ? "size-4" : "size-5")} />
+                {isDashboard ? "Running" : "Analyzing"}
               </>
             ) : (
               <>
-                Analyze Visibility
-                <ArrowRight className="h-5 w-5 transition-transform group-hover/btn:translate-x-1" />
+                {isDashboard ? "Audit Now" : "Analyze Visibility"}
+                <ArrowRight className={cn("transition-transform group-hover/btn:translate-x-1", isDashboard ? "size-4" : "size-5")} />
               </>
             )}
           </Button>
         </div>
 
-        <div
-          className={`mt-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
-            isDisabled
-              ? "pointer-events-none translate-y-1 opacity-0"
-              : "translate-y-0 opacity-100"
-          }`}
-        >
-          <span className="text-white/20">•</span>
-          <span className="text-white/30">Ready to test?</span>
-          <Button
-            type="button"
-            onClick={onExampleAudit}
-            disabled={isDisabled}
-            variant="link"
-            size="sm"
-            className="h-auto px-0 text-white/70 decoration-white/20 underline-offset-4 hover:text-white hover:decoration-white/50 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50"
+        {isDashboard ? (
+          <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest text-left pl-2">
+            Unsaved check. Results will clear on refresh.
+          </p>
+        ) : (
+          <div
+            className={cn(
+              "mt-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
+              isDisabled
+                ? "pointer-events-none translate-y-1 opacity-0"
+                : "translate-y-0 opacity-100"
+            )}
           >
-            example.com
-          </Button>
-        </div>
+            <span className="text-white/20">•</span>
+            <span className="text-white/30">Ready to test?</span>
+            <Button
+              type="button"
+              onClick={onExampleAudit}
+              disabled={isDisabled}
+              variant="link"
+              size="sm"
+              className="h-auto px-0 decoration-primary/20 underline-offset-4 hover:decoration-primary/50 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 text-white/70 hover:text-white"
+            >
+              example.com
+            </Button>
+          </div>
+        )}
       </div>
     </form>
   );

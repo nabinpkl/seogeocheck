@@ -99,6 +99,8 @@ class AuthIntegrationTests {
         assertThat(tokens).hasSize(1);
         SentEmail verificationEmail = authEmailSender.lastEmailOfType(EmailType.VERIFICATION);
         String rawToken = extractToken(verificationEmail.actionUrl());
+        assertThat(verificationEmail.actionUrl())
+                .isEqualTo("http://localhost:3000/auth/verify-email?status=ready#token=" + rawToken);
         assertThat(tokens.getFirst().getTokenHash()).isNotEqualTo(rawToken);
     }
 
@@ -269,7 +271,10 @@ class AuthIntegrationTests {
         awaitEmailsOfType(EmailType.PASSWORD_RESET, 1);
 
         AuthPasswordResetTokenEntity token = authPasswordResetTokenRepository.findAll().getFirst();
-        String rawToken = extractToken(authEmailSender.lastEmailOfType(EmailType.PASSWORD_RESET).actionUrl());
+        SentEmail passwordResetEmail = authEmailSender.lastEmailOfType(EmailType.PASSWORD_RESET);
+        String rawToken = extractToken(passwordResetEmail.actionUrl());
+        assertThat(passwordResetEmail.actionUrl())
+                .isEqualTo("http://localhost:3000/auth/reset-password?status=ready#token=" + rawToken);
         assertThat(token.getTokenHash()).isNotEqualTo(rawToken);
     }
 
@@ -652,7 +657,14 @@ class AuthIntegrationTests {
     }
 
     private static String extractToken(String actionUrl) {
-        return UriComponentsBuilder.fromUriString(actionUrl)
+        String fragment = UriComponentsBuilder.fromUriString(actionUrl)
+                .build()
+                .getFragment();
+        if (fragment == null || fragment.isBlank()) {
+            return null;
+        }
+        return UriComponentsBuilder.newInstance()
+                .query(fragment)
                 .build()
                 .getQueryParams()
                 .getFirst("token");

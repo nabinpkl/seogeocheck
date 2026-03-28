@@ -1,11 +1,12 @@
 import * as React from "react";
 import Link from "next/link";
-import { 
-  LayoutDashboard, 
-  Search, 
-  Settings, 
-  CreditCard, 
-  LogOut, 
+import Image from "next/image";
+import {
+  LayoutDashboard,
+  Search,
+  Settings,
+  CreditCard,
+  LogOut,
   Globe,
   Code2
 } from "lucide-react";
@@ -45,14 +46,21 @@ function getInitials(email: string) {
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
   return (
     <aside className="hidden lg:flex w-64 flex-col bg-sidebar border-r border-sidebar-border/50 min-h-screen fixed left-0 top-0">
-      
+
       {/* Brand / Logo Area */}
-      <div className="h-16 flex items-center px-6 border-b border-border/40">
-        <Link href="/dashboard" className="flex items-center gap-2 font-display font-black tracking-tight text-xl">
-          <div className="size-6 bg-foreground rounded-md flex items-center justify-center text-background">
-            <Code2 className="size-4" />
-          </div>
-          SEOGEO
+      <div className="h-16 flex items-center px-6 border-b border-border/40 pt-1">
+        <Link href="/dashboard" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+          <Image 
+            src="/logo.png" 
+            alt="SEOGEO Logo" 
+            width={32} 
+            height={32} 
+            priority
+            className="object-contain" 
+          />
+          <span className="font-display text-[22px] font-black tracking-tight uppercase text-slate-900 mt-0.5">
+            SEOGEO
+          </span>
         </Link>
       </div>
 
@@ -66,8 +74,8 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
-                item.name === "Projects Overview" 
-                  ? "bg-primary/10 text-primary" 
+                item.name === "Projects Overview"
+                  ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
             >
@@ -93,24 +101,24 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       </div>
 
       {/* User Profile Footer */}
-      <div className="p-4 border-t border-border/40">
-        <div className="rounded-lg border border-border/50 bg-background/70 p-3">
+      <div className="p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm relative overflow-hidden">
           <div className="flex items-center gap-3">
-            <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-xs text-primary">
+            <div className="size-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center font-bold text-[13px] text-primary">
               {getInitials(user.email)}
             </div>
-            <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-bold leading-none mb-1">{user.email}</span>
-              <span className="text-xs text-muted-foreground leading-none">Verified workspace</span>
+            <div className="min-w-0 flex-1 mt-0.5">
+              <span className="block truncate text-[15px] font-bold text-slate-900">{user.email}</span>
             </div>
           </div>
-          <form action={logoutAction} className="mt-3">
+          
+          <form action={logoutAction} className="mt-5">
             <button
               type="submit"
-              className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted/60 hover:text-destructive"
+              className="flex w-full items-center justify-between rounded-xl text-[15px] font-medium text-slate-600 transition hover:text-slate-900"
             >
               <span>Sign Out</span>
-              <LogOut className="size-4" />
+              <LogOut className="size-4 text-slate-500" />
             </button>
           </form>
         </div>
