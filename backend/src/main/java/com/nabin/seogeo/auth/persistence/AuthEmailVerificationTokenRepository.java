@@ -24,6 +24,10 @@ public interface AuthEmailVerificationTokenRepository extends JpaRepository<Auth
     long countByUserIdAndSentAtAfter(UUID userId, OffsetDateTime sentAfter);
 
     @Modifying
+    @Query("delete from AuthEmailVerificationTokenEntity token where token.userId = :userId")
+    int deleteByUserId(@Param("userId") UUID userId);
+
+    @Modifying
     @Query("""
             update AuthEmailVerificationTokenEntity token
             set token.usedAt = :usedAt

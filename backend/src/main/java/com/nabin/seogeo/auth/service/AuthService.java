@@ -1,6 +1,10 @@
 package com.nabin.seogeo.auth.service;
 
 import com.nabin.seogeo.audit.service.AuditClaimService;
+import com.nabin.seogeo.audit.persistence.AuditClaimTokenRepository;
+import com.nabin.seogeo.audit.persistence.AuditEventRepository;
+import com.nabin.seogeo.audit.persistence.AuditReportRepository;
+import com.nabin.seogeo.audit.persistence.AuditRunRepository;
 import com.nabin.seogeo.auth.config.AuthProperties;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
 import com.nabin.seogeo.auth.mail.AuthEmailSender;
@@ -10,6 +14,7 @@ import com.nabin.seogeo.auth.persistence.AuthPasswordResetTokenEntity;
 import com.nabin.seogeo.auth.persistence.AuthPasswordResetTokenRepository;
 import com.nabin.seogeo.auth.persistence.AuthUserEntity;
 import com.nabin.seogeo.auth.persistence.AuthUserRepository;
+import com.nabin.seogeo.project.persistence.ProjectRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -68,6 +73,11 @@ public class AuthService {
     private final AuthUserRepository authUserRepository;
     private final AuthEmailVerificationTokenRepository authEmailVerificationTokenRepository;
     private final AuthPasswordResetTokenRepository authPasswordResetTokenRepository;
+    private final AuditRunRepository auditRunRepository;
+    private final AuditEventRepository auditEventRepository;
+    private final AuditReportRepository auditReportRepository;
+    private final AuditClaimTokenRepository auditClaimTokenRepository;
+    private final ProjectRepository projectRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthEmailSender authEmailSender;
     private final AuthProperties authProperties;
@@ -83,6 +93,11 @@ public class AuthService {
             AuthUserRepository authUserRepository,
             AuthEmailVerificationTokenRepository authEmailVerificationTokenRepository,
             AuthPasswordResetTokenRepository authPasswordResetTokenRepository,
+            AuditRunRepository auditRunRepository,
+            AuditEventRepository auditEventRepository,
+            AuditReportRepository auditReportRepository,
+            AuditClaimTokenRepository auditClaimTokenRepository,
+            ProjectRepository projectRepository,
             PasswordEncoder passwordEncoder,
             AuthEmailSender authEmailSender,
             AuthProperties authProperties,
@@ -97,6 +112,11 @@ public class AuthService {
         this.authUserRepository = authUserRepository;
         this.authEmailVerificationTokenRepository = authEmailVerificationTokenRepository;
         this.authPasswordResetTokenRepository = authPasswordResetTokenRepository;
+        this.auditRunRepository = auditRunRepository;
+        this.auditEventRepository = auditEventRepository;
+        this.auditReportRepository = auditReportRepository;
+        this.auditClaimTokenRepository = auditClaimTokenRepository;
+        this.projectRepository = projectRepository;
         this.passwordEncoder = passwordEncoder;
         this.authEmailSender = authEmailSender;
         this.authProperties = authProperties;
@@ -242,6 +262,31 @@ public class AuthService {
                 response,
                 securityContextHolderStrategy.getContext().getAuthentication()
         );
+    }
+
+    @Transactional
+    public void deleteAccount(
+            AuthenticatedUser authenticatedUser,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        AuthUserEntity user = authUserRepository.findByIdForUpdate(authenticatedUser.getId())
+                .orElseThrow(InvalidCredentialsException::new);
+        String principalName = user.getEmailOriginal();
+
+        clearPendingVerificationUser(request);
+        new SecurityContextLogoutHandler().logout(
+                request,
+                response,
+                securityContextHolderStrategy.getContext().getAuthentication()
+        );
+        deleteSessionsForPrincipal(principalName);
+
+        deleteOwnedAuditAndProjectData(user.getId());
+        auditClaimTokenRepository.deleteByReservedUserId(user.getId());
+        authPasswordResetTokenRepository.deleteByUserId(user.getId());
+        authEmailVerificationTokenRepository.deleteByUserId(user.getId());
+        authUserRepository.delete(user);
     }
 
     @Transactional
@@ -661,6 +706,17 @@ public class AuthService {
                 principalName
         );
         jdbcTemplate.update("delete from spring_session where principal_name = ?", principalName);
+    }
+
+    private void deleteOwnedAuditAndProjectData(UUID userId) {
+        List<String> ownedJobIds = auditRunRepository.findJobIdsByOwnerUserId(userId);
+        if (!ownedJobIds.isEmpty()) {
+            auditClaimTokenRepository.deleteByJobIdIn(ownedJobIds);
+            auditEventRepository.deleteByJobIdIn(ownedJobIds);
+            auditReportRepository.deleteByJobIdIn(ownedJobIds);
+        }
+        projectRepository.deleteByOwnerUserId(userId);
+        auditRunRepository.deleteByOwnerUserId(userId);
     }
 
     private void sendAfterCommit(Runnable task) {

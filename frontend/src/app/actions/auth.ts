@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import {
   clearFrontendSessionCookie,
+  deleteCurrentAccount,
+  getCurrentUser,
   loginWithPassword,
   logoutBackendSession,
   registerAccountWithClaim,
@@ -200,6 +202,39 @@ export async function verifyEmailAction(
 
 export async function logoutAction() {
   await logoutBackendSession();
+  await clearFrontendSessionCookie();
+  redirect(SIGN_IN_PATH);
+}
+
+export async function deleteAccountAction(
+  _previousState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const confirmedEmail = readString(formData, "confirmedEmail");
+  const viewer = await getCurrentUser();
+
+  if (!viewer) {
+    return {
+      ...initialAuthActionState,
+      error: "Sign in again before deleting this account.",
+    };
+  }
+
+  if (confirmedEmail !== viewer.email) {
+    return {
+      ...initialAuthActionState,
+      error: "Type your full account email exactly to confirm deletion.",
+    };
+  }
+
+  const result = await deleteCurrentAccount();
+  if (!result.ok) {
+    return {
+      ...initialAuthActionState,
+      error: result.message,
+    };
+  }
+
   await clearFrontendSessionCookie();
   redirect(SIGN_IN_PATH);
 }

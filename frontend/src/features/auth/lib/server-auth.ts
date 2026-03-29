@@ -152,7 +152,8 @@ async function fetchCsrfContext(sessionCookieValue: string | null) {
   };
 }
 
-async function postJsonWithCsrf<TResponse>(
+async function sendJsonWithCsrf<TResponse>(
+  method: "POST" | "DELETE",
   path: string,
   body: Record<string, unknown>
 ): Promise<AuthBackendResult<TResponse>> {
@@ -160,7 +161,7 @@ async function postJsonWithCsrf<TResponse>(
   const csrfContext = await fetchCsrfContext(sessionCookieValue);
 
   const response = await fetch(buildBackendUrl(path), {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
       [csrfContext.headerName]: csrfContext.token,
@@ -216,7 +217,7 @@ export async function getCurrentUser() {
 }
 
 export async function registerAccount(email: string, password: string) {
-  return postJsonWithCsrf<{ message?: string }>("/auth/register", {
+  return sendJsonWithCsrf<{ message?: string }>("POST", "/auth/register", {
     email,
     password,
   });
@@ -227,7 +228,7 @@ export async function registerAccountWithClaim(
   password: string,
   claimToken: string | null
 ) {
-  return postJsonWithCsrf<{ message?: string }>("/auth/register", {
+  return sendJsonWithCsrf<{ message?: string }>("POST", "/auth/register", {
     email,
     password,
     claimToken,
@@ -239,7 +240,7 @@ export async function loginWithPassword(
   password: string,
   claimToken?: string | null
 ) {
-  return postJsonWithCsrf<{ authenticated?: boolean; user?: AuthUser }>("/auth/login", {
+  return sendJsonWithCsrf<{ authenticated?: boolean; user?: AuthUser }>("POST", "/auth/login", {
     email,
     password,
     claimToken,
@@ -247,22 +248,27 @@ export async function loginWithPassword(
 }
 
 export async function requestPasswordReset(email: string) {
-  return postJsonWithCsrf<{ message?: string }>("/auth/forgot-password", { email });
+  return sendJsonWithCsrf<{ message?: string }>("POST", "/auth/forgot-password", { email });
 }
 
 export async function resetPasswordWithToken(token: string, password: string) {
-  return postJsonWithCsrf<{ reset?: boolean }>("/auth/reset-password", { token, password });
+  return sendJsonWithCsrf<{ reset?: boolean }>("POST", "/auth/reset-password", { token, password });
 }
 
 export async function verifyEmailWithToken(token: string) {
-  return postJsonWithCsrf<{ verified?: boolean; authenticated?: boolean }>(
+  return sendJsonWithCsrf<{ verified?: boolean; authenticated?: boolean }>(
+    "POST",
     "/auth/verify-email",
     { token }
   );
 }
 
 export async function logoutBackendSession() {
-  return postJsonWithCsrf<null>("/auth/logout", {});
+  return sendJsonWithCsrf<null>("POST", "/auth/logout", {});
+}
+
+export async function deleteCurrentAccount() {
+  return sendJsonWithCsrf<null>("DELETE", "/auth/account", {});
 }
 
 export async function clearFrontendSessionCookie() {

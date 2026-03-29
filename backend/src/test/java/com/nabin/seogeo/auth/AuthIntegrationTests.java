@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -626,6 +627,205 @@ class AuthIntegrationTests {
                 .isEqualTo("http://localhost:3000/auth/reset-password?status=invalid");
     }
 
+    @Test
+    void deleteAccountRemovesOwnedDataReservedClaimsAndSessions() {
+        register("owner@example.com", "CorrectHorse1!");
+        verifyLatestEmailToken();
+        String sessionCookie = loginAndExtractSessionCookie("owner@example.com", "CorrectHorse1!");
+        UUID userId = authUserRepository.findAll().getFirst().getId();
+        UUID projectId = UUID.randomUUID();
+        UUID trackedUrlId = UUID.randomUUID();
+        UUID ownedClaimTokenId = UUID.randomUUID();
+        UUID reservedClaimTokenId = UUID.randomUUID();
+        OffsetDateTime now = OffsetDateTime.now();
+
+        jdbcTemplate.update(
+                """
+                insert into auth_password_reset_tokens (
+                    id, user_id, token_hash, expires_at, created_at, sent_at
+                ) values (?, ?, ?, ?, ?, ?)
+                """,
+                UUID.randomUUID(),
+                userId,
+                "reset-token-hash",
+                now.plusHours(1),
+                now,
+                now
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_runs (
+                    job_id, target_url, status, created_at, completed_at, owner_user_id
+                ) values (?, ?, ?, ?, ?, ?)
+                """,
+                "owned-job",
+                "https://example.com",
+                "VERIFIED",
+                now.minusMinutes(4),
+                now.minusMinutes(3),
+                userId
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_events (
+                    job_id, sequence, event_type, status, payload_json, created_at
+                ) values (?, ?, ?, ?, ?, ?)
+                """,
+                "owned-job",
+                1L,
+                "progress",
+                "VERIFIED",
+                "{\"message\":\"done\"}",
+                now.minusMinutes(4)
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_reports (
+                    job_id, generated_at, report_json, signature_algorithm, signature_value
+                ) values (?, ?, ?, ?, ?)
+                """,
+                "owned-job",
+                now.minusMinutes(3),
+                "{\"report\":true}",
+                "HS256",
+                "signature"
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_run_summaries (
+                    job_id, score, high_issue_count, issue_count, passed_check_count,
+                    not_applicable_count, system_error_count, generated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                "owned-job",
+                82,
+                1,
+                3,
+                10,
+                1,
+                0,
+                now.minusMinutes(3)
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_run_summary_high_issues (
+                    job_id, issue_key, issue_label, issue_instruction, severity
+                ) values (?, ?, ?, ?, ?)
+                """,
+                "owned-job",
+                "title-missing",
+                "Title missing",
+                "Add a unique title tag.",
+                "high"
+        );
+        jdbcTemplate.update(
+                """
+                insert into projects (
+                    id, owner_user_id, name, slug, description, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?)
+                """,
+                projectId,
+                userId,
+                "Main project",
+                "main-project",
+                "Owned by account",
+                now.minusMinutes(5),
+                now.minusMinutes(5)
+        );
+        jdbcTemplate.update(
+                """
+                insert into project_tracked_urls (
+                    id, project_id, normalized_url, normalized_host, normalized_path,
+                    display_url, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                trackedUrlId,
+                projectId,
+                "https://example.com/",
+                "example.com",
+                "/",
+                "https://example.com",
+                now.minusMinutes(5),
+                now.minusMinutes(5)
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_project_links (
+                    job_id, project_id, tracked_url_id, linked_at, linked_by_user_id
+                ) values (?, ?, ?, ?, ?)
+                """,
+                "owned-job",
+                projectId,
+                trackedUrlId,
+                now.minusMinutes(3),
+                userId
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_claim_tokens (
+                    id, job_id, token_hash, reserved_user_id, expires_at, created_at
+                ) values (?, ?, ?, ?, ?, ?)
+                """,
+                ownedClaimTokenId,
+                "owned-job",
+                "owned-claim-hash",
+                userId,
+                now.plusHours(1),
+                now.minusMinutes(2)
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_runs (
+                    job_id, target_url, status, created_at
+                ) values (?, ?, ?, ?)
+                """,
+                "foreign-job",
+                "https://reserved.example.com",
+                "QUEUED",
+                now.minusMinutes(2)
+        );
+        jdbcTemplate.update(
+                """
+                insert into audit_claim_tokens (
+                    id, job_id, token_hash, reserved_user_id, expires_at, created_at
+                ) values (?, ?, ?, ?, ?, ?)
+                """,
+                reservedClaimTokenId,
+                "foreign-job",
+                "reserved-claim-hash",
+                userId,
+                now.plusHours(1),
+                now.minusMinutes(1)
+        );
+
+        deleteAccount(sessionCookie);
+
+        restTestClient.get()
+                .uri("/auth/me")
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isUnauthorized();
+
+        assertThat(authUserRepository.findAll()).isEmpty();
+        assertThat(authEmailVerificationTokenRepository.findAll()).isEmpty();
+        assertThat(authPasswordResetTokenRepository.findAll()).isEmpty();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from projects", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from project_tracked_urls", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_project_links", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_events where job_id = 'owned-job'", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_reports where job_id = 'owned-job'", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_run_summaries where job_id = 'owned-job'", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_run_summary_high_issues where job_id = 'owned-job'", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_runs where job_id = 'owned-job'", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_claim_tokens", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_runs where job_id = 'foreign-job'", Integer.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from spring_session where principal_name = ?",
+                Integer.class,
+                "owner@example.com"
+        )).isZero();
+    }
+
     private Map<String, Object> register(String email, String password) {
         CsrfState csrf = fetchCsrfState();
         return restTestClient.post()
@@ -781,6 +981,16 @@ class AuthIntegrationTests {
                 .expectStatus().isBadRequest()
                 .returnResult(Map.class)
                 .getResponseBody();
+    }
+
+    private void deleteAccount(String sessionCookie) {
+        CsrfState csrf = fetchCsrfState(sessionCookie);
+        restTestClient.method(org.springframework.http.HttpMethod.DELETE)
+                .uri("/auth/account")
+                .header("X-XSRF-TOKEN", csrf.token())
+                .header(HttpHeaders.COOKIE, csrf.cookie())
+                .exchange()
+                .expectStatus().isNoContent();
     }
 
     private static String extractToken(String actionUrl) {

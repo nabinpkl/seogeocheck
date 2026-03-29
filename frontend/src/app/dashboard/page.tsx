@@ -1,7 +1,8 @@
 import * as React from "react";
+import { redirect } from "next/navigation";
 import { PageShell } from "@/components/ui/page-shell";
 import { ProjectDashboard } from "@/features/dashboard/components/ProjectDashboard";
-import { getAccountAudits, getAccountProjects } from "@/lib/backend-server";
+import { getAccountAudits, getAccountProjects, getAccountProjectUrls } from "@/lib/backend-server";
 
 type DashboardPageProps = {
   searchParams?: Promise<{
@@ -11,12 +12,21 @@ type DashboardPageProps = {
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const selectedProjectSlug = typeof resolvedSearchParams.project === "string"
+  const requestedProjectSlug = typeof resolvedSearchParams.project === "string"
     ? resolvedSearchParams.project
     : null;
-  const [projects, audits] = await Promise.all([
-    getAccountProjects(),
+  const projects = await getAccountProjects();
+  const selectedProjectSlug = requestedProjectSlug && projects.some((project) => project.slug === requestedProjectSlug)
+    ? requestedProjectSlug
+    : null;
+
+  if (projects.length > 0 && !selectedProjectSlug) {
+    redirect(`/dashboard?project=${encodeURIComponent(projects[0].slug)}`);
+  }
+
+  const [audits, trackedUrls] = await Promise.all([
     getAccountAudits(selectedProjectSlug),
+    selectedProjectSlug ? getAccountProjectUrls(selectedProjectSlug) : Promise.resolve([]),
   ]);
 
   return (
@@ -31,6 +41,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <ProjectDashboard
           projects={projects}
           audits={audits}
+          trackedUrls={trackedUrls}
           selectedProjectSlug={selectedProjectSlug}
         />
       </PageShell>

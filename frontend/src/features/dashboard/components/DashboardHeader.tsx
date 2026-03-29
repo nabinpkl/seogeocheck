@@ -37,10 +37,10 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         </Button>
         <div className="hidden sm:block">
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">
-            Audit Workspace
+            Project Workspace
           </p>
           <p className="text-sm font-semibold text-slate-900">
-            Audit history and new runs
+            Projects and new audits
           </p>
         </div>
       </div>

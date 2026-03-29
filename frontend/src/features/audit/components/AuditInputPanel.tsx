@@ -150,7 +150,7 @@ export function AuditInputPanel({
 
         {isDashboard ? (
           <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest text-left pl-2">
-            Quick check only. Refreshing the page clears these live results.
+            Audited site will be added in this project.
           </p>
         ) : (
           <div

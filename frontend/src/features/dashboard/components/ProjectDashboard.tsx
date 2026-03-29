@@ -12,7 +12,6 @@ import {
   FolderTree,
   Globe,
   Search,
-  Sparkles,
 } from "lucide-react";
 import { AuditSection } from "@/features/audit/AuditSection";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { DashboardAuditSummary } from "../types/audits";
-import type { DashboardProjectSummary } from "../types/projects";
+import type { DashboardProjectSummary, ProjectTrackedUrlSummary } from "../types/projects";
 import { buildProjectAuditHref } from "../lib/routes";
 import { ProjectFormDialog } from "./ProjectFormDialog";
 import { AttachAuditDialog } from "./AttachAuditDialog";
@@ -30,15 +29,18 @@ import { DetachAuditButton } from "./DetachAuditButton";
 type ProjectDashboardProps = {
   projects: DashboardProjectSummary[];
   audits: DashboardAuditSummary[];
+  trackedUrls: ProjectTrackedUrlSummary[];
   selectedProjectSlug: string | null;
 };
 
 function statusTone(status: string) {
   switch (status) {
-    case "VERIFIED":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
     case "FAILED":
       return "bg-rose-50 text-rose-700 border-rose-200";
+    case "STREAMING":
+    case "COMPLETE":
+    case "QUEUED":
+      return "bg-sky-50 text-sky-700 border-sky-200";
     default:
       return "bg-slate-100 text-slate-600 border-slate-200";
   }
@@ -46,8 +48,6 @@ function statusTone(status: string) {
 
 function formatStatus(status: string) {
   switch (status) {
-    case "VERIFIED":
-      return "Ready";
     case "FAILED":
       return "Needs attention";
     case "STREAMING":
@@ -59,6 +59,10 @@ function formatStatus(status: string) {
     default:
       return status;
   }
+}
+
+function isLiveStatus(status: string | null) {
+  return status === "STREAMING" || status === "COMPLETE" || status === "QUEUED";
 }
 
 function formatTimestamp(value: string | null) {
@@ -93,6 +97,7 @@ function pluralize(count: number, singular: string, plural = `${singular}s`) {
 export function ProjectDashboard({
   projects,
   audits,
+  trackedUrls,
   selectedProjectSlug,
 }: ProjectDashboardProps) {
   const hasProjects = projects.length > 0;
@@ -141,7 +146,7 @@ export function ProjectDashboard({
   const projectScoreHeadline = typeof projectScore === "number" ? String(projectScore) : "No score yet";
   const projectScoreDescription =
     selectedProject?.verifiedUrlCount
-      ? `Based on completed audits for ${pluralize(selectedProject.verifiedUrlCount, "page")}`
+      ? `Based on latest audit runs for ${pluralize(selectedProject.verifiedUrlCount, "page")}`
       : "Complete the first audit in this project to generate a score.";
 
   const activeMetricDescription =
@@ -179,40 +184,37 @@ export function ProjectDashboard({
 
             <div className="space-y-2">
               {projects.map((project) => (
-                <div
+                <Link
                   key={project.id}
+                  href={buildDashboardHref(project.slug)}
                   className={cn(
-                    "rounded-2xl border px-4 py-3 transition-all",
+                    "block rounded-2xl border px-4 py-3 transition-all",
                     project.slug === selectedProjectSlug
                       ? "border-primary/30 bg-primary/5"
                       : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                   )}
                 >
-                  <Link href={buildDashboardHref(project.slug)} className="block">
-                    <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-950">{project.name}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {project.trackedUrlCount} pages
-                        </p>
-                      </div>
-                      <Badge className="border border-slate-200 bg-white text-slate-700">
-                        {project.projectScore ?? "New"}
-                      </Badge>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-950">{project.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {project.trackedUrlCount} pages
+                      </p>
                     </div>
-                  </Link>
+                    <Badge className="border border-slate-200 bg-white text-slate-700">
+                      {project.projectScore ?? "New"}
+                    </Badge>
+                  </div>
                   <div className="mt-3 flex items-center justify-between">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
                       {pluralize(project.auditCount, "audit")}
                     </p>
-                    <Button asChild variant="ghost" className="h-8 rounded-full px-3 text-xs">
-                      <Link href={`/dashboard/projects/${project.slug}`}>
-                        View
-                        <ExternalLink className="size-3.5" />
-                      </Link>
-                    </Button>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
+                      View
+                      <ExternalLink className="size-3.5" />
+                    </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </CardContent>
@@ -315,25 +317,6 @@ export function ProjectDashboard({
               </CardContent>
             </Card>
           </div>
-        ) : hasProjects ? (
-          <Card className="border-white/80 bg-white/95 shadow-sm">
-            <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
-                  Select A Project
-                </p>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
-                  Project summaries live inside each project
-                </h2>
-                <p className="max-w-2xl text-sm leading-6 text-slate-600">
-                  Choose a project from the left to see its pages, score, active audits, and issue summary.
-                </p>
-              </div>
-              <div className="rounded-3xl bg-slate-100 p-4 text-slate-700">
-                <FolderTree className="size-6" />
-              </div>
-            </CardContent>
-          </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="border-emerald-200/80 bg-emerald-50/70 shadow-sm">
@@ -384,6 +367,89 @@ export function ProjectDashboard({
           <AuditSection variant="dashboard" isAuthenticated projectSlug={selectedProjectSlug} />
         </div>
 
+        {selectedProject ? (
+          <div className="space-y-4 mt-10">
+            <div>
+              <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+                Pages & Sites
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Open page/sites below to see its latest result and previous audit runs.
+              </p>
+            </div>
+
+            {trackedUrls.length === 0 ? (
+              <Card className="border-dashed border-slate-200 bg-white/90">
+                <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+                  <div className="rounded-2xl bg-slate-100 p-3 text-slate-500">
+                    <Globe className="size-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg text-slate-900">No pages in this project yet</CardTitle>
+                    <p className="max-w-lg text-sm leading-6 text-slate-600">
+                      Run an audit above or add one from your saved audits to start this project&apos;s page list.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {trackedUrls.map((trackedUrl) => (
+                  <Link
+                    key={trackedUrl.id}
+                    href={buildProjectAuditHref(selectedProject.slug, trackedUrl.trackedUrl)}
+                    className="rounded-2xl border border-white/80 bg-white/95 p-5 text-left shadow-sm transition-all hover:border-slate-300 hover:bg-white"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {isLiveStatus(trackedUrl.latestAuditStatus) ? (
+                            <Badge className={cn("border font-semibold", statusTone(trackedUrl.latestAuditStatus ?? "QUEUED"))}>
+                              <span className="mr-1.5 inline-block size-2 rounded-full bg-current" />
+                              Live
+                            </Badge>
+                          ) : null}
+                          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                            {pluralize(trackedUrl.auditCount, "audit")}
+                          </span>
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-semibold text-slate-950">{trackedUrl.trackedUrl}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Updated {formatTimestamp(trackedUrl.latestVerifiedAt ?? trackedUrl.latestAuditAt)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[280px]">
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                            Latest Score
+                          </p>
+                          <p className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+                            {typeof trackedUrl.currentScore === "number" ? trackedUrl.currentScore : "Not scored yet"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                            Priority Issues
+                          </p>
+                          <p className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+                            {trackedUrl.currentCriticalIssueCount}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {!selectedProject ? (
         <div className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -391,7 +457,7 @@ export function ProjectDashboard({
                 Audit History
               </p>
               <h2 className="mt-1 text-2xl font-semibold text-slate-950">
-                {selectedProject ? `${selectedProject.name} audit history` : "Audits saved to this account"}
+                Audits saved to this account
               </h2>
             </div>
 
@@ -400,7 +466,7 @@ export function ProjectDashboard({
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search pages, projects, or audit IDs"
+                placeholder="Search audit IDs or URLs"
                 className="h-11 rounded-full border-slate-200 bg-white pl-10"
               />
             </div>
@@ -419,7 +485,7 @@ export function ProjectDashboard({
                   <p className="max-w-lg text-sm leading-6 text-slate-600">
                     {audits.length === 0
                       ? "Start a new audit above or save one from the homepage to begin building your history."
-                      : "Try another page, project name, or audit ID."}
+                      : "Try another audit ID or URL."}
                   </p>
                 </div>
               </CardContent>
@@ -508,15 +574,6 @@ export function ProjectDashboard({
                           defaultProjectSlug={selectedProjectSlug}
                         />
                       )}
-
-                      {audit.projectSlug ? (
-                        <Button asChild variant="ghost" className="h-9 rounded-full px-4 text-xs font-semibold">
-                          <Link href={`/dashboard/projects/${audit.projectSlug}`}>
-                            View project
-                            <Sparkles className="size-4" />
-                          </Link>
-                        </Button>
-                      ) : null}
                     </div>
                   </CardContent>
                 </Card>
@@ -524,6 +581,7 @@ export function ProjectDashboard({
             </div>
           )}
         </div>
+        ) : null}
       </div>
     </div>
   );

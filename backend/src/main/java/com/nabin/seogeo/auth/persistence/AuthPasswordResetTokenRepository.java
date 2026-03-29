@@ -24,6 +24,10 @@ public interface AuthPasswordResetTokenRepository extends JpaRepository<AuthPass
     long countByUserIdAndSentAtAfter(UUID userId, OffsetDateTime sentAfter);
 
     @Modifying
+    @Query("delete from AuthPasswordResetTokenEntity token where token.userId = :userId")
+    int deleteByUserId(@Param("userId") UUID userId);
+
+    @Modifying
     @Query("""
             update AuthPasswordResetTokenEntity token
             set token.usedAt = :usedAt

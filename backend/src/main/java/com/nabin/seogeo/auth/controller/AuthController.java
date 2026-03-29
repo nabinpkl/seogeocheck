@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -81,6 +82,20 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(request, response);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/account")
+    public ResponseEntity<Void> deleteAccount(
+            Authentication authentication,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        authService.deleteAccount(
+                authService.requireAuthenticatedUser(authentication.getPrincipal()),
+                request,
+                response
+        );
         return ResponseEntity.noContent().build();
     }
 

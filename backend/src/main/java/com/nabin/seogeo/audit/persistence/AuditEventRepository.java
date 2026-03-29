@@ -1,9 +1,11 @@
 package com.nabin.seogeo.audit.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +14,10 @@ public interface AuditEventRepository extends JpaRepository<AuditEventEntity, Lo
     List<AuditEventEntity> findByJobIdOrderBySequenceAsc(String jobId);
 
     List<AuditEventEntity> findByJobIdAndSequenceGreaterThanOrderBySequenceAsc(String jobId, long sequence);
+
+    @Modifying
+    @Query("delete from AuditEventEntity event where event.jobId in :jobIds")
+    int deleteByJobIdIn(@Param("jobIds") Collection<String> jobIds);
 
     Optional<AuditEventEntity> findBySourceEventId(String sourceEventId);
 

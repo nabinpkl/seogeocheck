@@ -1,24 +1,21 @@
+"use client";
+
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
+  FolderTree,
   Settings,
   CreditCard,
   LogOut,
-  FileSearch,
-  Sparkles,
-  FileAudio,
-  FileBadge
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
 import type { AuthUser } from "@/features/auth/lib/server-auth";
 
 const NAV_ITEMS = [
-  { name: "Audit History", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Saved Reports", href: "/dashboard", icon: FileSearch },
-  { name: "New Audits", href: "/dashboard#audit-section", icon: FileBadge },
+  { name: "Projects", href: "/dashboard", icon: FolderTree },
 ];
 
 const SETTINGS_ITEMS = [
@@ -45,6 +42,16 @@ function getInitials(email: string) {
 }
 
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
+  const pathname = usePathname();
+
+  function isActive(href: string) {
+    if (href === "/dashboard") {
+      return pathname === href || pathname.startsWith("/dashboard/projects") || pathname.startsWith("/dashboard/audits");
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
   return (
     <aside className="hidden lg:flex w-64 flex-col bg-sidebar border-r border-sidebar-border/50 min-h-screen fixed left-0 top-0">
 
@@ -75,7 +82,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
-                item.name === "Audit History"
+                isActive(item.href)
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
@@ -92,7 +99,12 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             <Link
               key={item.name}
               href={item.href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition-all hover:bg-muted/50 hover:text-foreground"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
+                isActive(item.href)
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              )}
             >
               <item.icon className="size-4" />
               {item.name}

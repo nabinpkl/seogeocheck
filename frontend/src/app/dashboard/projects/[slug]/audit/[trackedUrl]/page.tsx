@@ -14,10 +14,15 @@ type ProjectAuditPageProps = {
     slug: string;
     trackedUrl: string;
   }>;
+  searchParams?: Promise<{
+    run?: string;
+  }>;
 };
 
-export default async function ProjectAuditPage({ params }: ProjectAuditPageProps) {
+export default async function ProjectAuditPage({ params, searchParams }: ProjectAuditPageProps) {
   const { slug, trackedUrl: encodedTrackedUrl } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const requestedRunId = typeof resolvedSearchParams.run === "string" ? resolvedSearchParams.run : null;
   const trackedUrl = decodeURIComponent(encodedTrackedUrl);
 
   const [project, trackedUrls, audits] = await Promise.all([
@@ -35,10 +40,12 @@ export default async function ProjectAuditPage({ params }: ProjectAuditPageProps
     notFound();
   }
 
-  const latestAudit = audits[0] ?? null;
-  const latestReportedAudit = audits.find((audit) => typeof audit.score === "number") ?? null;
-  const initialReport = latestReportedAudit
-    ? await getOwnedAuditReport(latestReportedAudit.jobId)
+  const selectedAudit =
+    (requestedRunId ? audits.find((audit) => audit.jobId === requestedRunId) : null) ??
+    audits[0] ??
+    null;
+  const initialReport = selectedAudit
+    ? await getOwnedAuditReport(selectedAudit.jobId)
     : null;
 
   return (
@@ -47,7 +54,8 @@ export default async function ProjectAuditPage({ params }: ProjectAuditPageProps
         <ProjectAuditScreen
           project={project}
           trackedUrl={trackedUrlSummary}
-          latestAudit={latestAudit}
+          audits={audits}
+          selectedAudit={selectedAudit}
           initialReport={initialReport}
         />
       </PageShell>
