@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import { startAuditAction } from "@/app/actions/start-audit";
 import { initialAuditActionState } from "@/app/actions/start-audit-state";
+import type { AuthUser } from "@/features/auth/lib/server-auth";
 import {
   auditReportQueryKey,
   ReportPendingError,
@@ -44,12 +45,12 @@ async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
 }
 
 type UseAuditSectionControllerOptions = {
-  isAuthenticated: boolean;
+  viewer: AuthUser | null;
   projectSlug: string | null;
 };
 
 export function useAuditSectionController({
-  isAuthenticated,
+  viewer,
   projectSlug,
 }: UseAuditSectionControllerOptions): AuditSectionViewProps {
   const router = useRouter();
@@ -180,28 +181,8 @@ export function useAuditSectionController({
 
   const report = reportQuery.data;
 
-  const claimTokenQuery = useQuery({
-    queryKey: ["claim-token", jobId],
-    enabled: Boolean(!isAuthenticated && report && jobId),
-    staleTime: Infinity,
-    retry: 1,
-    queryFn: async () => {
-      const response = await fetch(`/api/audits/${jobId}/claim-tokens`, {
-        method: "POST",
-        cache: "no-store",
-      });
-      const payload = (await response.json()) as { token?: string; message?: string };
-      
-      if (!response.ok || typeof payload.token !== "string" || !payload.token) {
-        throw new Error(
-          typeof payload.message === "string"
-            ? payload.message
-            : "We couldn't prepare the save link for this audit yet."
-        );
-      }
-      return payload.token;
-    },
-  });
+  const effectiveAccountKind = actionState.workspaceKind ?? viewer?.accountKind ?? null;
+  const showAnonymousUpgradePanel = effectiveAccountKind === "ANONYMOUS";
 
   const currentProgress =
     [...events].reverse().find((event) => typeof event.progress === "number")
@@ -496,14 +477,13 @@ export function useAuditSectionController({
           document
             .getElementById("family-checklists")
             ?.scrollIntoView({ behavior: "smooth" }),
-        claimPanel: isAuthenticated
-          ? null
-          : {
-            loading: claimTokenQuery.isPending,
-            error: claimTokenQuery.error instanceof Error ? claimTokenQuery.error.message : null,
-            signUpHref: claimTokenQuery.data ? `/sign-up?claim=${encodeURIComponent(claimTokenQuery.data)}` : null,
-            signInHref: claimTokenQuery.data ? `/sign-in?claim=${encodeURIComponent(claimTokenQuery.data)}` : null,
-          },
+        claimPanel: showAnonymousUpgradePanel
+          ? {
+            message: "Saved only in this browser for now.",
+            signUpHref: "/sign-up",
+            signInHref: "/sign-in",
+          }
+          : null,
         onReAudit: handleReAudit,
         onReset: handleReset,
       }

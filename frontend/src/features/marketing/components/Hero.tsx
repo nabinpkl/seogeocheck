@@ -50,7 +50,7 @@ export function Hero({ viewer }: HeroProps) {
             </Button>
           </div>
 
-          <AuditSection isAuthenticated={Boolean(viewer)} />
+          <AuditSection viewer={viewer} />
 
           {/* Explanation Sections: SEO, GEO, AEO */}
           <div className="mt-20 grid w-full gap-8 md:grid-cols-3">

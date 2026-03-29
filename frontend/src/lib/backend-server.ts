@@ -45,6 +45,7 @@ export class BackendRequestError extends Error {
 type ParsedSetCookie = {
   name: string;
   value: string;
+  maxAge: number | null;
 };
 
 export function getBackendBaseUrl() {
@@ -67,16 +68,59 @@ function buildCookieHeader(entries: Array<[string, string | null | undefined]>) 
 }
 
 function parseSetCookieHeader(setCookie: string): ParsedSetCookie {
-  const [cookiePart] = setCookie.split(";", 1);
+  const [cookiePart, ...attributeParts] = setCookie.split(";");
   const separatorIndex = cookiePart.indexOf("=");
   const name = separatorIndex >= 0 ? cookiePart.slice(0, separatorIndex).trim() : cookiePart.trim();
   const value = separatorIndex >= 0 ? cookiePart.slice(separatorIndex + 1) : "";
-  return { name, value };
+
+  let maxAge: number | null = null;
+  for (const attribute of attributeParts) {
+    const [attributeName, attributeValue] = attribute.split("=");
+    if (attributeName.trim().toLowerCase() !== "max-age") {
+      continue;
+    }
+
+    const parsed = Number(attributeValue);
+    if (Number.isFinite(parsed)) {
+      maxAge = parsed;
+    }
+  }
+
+  return { name, value, maxAge };
 }
 
 async function getBackendSessionCookieValue() {
   const cookieStore = await cookies();
   return cookieStore.get(BACKEND_SESSION_COOKIE)?.value ?? null;
+}
+
+function isProduction() {
+  return process.env.NODE_ENV === "production";
+}
+
+async function syncBackendSessionCookie(response: Response) {
+  const cookieStore = await cookies();
+  const sessionCookie = response.headers
+    .getSetCookie()
+    .map(parseSetCookieHeader)
+    .filter((cookie) => cookie.name === BACKEND_SESSION_COOKIE)
+    .at(-1);
+
+  if (!sessionCookie) {
+    return;
+  }
+
+  if (!sessionCookie.value || sessionCookie.maxAge === 0) {
+    cookieStore.delete(BACKEND_SESSION_COOKIE);
+    return;
+  }
+
+  cookieStore.set(BACKEND_SESSION_COOKIE, sessionCookie.value, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProduction(),
+    path: "/",
+  });
 }
 
 async function fetchCsrfContext(sessionCookieValue: string | null) {
@@ -93,7 +137,8 @@ async function fetchCsrfContext(sessionCookieValue: string | null) {
   const csrfCookie = response.headers
     .getSetCookie()
     .map(parseSetCookieHeader)
-    .find((cookie) => cookie.name === BACKEND_CSRF_COOKIE);
+    .filter((cookie) => cookie.name === BACKEND_CSRF_COOKIE)
+    .at(-1);
 
   if (!payload.headerName || !payload.token || !csrfCookie?.value) {
     throw new Error("Backend CSRF handshake failed.");
@@ -117,11 +162,13 @@ export async function backendFetchWithSession(path: string, init?: RequestInit) 
     );
   }
 
-  return fetch(buildBackendUrl(path), {
+  const response = await fetch(buildBackendUrl(path), {
     ...init,
     headers,
     cache: "no-store",
   });
+  await syncBackendSessionCookie(response);
+  return response;
 }
 
 export async function backendJsonWithSession<TResponse>(
@@ -149,6 +196,7 @@ export async function backendJsonWithSession<TResponse>(
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
+  await syncBackendSessionCookie(response);
 
   if (!response.ok) {
     const payload = await parseJsonResponse<BackendErrorPayload>(response);

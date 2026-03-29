@@ -2,6 +2,7 @@ import * as React from "react";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/ui/page-shell";
 import { ProjectDashboard } from "@/features/dashboard/components/ProjectDashboard";
+import { getCurrentUser } from "@/features/auth/lib/server-auth";
 import { getAccountAudits, getAccountProjects, getAccountProjectUrls } from "@/lib/backend-server";
 
 type DashboardPageProps = {
@@ -11,6 +12,7 @@ type DashboardPageProps = {
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const viewer = await getCurrentUser();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const requestedProjectSlug = typeof resolvedSearchParams.project === "string"
     ? resolvedSearchParams.project
@@ -39,6 +41,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
 
         <ProjectDashboard
+          viewer={viewer}
           projects={projects}
           audits={audits}
           trackedUrls={trackedUrls}

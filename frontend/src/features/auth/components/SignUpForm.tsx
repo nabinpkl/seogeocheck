@@ -22,6 +22,7 @@ export function SignUpForm({ claimToken }: SignUpFormProps) {
   const signInHref = claimToken
     ? `${SIGN_IN_PATH}?claim=${encodeURIComponent(claimToken)}`
     : SIGN_IN_PATH;
+  const showExistingAccountAction = state.code === "EMAIL_ALREADY_REGISTERED";
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -113,9 +114,20 @@ export function SignUpForm({ claimToken }: SignUpFormProps) {
           </div>
 
           {state.error ? (
-            <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <span>{state.error}</span>
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                <span>{state.error}</span>
+              </div>
+              {showExistingAccountAction ? (
+                <Link
+                  href={signInHref}
+                  className="mt-3 inline-flex items-center gap-2 font-semibold text-destructive transition hover:text-destructive/80"
+                >
+                  Sign in instead
+                  <ArrowRight className="size-4" />
+                </Link>
+              ) : null}
             </div>
           ) : null}
 

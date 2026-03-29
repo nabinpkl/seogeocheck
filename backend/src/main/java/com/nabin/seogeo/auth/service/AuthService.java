@@ -6,41 +6,34 @@ import com.nabin.seogeo.audit.persistence.AuditEventRepository;
 import com.nabin.seogeo.audit.persistence.AuditReportRepository;
 import com.nabin.seogeo.audit.persistence.AuditRunRepository;
 import com.nabin.seogeo.auth.config.AuthProperties;
+import com.nabin.seogeo.auth.domain.AuthAccountKind;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
 import com.nabin.seogeo.auth.mail.AuthEmailSender;
 import com.nabin.seogeo.auth.persistence.AuthEmailVerificationTokenEntity;
 import com.nabin.seogeo.auth.persistence.AuthEmailVerificationTokenRepository;
 import com.nabin.seogeo.auth.persistence.AuthPasswordResetTokenEntity;
 import com.nabin.seogeo.auth.persistence.AuthPasswordResetTokenRepository;
+import com.nabin.seogeo.auth.persistence.AuthUserMergeIntentEntity;
+import com.nabin.seogeo.auth.persistence.AuthUserMergeIntentRepository;
 import com.nabin.seogeo.auth.persistence.AuthUserEntity;
 import com.nabin.seogeo.auth.persistence.AuthUserRepository;
 import com.nabin.seogeo.project.persistence.ProjectRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.util.UriComponentsBuilder;
-import org.springframework.web.util.UriUtils;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -51,6 +44,7 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -58,6 +52,7 @@ import java.util.UUID;
 public class AuthService {
 
     public static final String GENERIC_REGISTER_MESSAGE = "If the address can be used, we sent a verification email.";
+    public static final String EMAIL_ALREADY_REGISTERED_MESSAGE = "An account with this email already exists. Sign in instead.";
     public static final String GENERIC_LOGIN_MESSAGE = "Invalid email or password.";
     public static final String GENERIC_VERIFICATION_MESSAGE = "The verification link is invalid or has expired.";
     public static final String GENERIC_FORGOT_PASSWORD_MESSAGE = "If the address can be used, we sent a password reset email.";
@@ -68,9 +63,9 @@ public class AuthService {
     private static final int MAX_PASSWORD_LENGTH = 255;
     private static final Duration UNKNOWN_USER_LOGIN_DELAY = Duration.ofMillis(500);
     private static final Duration PUBLIC_AUTH_RESPONSE_FLOOR = Duration.ofMillis(400);
-    private static final String PENDING_VERIFICATION_USER_ID_SESSION_KEY = "seogeo.auth.pendingVerificationUserId";
 
     private final AuthUserRepository authUserRepository;
+    private final AuthUserMergeIntentRepository authUserMergeIntentRepository;
     private final AuthEmailVerificationTokenRepository authEmailVerificationTokenRepository;
     private final AuthPasswordResetTokenRepository authPasswordResetTokenRepository;
     private final AuditRunRepository auditRunRepository;
@@ -82,15 +77,17 @@ public class AuthService {
     private final AuthEmailSender authEmailSender;
     private final AuthProperties authProperties;
     private final AuditClaimService auditClaimService;
+    private final AuthSessionService authSessionService;
+    private final AuthMergeService authMergeService;
+    private final AuthFrontendLinkService authFrontendLinkService;
     private final Clock clock;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
-    private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
-    private final SecurityContextRepository securityContextRepository;
     private final SecurityContextHolderStrategy securityContextHolderStrategy;
 
     public AuthService(
             AuthUserRepository authUserRepository,
+            AuthUserMergeIntentRepository authUserMergeIntentRepository,
             AuthEmailVerificationTokenRepository authEmailVerificationTokenRepository,
             AuthPasswordResetTokenRepository authPasswordResetTokenRepository,
             AuditRunRepository auditRunRepository,
@@ -102,14 +99,16 @@ public class AuthService {
             AuthEmailSender authEmailSender,
             AuthProperties authProperties,
             AuditClaimService auditClaimService,
+            AuthSessionService authSessionService,
+            AuthMergeService authMergeService,
+            AuthFrontendLinkService authFrontendLinkService,
             Clock clock,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
-            SessionAuthenticationStrategy sessionAuthenticationStrategy,
-            SecurityContextRepository securityContextRepository,
             SecurityContextHolderStrategy securityContextHolderStrategy
     ) {
         this.authUserRepository = authUserRepository;
+        this.authUserMergeIntentRepository = authUserMergeIntentRepository;
         this.authEmailVerificationTokenRepository = authEmailVerificationTokenRepository;
         this.authPasswordResetTokenRepository = authPasswordResetTokenRepository;
         this.auditRunRepository = auditRunRepository;
@@ -121,26 +120,77 @@ public class AuthService {
         this.authEmailSender = authEmailSender;
         this.authProperties = authProperties;
         this.auditClaimService = auditClaimService;
+        this.authSessionService = authSessionService;
+        this.authMergeService = authMergeService;
+        this.authFrontendLinkService = authFrontendLinkService;
         this.clock = clock;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
-        this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
-        this.securityContextRepository = securityContextRepository;
         this.securityContextHolderStrategy = securityContextHolderStrategy;
     }
 
-    public RegistrationResult register(String rawEmail, String rawPassword, String claimToken) {
+    public RegistrationResult register(
+            String rawEmail,
+            String rawPassword,
+            String claimToken
+    ) {
+        return register(rawEmail, rawPassword, claimToken, null, null, null);
+    }
+
+    public RegistrationResult register(
+            String rawEmail,
+            String rawPassword,
+            String claimToken,
+            Object principal,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
         OffsetDateTime startedAt = now();
         String emailOriginal = normalizeOriginalEmail(rawEmail);
         String emailNormalized = normalizeEmail(rawEmail);
         validatePassword(rawPassword);
+        AuthenticatedUser currentUser = authenticatedUserFromPrincipal(principal);
+        if (currentUser == null) {
+            currentUser = authenticatedUserFromPrincipal(securityContextHolderStrategy.getContext().getAuthentication());
+        }
+        if (currentUser == null && request != null) {
+            currentUser = authSessionService.resolveCurrentUserFromSession(request);
+        }
+        AuthenticatedUser effectiveCurrentUser = currentUser;
 
         try {
             for (int attempt = 0; attempt < 2; attempt++) {
                 try {
-                    return transactionTemplate.execute(
-                            status -> registerInTransaction(emailOriginal, emailNormalized, rawPassword, claimToken)
+                    RegistrationResult result = transactionTemplate.execute(
+                            status -> registerInTransaction(
+                                    emailOriginal,
+                                    emailNormalized,
+                                    rawPassword,
+                                    claimToken,
+                                    effectiveCurrentUser,
+                                    request
+                            )
                     );
+                    if (request != null
+                            && response != null
+                            && effectiveCurrentUser != null
+                            && effectiveCurrentUser.isAnonymous()
+                            && result != null
+                            && Objects.equals(result.pendingUserId(), effectiveCurrentUser.getId())) {
+                        authUserRepository.findById(effectiveCurrentUser.getId())
+                                .ifPresent(user -> authSessionService.authenticateUser(user, request, response));
+                    }
+                    return result;
+                } catch (AnonymousExistingAccountMergeRequiredException mergeRequiredException) {
+                    if (effectiveCurrentUser != null && effectiveCurrentUser.isAnonymous()) {
+                        authMergeService.createMergeIntent(
+                                effectiveCurrentUser.getId(),
+                                mergeRequiredException.getTargetUserId(),
+                                request,
+                                now()
+                        );
+                    }
+                    throw new EmailAlreadyRegisteredException();
                 } catch (DataIntegrityViolationException dataIntegrityViolationException) {
                     if (attempt == 1) {
                         throw dataIntegrityViolationException;
@@ -158,18 +208,36 @@ public class AuthService {
             String emailOriginal,
             String emailNormalized,
             String rawPassword,
-            String claimToken
+            String claimToken,
+            AuthenticatedUser currentUser,
+            HttpServletRequest request
     ) {
         OffsetDateTime now = now();
         Optional<AuthUserEntity> existingUser = authUserRepository.findByEmailNormalizedForUpdate(emailNormalized);
+        if (currentUser != null && currentUser.isAnonymous()) {
+            return registerAnonymousUser(
+                    currentUser,
+                    existingUser.orElse(null),
+                    emailOriginal,
+                    emailNormalized,
+                    rawPassword,
+                    claimToken,
+                    request,
+                    now
+            );
+        }
+
         if (existingUser.isPresent()) {
             AuthUserEntity user = existingUser.get();
             if (isVerified(user)) {
-                return RegistrationResult.noop();
+                throw new EmailAlreadyRegisteredException();
             }
 
             user.setEmailOriginal(emailOriginal);
             user.setPasswordHash(passwordEncoder.encode(rawPassword));
+            user.setEnabled(false);
+            user.setEmailVerifiedAt(null);
+            user.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
             user.setUpdatedAt(now);
             authUserRepository.save(user);
             issueVerificationIfAllowed(user, now);
@@ -182,6 +250,7 @@ public class AuthService {
         user.setEmailNormalized(emailNormalized);
         user.setEmailOriginal(emailOriginal);
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        user.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
         user.setEnabled(false);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
@@ -200,6 +269,8 @@ public class AuthService {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
+        OffsetDateTime now = now();
+        AuthUserMergeIntentEntity mergeIntent = authMergeService.resolveActiveMergeIntent(request, now);
         String emailNormalized = normalizeEmail(rawEmail);
         Optional<AuthUserEntity> userOptional = authUserRepository.findByEmailNormalized(emailNormalized);
         if (userOptional.isEmpty()) {
@@ -221,16 +292,16 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        OffsetDateTime now = now();
         user.setFailedLoginCount(0);
         user.setFailedLoginWindowStartedAt(null);
         user.setLastLoginAt(now);
         user.setUpdatedAt(now);
         authUserRepository.save(user);
 
-        AuthenticatedUser authenticatedUser = authenticateUser(user, request, response);
-        clearPendingVerificationUser(request);
+        AuthenticatedUser authenticatedUser = authSessionService.authenticateUser(user, request, response);
+        authSessionService.clearPendingVerificationUser(request);
         auditClaimService.tryClaimAudit(claimToken, user.getId());
+        authMergeService.mergeAnonymousWorkspaceIfReady(user, request, mergeIntent, now);
         auditClaimService.consumeReservedClaimsForUser(user.getId());
         return authenticatedUser;
     }
@@ -270,11 +341,16 @@ public class AuthService {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
+        if (authenticatedUser.isAnonymous()) {
+            throw new UnsupportedAnonymousAccountOperationException();
+        }
+
         AuthUserEntity user = authUserRepository.findByIdForUpdate(authenticatedUser.getId())
                 .orElseThrow(InvalidCredentialsException::new);
-        String principalName = user.getEmailOriginal();
+        String principalName = user.getId().toString();
 
-        clearPendingVerificationUser(request);
+        authSessionService.clearPendingVerificationUser(request);
+        authSessionService.clearMergeIntent(request);
         new SecurityContextLogoutHandler().logout(
                 request,
                 response,
@@ -286,6 +362,7 @@ public class AuthService {
         auditClaimTokenRepository.deleteByReservedUserId(user.getId());
         authPasswordResetTokenRepository.deleteByUserId(user.getId());
         authEmailVerificationTokenRepository.deleteByUserId(user.getId());
+        authUserMergeIntentRepository.deleteByUserId(user.getId());
         authUserRepository.delete(user);
     }
 
@@ -296,17 +373,20 @@ public class AuthService {
             HttpServletResponse response
     ) {
         OffsetDateTime now = now();
+        AuthUserMergeIntentEntity mergeIntent = authMergeService.resolveActiveMergeIntent(request, now);
         AuthEmailVerificationTokenEntity token = claimVerificationToken(rawToken, now);
         AuthUserEntity user = authUserRepository.findById(token.getUserId())
                 .orElseThrow(() -> new VerificationTokenException(VerificationFailureReason.INVALID));
 
         user.setEnabled(true);
         user.setEmailVerifiedAt(now);
+        user.setAccountKind(AuthAccountKind.EMAIL_VERIFIED);
         user.setUpdatedAt(now);
         authUserRepository.save(user);
 
         supersedeActiveVerificationTokens(user.getId(), now, token.getId());
-        boolean authenticated = tryAutoAuthenticateVerifiedUser(user, request, response);
+        boolean authenticated = authSessionService.tryAutoAuthenticateVerifiedUser(user, request, response);
+        authMergeService.mergeAnonymousWorkspaceIfReady(user, request, mergeIntent, now);
         if (authenticated) {
             auditClaimService.consumeReservedClaimsForUser(user.getId());
         }
@@ -337,35 +417,27 @@ public class AuthService {
         authUserRepository.save(user);
 
         supersedeActivePasswordResetTokens(user.getId(), now, token.getId());
-        deleteSessionsForPrincipal(user.getEmailOriginal());
+        deleteSessionsForPrincipal(user.getId().toString());
     }
 
     public String buildFrontendVerificationRedirect(VerificationFailureReason failureReason) {
-        String status = switch (failureReason) {
-            case EXPIRED -> "expired";
-            case INVALID -> "invalid";
-        };
-        return appendStatusToFrontendPath("/auth/verify-email", status, null);
+        return authFrontendLinkService.buildVerificationFailureRedirect(failureReason);
     }
 
     public String buildFrontendVerificationSuccessRedirect() {
-        return appendStatusToFrontendPath("/auth/verify-email", "success", null);
+        return authFrontendLinkService.buildVerificationSuccessRedirect();
     }
 
     public String buildFrontendVerificationReadyRedirect(String rawToken) {
-        return appendStatusToFrontendPath("/auth/verify-email", "ready", rawToken);
+        return authFrontendLinkService.buildVerificationReadyRedirect(rawToken);
     }
 
     public String buildFrontendPasswordResetReadyRedirect(String rawToken) {
-        return appendStatusToFrontendPath("/auth/reset-password", "ready", rawToken);
+        return authFrontendLinkService.buildPasswordResetReadyRedirect(rawToken);
     }
 
     public String buildFrontendPasswordResetFailureRedirect(PasswordResetFailureReason failureReason) {
-        String status = switch (failureReason) {
-            case EXPIRED -> "expired";
-            case INVALID -> "invalid";
-        };
-        return appendStatusToFrontendPath("/auth/reset-password", status, null);
+        return authFrontendLinkService.buildPasswordResetFailureRedirect(failureReason);
     }
 
     public AuthenticatedUser requireAuthenticatedUser(Object principal) {
@@ -375,59 +447,134 @@ public class AuthService {
         throw new InvalidCredentialsException();
     }
 
+    @Transactional
+    public AuthenticatedUser resolveOrCreateCurrentUser(
+            Object principal,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        AuthenticatedUser authenticatedUser = authenticatedUserFromPrincipal(principal);
+        if (authenticatedUser != null) {
+            return authenticatedUser;
+        }
+
+        OffsetDateTime now = now();
+        AuthUserEntity anonymousUser = new AuthUserEntity();
+        anonymousUser.setId(UUID.randomUUID());
+        anonymousUser.setAccountKind(AuthAccountKind.ANONYMOUS);
+        anonymousUser.setEnabled(false);
+        anonymousUser.setFailedLoginCount(0);
+        anonymousUser.setCreatedAt(now);
+        anonymousUser.setUpdatedAt(now);
+        authUserRepository.saveAndFlush(anonymousUser);
+        return authSessionService.authenticateUser(anonymousUser, request, response);
+    }
+
     public void rememberPendingVerificationUser(HttpServletRequest request, UUID userId) {
-        request.getSession(true).setAttribute(PENDING_VERIFICATION_USER_ID_SESSION_KEY, userId.toString());
+        authSessionService.rememberPendingVerificationUser(request, userId);
     }
 
-    private AuthenticatedUser authenticateUser(
-            AuthUserEntity user,
+    private RegistrationResult registerAnonymousUser(
+            AuthenticatedUser currentUser,
+            AuthUserEntity existingUser,
+            String emailOriginal,
+            String emailNormalized,
+            String rawPassword,
+            String claimToken,
             HttpServletRequest request,
-            HttpServletResponse response
+            OffsetDateTime now
     ) {
-        AuthenticatedUser authenticatedUser = toAuthenticatedUser(user);
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                authenticatedUser,
-                null,
-                AuthorityUtils.createAuthorityList("ROLE_USER")
-        );
-        sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
+        AuthUserEntity sourceUser = authUserRepository.findByIdForUpdate(currentUser.getId())
+                .orElseThrow(InvalidCredentialsException::new);
+        if (sourceUser.getAccountKind() != AuthAccountKind.ANONYMOUS) {
+            return registerExistingNonAnonymousUser(existingUser, emailOriginal, emailNormalized, rawPassword, claimToken, now);
+        }
 
-        SecurityContext context = securityContextHolderStrategy.createEmptyContext();
-        context.setAuthentication(authentication);
-        securityContextHolderStrategy.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
-        return authenticatedUser;
+        if (existingUser != null) {
+            if (Objects.equals(existingUser.getId(), sourceUser.getId())) {
+                sourceUser.setEmailNormalized(emailNormalized);
+                sourceUser.setEmailOriginal(emailOriginal);
+                sourceUser.setPasswordHash(passwordEncoder.encode(rawPassword));
+                sourceUser.setEnabled(false);
+                sourceUser.setEmailVerifiedAt(null);
+                sourceUser.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
+                sourceUser.setUpdatedAt(now);
+                authUserRepository.save(sourceUser);
+                authSessionService.clearMergeIntent(request);
+                issueVerificationIfAllowed(sourceUser, now);
+                auditClaimService.tryReserveClaim(claimToken, sourceUser.getId());
+                return RegistrationResult.pendingVerification(sourceUser.getId());
+            }
+            if (isVerified(existingUser)) {
+                throw new AnonymousExistingAccountMergeRequiredException(existingUser.getId());
+            }
+
+            authMergeService.createMergeIntent(sourceUser.getId(), existingUser.getId(), request, now);
+            existingUser.setEmailOriginal(emailOriginal);
+            existingUser.setPasswordHash(passwordEncoder.encode(rawPassword));
+            existingUser.setEnabled(false);
+            existingUser.setEmailVerifiedAt(null);
+            existingUser.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
+            existingUser.setUpdatedAt(now);
+            authUserRepository.save(existingUser);
+            issueVerificationIfAllowed(existingUser, now);
+            auditClaimService.tryReserveClaim(claimToken, existingUser.getId());
+            return RegistrationResult.pendingVerification(existingUser.getId());
+        }
+
+        sourceUser.setEmailNormalized(emailNormalized);
+        sourceUser.setEmailOriginal(emailOriginal);
+        sourceUser.setPasswordHash(passwordEncoder.encode(rawPassword));
+        sourceUser.setEnabled(false);
+        sourceUser.setEmailVerifiedAt(null);
+        sourceUser.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
+        sourceUser.setUpdatedAt(now);
+        authUserRepository.save(sourceUser);
+        authSessionService.clearMergeIntent(request);
+        issueVerificationIfAllowed(sourceUser, now);
+        auditClaimService.tryReserveClaim(claimToken, sourceUser.getId());
+        return RegistrationResult.pendingVerification(sourceUser.getId());
     }
 
-    private boolean tryAutoAuthenticateVerifiedUser(
-            AuthUserEntity user,
-            HttpServletRequest request,
-            HttpServletResponse response
+    private RegistrationResult registerExistingNonAnonymousUser(
+            AuthUserEntity existingUser,
+            String emailOriginal,
+            String emailNormalized,
+            String rawPassword,
+            String claimToken,
+            OffsetDateTime now
     ) {
-        HttpSession session = request.getSession(false);
-        if (session == null) {
-            return false;
+        if (existingUser != null) {
+            if (isVerified(existingUser)) {
+                throw new EmailAlreadyRegisteredException();
+            }
+
+            existingUser.setEmailOriginal(emailOriginal);
+            existingUser.setPasswordHash(passwordEncoder.encode(rawPassword));
+            existingUser.setEnabled(false);
+            existingUser.setEmailVerifiedAt(null);
+            existingUser.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
+            existingUser.setUpdatedAt(now);
+            authUserRepository.save(existingUser);
+            issueVerificationIfAllowed(existingUser, now);
+            auditClaimService.tryReserveClaim(claimToken, existingUser.getId());
+            return RegistrationResult.pendingVerification(existingUser.getId());
         }
 
-        Object pendingUserId = session.getAttribute(PENDING_VERIFICATION_USER_ID_SESSION_KEY);
-        if (!(pendingUserId instanceof String pendingUserIdString)) {
-            return false;
-        }
-
-        if (!user.getId().toString().equals(pendingUserIdString)) {
-            return false;
-        }
-
-        authenticateUser(user, request, response);
-        session.removeAttribute(PENDING_VERIFICATION_USER_ID_SESSION_KEY);
-        return true;
-    }
-
-    private void clearPendingVerificationUser(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.removeAttribute(PENDING_VERIFICATION_USER_ID_SESSION_KEY);
-        }
+        AuthUserEntity user = new AuthUserEntity();
+        user.setId(UUID.randomUUID());
+        user.setEmailNormalized(emailNormalized);
+        user.setEmailOriginal(emailOriginal);
+        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        user.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
+        user.setEnabled(false);
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+        user.setFailedLoginCount(0);
+        authUserRepository.saveAndFlush(user);
+        issueVerificationIfAllowed(user, now);
+        auditClaimService.tryReserveClaim(claimToken, user.getId());
+        return RegistrationResult.pendingVerification(user.getId());
     }
 
     private void issueVerificationIfAllowed(AuthUserEntity user, OffsetDateTime now) {
@@ -555,26 +702,11 @@ public class AuthService {
     }
 
     private String buildVerificationUrl(String rawToken) {
-        return buildFrontendReadyUrl("/auth/verify-email", rawToken);
+        return authFrontendLinkService.buildVerificationReadyRedirect(rawToken);
     }
 
     private String buildPasswordResetUrl(String rawToken) {
-        return buildFrontendReadyUrl("/auth/reset-password", rawToken);
-    }
-
-    private String appendStatusToFrontendPath(String path, String status, String rawToken) {
-        UriComponentsBuilder builder = ServletUriComponentsBuilder.fromPath(path)
-                .queryParam("status", status);
-        if (rawToken != null) {
-            builder.fragment("token=" + UriUtils.encode(rawToken, StandardCharsets.UTF_8));
-        }
-        return URI.create(authProperties.getPublicAppUrl())
-                .resolve(builder.build(true).toUriString())
-                .toString();
-    }
-
-    private String buildFrontendReadyUrl(String path, String rawToken) {
-        return appendStatusToFrontendPath(path, "ready", rawToken);
+        return authFrontendLinkService.buildPasswordResetReadyRedirect(rawToken);
     }
 
     private static void validatePassword(String rawPassword) {
@@ -747,13 +879,17 @@ public class AuthService {
         sleep(remaining);
     }
 
-    private static AuthenticatedUser toAuthenticatedUser(AuthUserEntity user) {
-        return new AuthenticatedUser(
-                user.getId(),
-                user.getEmailOriginal(),
-                user.getEmailVerifiedAt() != null,
-                user.getCreatedAt()
-        );
+    private static AuthenticatedUser authenticatedUserFromPrincipal(Object principal) {
+        if (principal instanceof AuthenticatedUser authenticatedUser) {
+            return authenticatedUser;
+        }
+        if (principal instanceof org.springframework.security.core.Authentication authentication) {
+            Object nestedPrincipal = authentication.getPrincipal();
+            if (nestedPrincipal instanceof AuthenticatedUser authenticatedUser) {
+                return authenticatedUser;
+            }
+        }
+        return null;
     }
 
     public record RegistrationResult(UUID pendingUserId) {
@@ -780,6 +916,25 @@ public class AuthService {
     }
 
     public static final class InvalidCredentialsException extends RuntimeException {
+    }
+
+    public static final class EmailAlreadyRegisteredException extends RuntimeException {
+    }
+
+    public static final class UnsupportedAnonymousAccountOperationException extends RuntimeException {
+    }
+
+    public static final class AnonymousExistingAccountMergeRequiredException extends RuntimeException {
+
+        private final UUID targetUserId;
+
+        public AnonymousExistingAccountMergeRequiredException(UUID targetUserId) {
+            this.targetUserId = targetUserId;
+        }
+
+        public UUID getTargetUserId() {
+            return targetUserId;
+        }
     }
 
     public static final class InvalidPasswordException extends RuntimeException {

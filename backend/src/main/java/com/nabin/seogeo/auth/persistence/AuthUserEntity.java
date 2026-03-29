@@ -1,8 +1,13 @@
 package com.nabin.seogeo.auth.persistence;
 
+import com.nabin.seogeo.auth.domain.AuthAccountKind;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.OffsetDateTime;
@@ -16,13 +21,17 @@ public class AuthUserEntity {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "email_normalized", nullable = false, length = 320, unique = true)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_kind", nullable = false, length = 32)
+    private AuthAccountKind accountKind;
+
+    @Column(name = "email_normalized", length = 320, unique = true)
     private String emailNormalized;
 
-    @Column(name = "email_original", nullable = false, length = 320)
+    @Column(name = "email_original", length = 320)
     private String emailOriginal;
 
-    @Column(name = "password_hash", nullable = false, columnDefinition = "text")
+    @Column(name = "password_hash", columnDefinition = "text")
     private String passwordHash;
 
     @Column(name = "enabled", nullable = false)
@@ -46,12 +55,35 @@ public class AuthUserEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @PrePersist
+    @PreUpdate
+    void ensureAccountKind() {
+        if (accountKind != null) {
+            return;
+        }
+        if (emailNormalized == null || emailNormalized.isBlank()) {
+            accountKind = AuthAccountKind.ANONYMOUS;
+            return;
+        }
+        accountKind = enabled && emailVerifiedAt != null
+                ? AuthAccountKind.EMAIL_VERIFIED
+                : AuthAccountKind.EMAIL_UNVERIFIED;
+    }
+
     public UUID getId() {
         return id;
     }
 
     public void setId(UUID id) {
         this.id = id;
+    }
+
+    public AuthAccountKind getAccountKind() {
+        return accountKind;
+    }
+
+    public void setAccountKind(AuthAccountKind accountKind) {
+        this.accountKind = accountKind;
     }
 
     public String getEmailNormalized() {

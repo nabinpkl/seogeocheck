@@ -29,6 +29,22 @@ public class AuthExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(AuthService.EmailAlreadyRegisteredException.class)
+    public ResponseEntity<Map<String, String>> handleEmailAlreadyRegistered() {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "error", "EMAIL_ALREADY_REGISTERED",
+                "message", AuthService.EMAIL_ALREADY_REGISTERED_MESSAGE
+        ));
+    }
+
+    @ExceptionHandler(AuthService.UnsupportedAnonymousAccountOperationException.class)
+    public ResponseEntity<Map<String, String>> handleUnsupportedAnonymousAccountOperation() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "error", "ANONYMOUS_ACCOUNT_OPERATION_NOT_ALLOWED",
+                "message", "Create an account first before using this setting."
+        ));
+    }
+
     @ExceptionHandler(AuthService.VerificationTokenException.class)
     public ResponseEntity<Map<String, String>> handleInvalidVerificationToken() {
         return ResponseEntity.badRequest().body(Map.of(

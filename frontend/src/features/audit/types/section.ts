@@ -28,8 +28,7 @@ export type AuditResultsSectionProps = {
   onScrollToIssues: () => void;
   onScrollToFamilies: () => void;
   claimPanel: {
-    loading: boolean;
-    error: string | null;
+    message: string;
     signUpHref: string | null;
     signInHref: string | null;
   } | null;

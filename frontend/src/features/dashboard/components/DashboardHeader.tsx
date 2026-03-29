@@ -73,7 +73,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         </div>
 
         <div className="hidden min-w-0 rounded-full border border-border/60 bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground lg:block">
-          {user.email}
+          {user.email ?? "Saved in this browser"}
         </div>
       </div>
     </header>

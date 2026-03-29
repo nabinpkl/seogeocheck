@@ -16,7 +16,8 @@ import {
 
 type NavbarProps = {
   viewer?: {
-    email: string;
+    email: string | null;
+    isAnonymous?: boolean;
   } | null;
 };
 
@@ -130,7 +131,7 @@ export function Navbar({ viewer = null }: NavbarProps) {
                       : "border-white/20 bg-white/8 text-white/70"
                   }`}
                 >
-                  {viewer.email}
+                  {viewer.isAnonymous ? "Saved In Browser" : viewer.email}
                 </div>
                 <Button
                   asChild
@@ -218,13 +219,13 @@ export function Navbar({ viewer = null }: NavbarProps) {
                     ? "h-12 rounded-xl border-slate-200 bg-transparent px-5 text-sm font-semibold text-slate-700 hover:border-primary/50 hover:text-primary"
                     : "h-12 rounded-xl border-white/30 bg-transparent px-5 text-sm font-semibold text-white hover:border-primary/50 hover:bg-white/5 hover:text-primary"
                 }
-              >
-                <Link
-                  href={viewer ? DASHBOARD_PATH : SIGN_IN_PATH}
-                  onClick={() => setIsMobileMenuOpen(false)}
                 >
+                  <Link
+                    href={viewer ? DASHBOARD_PATH : SIGN_IN_PATH}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
                   {viewer ? "Dashboard" : "Sign In"}
-                </Link>
+                  </Link>
               </Button>
               {!viewer ? (
                 <Button

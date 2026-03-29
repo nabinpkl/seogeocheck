@@ -317,7 +317,7 @@ public class AuditPersistenceService {
     }
 
     public boolean isVisibleTo(AuditRunEntity run, UUID requesterUserId) {
-        return run.getOwnerUserId() == null || Objects.equals(run.getOwnerUserId(), requesterUserId);
+        return requesterUserId != null && Objects.equals(run.getOwnerUserId(), requesterUserId);
     }
 
     private Integer extractScore(String jobId) {

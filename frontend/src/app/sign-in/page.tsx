@@ -14,7 +14,7 @@ type SignInPageProps = {
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const viewer = await getCurrentUser();
-  if (viewer) {
+  if (viewer && !viewer.isAnonymous) {
     redirect(DASHBOARD_PATH);
   }
 

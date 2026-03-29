@@ -41,6 +41,10 @@ function getInitials(email: string) {
   return parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
 }
 
+function getUserLabel(user: AuthUser) {
+  return user.email ?? "Saved in this browser";
+}
+
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname();
 
@@ -93,24 +97,26 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           ))}
         </div>
 
-        <div className="space-y-1">
-          <p className="px-3 text-xs font-black tracking-[0.15em] text-muted-foreground uppercase mb-2">Account</p>
-          {SETTINGS_ITEMS.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
-                isActive(item.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              )}
-            >
-              <item.icon className="size-4" />
-              {item.name}
-            </Link>
-          ))}
-        </div>
+        {!user.isAnonymous ? (
+          <div className="space-y-1">
+            <p className="px-3 text-xs font-black tracking-[0.15em] text-muted-foreground uppercase mb-2">Account</p>
+            {SETTINGS_ITEMS.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
+                  isActive(item.href)
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <item.icon className="size-4" />
+                {item.name}
+              </Link>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {/* User Profile Footer */}
@@ -118,10 +124,15 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm relative overflow-hidden">
           <div className="flex items-center gap-3">
             <div className="size-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center font-bold text-[13px] text-primary">
-              {getInitials(user.email)}
+              {getInitials(user.email ?? "browser")}
             </div>
             <div className="min-w-0 flex-1 mt-0.5">
-              <span className="block truncate text-[15px] font-bold text-slate-900">{user.email}</span>
+              <span className="block truncate text-[15px] font-bold text-slate-900">{getUserLabel(user)}</span>
+              {user.isAnonymous ? (
+                <span className="block truncate text-xs font-medium text-slate-500">
+                  Create an account to keep this workspace across devices.
+                </span>
+              ) : null}
             </div>
           </div>
           

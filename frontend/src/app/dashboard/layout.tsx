@@ -23,6 +23,11 @@ export default async function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:ml-64 relative min-w-0">
         <DashboardHeader user={viewer} />
+        {viewer.isAnonymous ? (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:px-6 lg:px-8">
+            Your work is saved in this browser. Create an account to keep access across devices and avoid losing progress.
+          </div>
+        ) : null}
         <main className="flex-1 overflow-x-hidden">
           {children}
         </main>

@@ -7,6 +7,7 @@ import {
   BackendRequestError,
   parseJsonResponse,
 } from "@/lib/backend-server";
+import { getCurrentUser } from "@/features/auth/lib/server-auth";
 import {
   initialAuditActionState,
   type StartAuditActionState,
@@ -77,11 +78,14 @@ export async function startAuditAction(
       }
     }
 
+    const viewer = await getCurrentUser();
+
     return {
       ok: true,
       error: null,
       projectWarning,
       projectSlug,
+      workspaceKind: viewer?.accountKind ?? null,
       jobId: typeof payload.jobId === "string" ? payload.jobId : null,
       status: typeof payload.status === "string" ? payload.status : null,
       targetUrl,

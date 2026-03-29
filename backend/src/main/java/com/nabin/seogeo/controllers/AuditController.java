@@ -9,6 +9,9 @@ import com.nabin.seogeo.audit.service.AuditClaimService;
 import com.nabin.seogeo.audit.service.AuditOrchestrationService;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
+import com.nabin.seogeo.auth.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.Authentication;
@@ -43,28 +46,33 @@ public class AuditController {
     private final AuditPersistenceService auditPersistenceService;
     private final AuditClaimService auditClaimService;
     private final AuditProperties auditProperties;
+    private final AuthService authService;
 
     public AuditController(
             AuditOrchestrationService auditOrchestrationService,
             AuditPersistenceService auditPersistenceService,
             AuditClaimService auditClaimService,
-            AuditProperties auditProperties
+            AuditProperties auditProperties,
+            AuthService authService
     ) {
         this.auditOrchestrationService = auditOrchestrationService;
         this.auditPersistenceService = auditPersistenceService;
         this.auditClaimService = auditClaimService;
         this.auditProperties = auditProperties;
+        this.authService = authService;
     }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> createAudit(
             @Valid @RequestBody StartAuditRequest request,
-            Authentication authentication
+            Authentication authentication,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
     ) {
         String normalizedUrl = normalizeUrl(request.url());
         String jobId = "audit_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         OffsetDateTime createdAt = OffsetDateTime.now();
-        UUID ownerUserId = authenticatedUserId(authentication);
+        UUID ownerUserId = authService.resolveOrCreateCurrentUser(authentication, httpServletRequest, httpServletResponse).getId();
 
         auditOrchestrationService.startAudit(jobId, normalizedUrl, createdAt, ownerUserId);
 
@@ -232,10 +240,10 @@ public class AuditController {
     }
 
     private UUID authenticatedUserId(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser authenticatedUser)) {
             return null;
         }
-        return user.getId();
+        return authenticatedUser.getId();
     }
 
     private static final class AuditNotFoundException extends RuntimeException {

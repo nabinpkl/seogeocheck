@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import type { AuthUser } from "@/features/auth/lib/server-auth";
 import type { DashboardAuditSummary } from "../types/audits";
 import type { DashboardProjectSummary, ProjectTrackedUrlSummary } from "../types/projects";
 import { buildProjectAuditHref } from "../lib/routes";
@@ -27,6 +28,7 @@ import { AttachAuditDialog } from "./AttachAuditDialog";
 import { DetachAuditButton } from "./DetachAuditButton";
 
 type ProjectDashboardProps = {
+  viewer: AuthUser | null;
   projects: DashboardProjectSummary[];
   audits: DashboardAuditSummary[];
   trackedUrls: ProjectTrackedUrlSummary[];
@@ -95,6 +97,7 @@ function pluralize(count: number, singular: string, plural = `${singular}s`) {
 }
 
 export function ProjectDashboard({
+  viewer,
   projects,
   audits,
   trackedUrls,
@@ -364,7 +367,7 @@ export function ProjectDashboard({
         )}
 
         <div id="audit-section">
-          <AuditSection variant="dashboard" isAuthenticated projectSlug={selectedProjectSlug} />
+          <AuditSection variant="dashboard" viewer={viewer} projectSlug={selectedProjectSlug} />
         </div>
 
         {selectedProject ? (

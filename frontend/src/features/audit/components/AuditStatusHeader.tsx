@@ -7,9 +7,9 @@ export type AuditStatusHeaderProps = {
   model: AuditHeaderModel;
   actions?: React.ReactNode;
   claimPanel?: {
-    loading: boolean;
-    error: string | null;
+    message: string;
     signUpHref: string | null;
+    signInHref: string | null;
   } | null;
 };
 
@@ -47,10 +47,9 @@ export function AuditStatusHeader({
           {claimPanel ? (
             <div className="flex items-center gap-3 border-l border-slate-100 pl-3">
               <AuditClaimPanel
-                loading={claimPanel.loading}
-                error={claimPanel.error}
+                message={claimPanel.message}
                 signUpHref={claimPanel.signUpHref}
-                signInHref={null}
+                signInHref={claimPanel.signInHref}
               />
             </div>
           ) : null}

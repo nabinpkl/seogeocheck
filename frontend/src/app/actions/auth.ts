@@ -50,6 +50,7 @@ export async function signInAction(
   if (!email || !password) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "Enter your email and password.",
     };
   }
@@ -58,6 +59,7 @@ export async function signInAction(
   if (!result.ok) {
     return {
       ...initialAuthActionState,
+      code: result.code,
       error: result.message,
     };
   }
@@ -77,6 +79,7 @@ export async function signUpAction(
   if (!email || !password || !confirmPassword) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "Enter your email and confirm your password.",
     };
   }
@@ -84,6 +87,7 @@ export async function signUpAction(
   if (password !== confirmPassword) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "Passwords do not match.",
     };
   }
@@ -92,6 +96,7 @@ export async function signUpAction(
   if (passwordError) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: passwordError,
     };
   }
@@ -100,6 +105,7 @@ export async function signUpAction(
   if (!result.ok) {
     return {
       ...initialAuthActionState,
+      code: result.code,
       error: result.message,
     };
   }
@@ -116,6 +122,7 @@ export async function requestPasswordResetAction(
   if (!email) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "Enter the email you used for your account.",
     };
   }
@@ -124,6 +131,7 @@ export async function requestPasswordResetAction(
   if (!result.ok) {
     return {
       ...initialAuthActionState,
+      code: result.code,
       error: result.message,
     };
   }
@@ -142,6 +150,7 @@ export async function resetPasswordAction(
   if (!token) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "This reset link is incomplete. Open the latest email again.",
     };
   }
@@ -149,6 +158,7 @@ export async function resetPasswordAction(
   if (!password || !confirmPassword) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "Enter and confirm your new password.",
     };
   }
@@ -156,6 +166,7 @@ export async function resetPasswordAction(
   if (password !== confirmPassword) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "Passwords do not match yet.",
     };
   }
@@ -164,6 +175,7 @@ export async function resetPasswordAction(
   if (passwordError) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: passwordError,
     };
   }
@@ -184,6 +196,7 @@ export async function verifyEmailAction(
   if (!token) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "This verification link is incomplete. Open the latest email again.",
     };
   }
@@ -216,13 +229,23 @@ export async function deleteAccountAction(
   if (!viewer) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "Sign in again before deleting this account.",
+    };
+  }
+
+  if (viewer.isAnonymous || !viewer.email) {
+    return {
+      ...initialAuthActionState,
+      code: null,
+      error: "Create an account first before using account settings.",
     };
   }
 
   if (confirmedEmail !== viewer.email) {
     return {
       ...initialAuthActionState,
+      code: null,
       error: "Type your full account email exactly to confirm deletion.",
     };
   }
@@ -231,6 +254,7 @@ export async function deleteAccountAction(
   if (!result.ok) {
     return {
       ...initialAuthActionState,
+      code: result.code,
       error: result.message,
     };
   }

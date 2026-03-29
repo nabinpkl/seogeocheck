@@ -4,7 +4,9 @@ import { cookies } from "next/headers";
 
 export type AuthUser = {
   id: string;
-  email: string;
+  email: string | null;
+  accountKind: "ANONYMOUS" | "EMAIL_UNVERIFIED" | "EMAIL_VERIFIED";
+  isAnonymous: boolean;
   emailVerified: boolean;
   createdAt: string;
 };
@@ -105,7 +107,8 @@ async function syncSessionCookie(response: Response) {
   const sessionCookie = response.headers
     .getSetCookie()
     .map(parseSetCookieHeader)
-    .find((cookie) => cookie.name === BACKEND_SESSION_COOKIE);
+    .filter((cookie) => cookie.name === BACKEND_SESSION_COOKIE)
+    .at(-1);
 
   if (!sessionCookie) {
     return;
@@ -139,7 +142,8 @@ async function fetchCsrfContext(sessionCookieValue: string | null) {
   const csrfCookie = csrfResponse.headers
     .getSetCookie()
     .map(parseSetCookieHeader)
-    .find((cookie) => cookie.name === BACKEND_CSRF_COOKIE);
+    .filter((cookie) => cookie.name === BACKEND_CSRF_COOKIE)
+    .at(-1);
 
   if (!payload.token || !payload.headerName || !csrfCookie?.value) {
     throw new Error("Backend CSRF handshake failed.");

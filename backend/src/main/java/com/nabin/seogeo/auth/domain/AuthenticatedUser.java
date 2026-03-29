@@ -13,12 +13,20 @@ public final class AuthenticatedUser implements Serializable, Principal {
 
     private final UUID id;
     private final String email;
+    private final AuthAccountKind accountKind;
     private final boolean emailVerified;
     private final OffsetDateTime createdAt;
 
-    public AuthenticatedUser(UUID id, String email, boolean emailVerified, OffsetDateTime createdAt) {
+    public AuthenticatedUser(
+            UUID id,
+            String email,
+            AuthAccountKind accountKind,
+            boolean emailVerified,
+            OffsetDateTime createdAt
+    ) {
         this.id = id;
         this.email = email;
+        this.accountKind = accountKind;
         this.emailVerified = emailVerified;
         this.createdAt = createdAt;
     }
@@ -31,13 +39,21 @@ public final class AuthenticatedUser implements Serializable, Principal {
         return email;
     }
 
+    public AuthAccountKind getAccountKind() {
+        return accountKind;
+    }
+
     @Override
     public String getName() {
-        return email;
+        return id.toString();
     }
 
     public boolean isEmailVerified() {
         return emailVerified;
+    }
+
+    public boolean isAnonymous() {
+        return accountKind == AuthAccountKind.ANONYMOUS;
     }
 
     public OffsetDateTime getCreatedAt() {

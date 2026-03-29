@@ -268,7 +268,7 @@ class ProjectIntegrationTests {
         return cookies.stream()
                 .map(cookie -> cookie.split(";", 2)[0])
                 .filter(cookie -> cookie.startsWith(cookieName + "="))
-                .findFirst()
+                .reduce((first, second) -> second)
                 .orElseThrow();
     }
 

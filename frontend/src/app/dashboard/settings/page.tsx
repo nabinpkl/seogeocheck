@@ -1,4 +1,5 @@
 import * as React from "react";
+import { redirect } from "next/navigation";
 import { PageShell } from "@/components/ui/page-shell";
 import { AccountSettingsPanel } from "@/features/dashboard/components/AccountSettingsPanel";
 import { getCurrentUser } from "@/features/auth/lib/server-auth";
@@ -6,8 +7,8 @@ import { getCurrentUser } from "@/features/auth/lib/server-auth";
 export default async function DashboardSettingsPage() {
   const viewer = await getCurrentUser();
 
-  if (!viewer) {
-    return null;
+  if (!viewer || viewer.isAnonymous) {
+    redirect("/dashboard");
   }
 
   return (

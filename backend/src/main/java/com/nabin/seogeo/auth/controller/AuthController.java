@@ -38,12 +38,17 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(
             @Valid @RequestBody RegisterRequest request,
-            HttpServletRequest httpServletRequest
+            Authentication authentication,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
     ) {
         AuthService.RegistrationResult result = authService.register(
                 request.email(),
                 request.password(),
-                request.claimToken()
+                request.claimToken(),
+                authentication,
+                httpServletRequest,
+                httpServletResponse
         );
         if (result.pendingUserId() != null) {
             authService.rememberPendingVerificationUser(httpServletRequest, result.pendingUserId());
@@ -190,11 +195,20 @@ public class AuthController {
     public record UserResponse(
             java.util.UUID id,
             String email,
+            String accountKind,
+            boolean isAnonymous,
             boolean emailVerified,
             java.time.OffsetDateTime createdAt
     ) {
         static UserResponse from(AuthenticatedUser user) {
-            return new UserResponse(user.getId(), user.getEmail(), user.isEmailVerified(), user.getCreatedAt());
+            return new UserResponse(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getAccountKind().name(),
+                    user.isAnonymous(),
+                    user.isEmailVerified(),
+                    user.getCreatedAt()
+            );
         }
     }
 }

@@ -13,7 +13,7 @@ type SignUpPageProps = {
 
 export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const viewer = await getCurrentUser();
-  if (viewer) {
+  if (viewer && !viewer.isAnonymous) {
     redirect(DASHBOARD_PATH);
   }
 

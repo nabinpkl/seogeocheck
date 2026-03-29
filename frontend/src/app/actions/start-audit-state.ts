@@ -3,6 +3,7 @@ export type StartAuditActionState = {
   error: string | null;
   projectWarning: string | null;
   projectSlug: string | null;
+  workspaceKind: "ANONYMOUS" | "EMAIL_UNVERIFIED" | "EMAIL_VERIFIED" | null;
   jobId: string | null;
   status: string | null;
   targetUrl: string;
@@ -15,6 +16,7 @@ export const initialAuditActionState: StartAuditActionState = {
   error: null,
   projectWarning: null,
   projectSlug: null,
+  workspaceKind: null,
   jobId: null,
   status: null,
   targetUrl: "",
