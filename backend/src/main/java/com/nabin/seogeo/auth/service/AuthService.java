@@ -470,6 +470,34 @@ public class AuthService {
         return authSessionService.authenticateUser(anonymousUser, request, response);
     }
 
+    @Transactional
+    public AuthenticatedUser createGuest(
+            String claimToken,
+            Object principal,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        AuthenticatedUser authenticatedUser = authenticatedUserFromPrincipal(principal);
+        if (authenticatedUser != null) {
+            auditClaimService.tryClaimAudit(claimToken, authenticatedUser.getId());
+            return authenticatedUser;
+        }
+
+        OffsetDateTime now = now();
+        AuthUserEntity anonymousUser = new AuthUserEntity();
+        anonymousUser.setId(UUID.randomUUID());
+        anonymousUser.setAccountKind(AuthAccountKind.ANONYMOUS);
+        anonymousUser.setEnabled(false);
+        anonymousUser.setFailedLoginCount(0);
+        anonymousUser.setCreatedAt(now);
+        anonymousUser.setUpdatedAt(now);
+        authUserRepository.saveAndFlush(anonymousUser);
+
+        AuthenticatedUser guestUser = authSessionService.authenticateUser(anonymousUser, request, response);
+        auditClaimService.tryClaimAudit(claimToken, anonymousUser.getId());
+        return guestUser;
+    }
+
     public void rememberPendingVerificationUser(HttpServletRequest request, UUID userId) {
         authSessionService.rememberPendingVerificationUser(request, userId);
     }

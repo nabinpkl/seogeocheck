@@ -251,6 +251,12 @@ export async function loginWithPassword(
   });
 }
 
+export async function continueAsGuest(claimToken?: string | null) {
+  return sendJsonWithCsrf<{ authenticated?: boolean; user?: AuthUser }>("POST", "/auth/guest", {
+    claimToken: claimToken ?? null,
+  });
+}
+
 export async function requestPasswordReset(email: string) {
   return sendJsonWithCsrf<{ message?: string }>("POST", "/auth/forgot-password", { email });
 }

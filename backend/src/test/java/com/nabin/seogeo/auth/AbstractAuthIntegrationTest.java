@@ -285,7 +285,7 @@ abstract class AbstractAuthIntegrationTest {
         );
     }
 
-    protected StartedAudit startAnonymousAudit(String url) {
+    protected StartedAudit startVisitorAudit(String url) {
         var result = restTestClient.post()
                 .uri("/audits")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -296,8 +296,23 @@ abstract class AbstractAuthIntegrationTest {
         Map<String, Object> responseBody = result.getResponseBody();
         return new StartedAudit(
                 String.valueOf(responseBody.get("jobId")),
-                extractCookie(result.getResponseHeaders(), "seogeo_session")
+                responseBody.get("claimToken") == null ? null : String.valueOf(responseBody.get("claimToken")),
+                extractCookieOrFallback(result.getResponseHeaders(), "seogeo_session", null)
         );
+    }
+
+    protected String continueAsGuestAndExtractSessionCookie(String claimToken) {
+        CsrfState csrf = fetchCsrfState();
+        var guestResult = restTestClient.post()
+                .uri("/auth/guest")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-XSRF-TOKEN", csrf.token())
+                .header(HttpHeaders.COOKIE, csrf.cookie())
+                .body(claimToken == null ? Map.of() : Map.of("claimToken", claimToken))
+                .exchange()
+                .expectStatus().isOk()
+                .returnResult(Map.class);
+        return extractCookie(guestResult.getResponseHeaders(), "seogeo_session");
     }
 
     protected void expectOwnedAudits(String sessionCookie, String expectedJobId) {
@@ -447,6 +462,6 @@ abstract class AbstractAuthIntegrationTest {
     protected record CsrfState(String token, String cookie) {
     }
 
-    protected record StartedAudit(String jobId, String sessionCookie) {
+    protected record StartedAudit(String jobId, String claimToken, String sessionCookie) {
     }
 }

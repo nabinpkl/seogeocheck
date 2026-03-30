@@ -75,6 +75,7 @@ public class SecurityConfiguration {
                                 "/health",
                                 "/error",
                                 "/audits/**",
+                                "/auth/guest",
                                 "/auth/register",
                                 "/auth/login",
                                 "/auth/logout",

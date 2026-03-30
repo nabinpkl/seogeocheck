@@ -22,10 +22,63 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest {
 
     @Test
-    void sameBrowserVerificationAutoAuthenticatesAndKeepsAnonymousWorkspace() {
-        StartedAudit startedAudit = startAnonymousAudit("example.com");
+    void startingAuditIssuesClaimTokenWithoutCreatingGuestWorkspace() {
+        StartedAudit startedAudit = startVisitorAudit("example.com");
 
-        CsrfState registrationCsrf = fetchCsrfState(startedAudit.sessionCookie());
+        assertThat(startedAudit.claimToken()).isNotBlank();
+        assertThat(startedAudit.sessionCookie()).isNull();
+        assertThat(authUserRepository.findAll()).isEmpty();
+
+        restTestClient.get()
+                .uri("/audits/{jobId}/report", startedAudit.jobId())
+                .exchange()
+                .expectStatus().isNotFound();
+
+        restTestClient.get()
+                .uri("/audits/{jobId}/report?claim={claim}", startedAudit.jobId(), startedAudit.claimToken())
+                .exchange()
+                .expectStatus().isAccepted();
+
+        restTestClient.get()
+                .uri("/account/audits")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void continuingAsGuestClaimsVisitorAuditAndOpensWorkspace() {
+        StartedAudit startedAudit = startVisitorAudit("example.com");
+
+        String sessionCookie = continueAsGuestAndExtractSessionCookie(startedAudit.claimToken());
+
+        restTestClient.get()
+                .uri("/auth/me")
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Map.class)
+                .value(body -> {
+                    assertThat(body.get("email")).isNull();
+                    assertThat(body.get("accountKind")).isEqualTo("ANONYMOUS");
+                    assertThat(body.get("isAnonymous")).isEqualTo(true);
+                    assertThat(body.get("emailVerified")).isEqualTo(false);
+                });
+
+        expectOwnedAudits(sessionCookie, startedAudit.jobId());
+
+        restTestClient.get()
+                .uri("/audits/{jobId}/report", startedAudit.jobId())
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isAccepted();
+    }
+
+    @Test
+    void sameBrowserVerificationAutoAuthenticatesAndKeepsGuestWorkspace() {
+        StartedAudit startedAudit = startVisitorAudit("example.com");
+        String guestSessionCookie = continueAsGuestAndExtractSessionCookie(startedAudit.claimToken());
+
+        CsrfState registrationCsrf = fetchCsrfState(guestSessionCookie);
         var registerResult = restTestClient.post()
                 .uri("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -39,7 +92,11 @@ class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest
                 .expectStatus().isAccepted()
                 .returnResult(Map.class);
 
-        String sessionCookie = extractCookie(registerResult.getResponseHeaders(), "seogeo_session");
+        String sessionCookie = extractCookieOrFallback(
+                registerResult.getResponseHeaders(),
+                "seogeo_session",
+                guestSessionCookie
+        );
         awaitEmailsOfType(EmailType.VERIFICATION, 1);
         String verificationToken = extractToken(authEmailSender.lastEmailOfType(EmailType.VERIFICATION).actionUrl());
 
@@ -59,6 +116,7 @@ class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest
         String verifiedSessionCookie = extractCookie(verificationResult.getResponseHeaders(), "seogeo_session");
         expectAuthenticatedUser(verifiedSessionCookie, "owner@example.com");
         expectOwnedAudits(verifiedSessionCookie, startedAudit.jobId());
+        assertThat(authUserRepository.findAll()).hasSize(1);
 
         restTestClient.get()
                 .uri("/audits/{jobId}/report", startedAudit.jobId())
@@ -68,9 +126,10 @@ class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest
 
     @Test
     void crossBrowserVerificationDoesNotAutoAuthenticateButLoginStillSeesConvertedWorkspace() {
-        StartedAudit startedAudit = startAnonymousAudit("example.com");
+        StartedAudit startedAudit = startVisitorAudit("example.com");
+        String guestSessionCookie = continueAsGuestAndExtractSessionCookie(startedAudit.claimToken());
 
-        CsrfState registrationCsrf = fetchCsrfState(startedAudit.sessionCookie());
+        CsrfState registrationCsrf = fetchCsrfState(guestSessionCookie);
         restTestClient.post()
                 .uri("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -99,97 +158,13 @@ class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest
     }
 
     @Test
-    void startingAuditCreatesAnonymousBrowserWorkspace() {
-        StartedAudit startedAudit = startAnonymousAudit("example.com");
-
-        restTestClient.get()
-                .uri("/auth/me")
-                .header(HttpHeaders.COOKIE, startedAudit.sessionCookie())
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(Map.class)
-                .value(body -> {
-                    assertThat(body.get("email")).isNull();
-                    assertThat(body.get("accountKind")).isEqualTo("ANONYMOUS");
-                    assertThat(body.get("isAnonymous")).isEqualTo(true);
-                    assertThat(body.get("emailVerified")).isEqualTo(false);
-                });
-
-        restTestClient.get()
-                .uri("/account/audits")
-                .header(HttpHeaders.COOKIE, startedAudit.sessionCookie())
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(List.class)
-                .value(body -> assertThat(body).anySatisfy(item -> {
-                    Map<String, Object> audit = (Map<String, Object>) item;
-                    assertThat(audit.get("jobId")).isEqualTo(startedAudit.jobId());
-                }));
-
-        restTestClient.get()
-                .uri("/audits/{jobId}/report", startedAudit.jobId())
-                .exchange()
-                .expectStatus().isNotFound();
-
-        restTestClient.get()
-                .uri("/audits/{jobId}/report", startedAudit.jobId())
-                .header(HttpHeaders.COOKIE, startedAudit.sessionCookie())
-                .exchange()
-                .expectStatus().isAccepted();
-    }
-
-    @Test
-    void anonymousSignupWithUnusedEmailConvertsSameWorkspaceAndKeepsAuditAfterVerification() {
-        StartedAudit startedAudit = startAnonymousAudit("example.com");
-
-        CsrfState registrationCsrf = fetchCsrfState(startedAudit.sessionCookie());
-        var registerResult = restTestClient.post()
-                .uri("/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("X-XSRF-TOKEN", registrationCsrf.token())
-                .header(HttpHeaders.COOKIE, registrationCsrf.cookie())
-                .body(Map.of(
-                        "email", "owner@example.com",
-                        "password", "CorrectHorse1!"
-                ))
-                .exchange()
-                .expectStatus().isAccepted()
-                .returnResult(Map.class);
-
-        String sessionCookie = extractCookie(registerResult.getResponseHeaders(), "seogeo_session");
-        AuthUserEntity pendingUser = authUserRepository.findAll().getFirst();
-        assertThat(authUserRepository.findAll()).hasSize(1);
-        assertThat(pendingUser.getAccountKind().name()).isEqualTo("EMAIL_UNVERIFIED");
-        assertThat(pendingUser.getEmailNormalized()).isEqualTo("owner@example.com");
-
-        awaitEmailsOfType(EmailType.VERIFICATION, 1);
-        String verificationToken = extractToken(authEmailSender.lastEmailOfType(EmailType.VERIFICATION).actionUrl());
-        CsrfState verificationCsrf = fetchCsrfState(sessionCookie);
-        var verificationResult = restTestClient.post()
-                .uri("/auth/verify-email")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("X-XSRF-TOKEN", verificationCsrf.token())
-                .header(HttpHeaders.COOKIE, verificationCsrf.cookie())
-                .body(Map.of("token", verificationToken))
-                .exchange()
-                .expectStatus().isOk()
-                .returnResult(Map.class);
-
-        assertThat(verificationResult.getResponseBody()).containsEntry("authenticated", true);
-        String verifiedSessionCookie = extractCookie(verificationResult.getResponseHeaders(), "seogeo_session");
-        expectAuthenticatedUser(verifiedSessionCookie, "owner@example.com");
-        expectOwnedAudits(verifiedSessionCookie, startedAudit.jobId());
-        assertThat(authUserRepository.findAll()).hasSize(1);
-        assertThat(authUserRepository.findAll().getFirst().getAccountKind().name()).isEqualTo("EMAIL_VERIFIED");
-    }
-
-    @Test
-    void anonymousSignupWithExistingVerifiedEmailRequiresSignInThenMergesWorkspace() {
+    void guestSignupWithExistingVerifiedEmailRequiresSignInThenMergesWorkspace() {
         register("owner@example.com", "CorrectHorse1!");
         verifyLatestEmailToken();
 
-        StartedAudit startedAudit = startAnonymousAudit("example.com");
-        CsrfState registrationCsrf = fetchCsrfState(startedAudit.sessionCookie());
+        StartedAudit startedAudit = startVisitorAudit("example.com");
+        String guestSessionCookie = continueAsGuestAndExtractSessionCookie(startedAudit.claimToken());
+        CsrfState registrationCsrf = fetchCsrfState(guestSessionCookie);
         var registerResult = restTestClient.post()
                 .uri("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -207,7 +182,7 @@ class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest
         String mergeSessionCookie = extractCookieOrFallback(
                 registerResult.getResponseHeaders(),
                 "seogeo_session",
-                startedAudit.sessionCookie()
+                guestSessionCookie
         );
         CsrfState loginCsrf = fetchCsrfState(mergeSessionCookie);
         var loginResult = restTestClient.post()
@@ -229,12 +204,13 @@ class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest
     }
 
     @Test
-    void anonymousSignupWithExistingUnverifiedEmailReusesPendingAccountAndMergesAfterVerification() {
+    void guestSignupWithExistingUnverifiedEmailReusesPendingAccountAndMergesAfterVerification() {
         register("owner@example.com", "CorrectHorse1!");
         String originalHash = authUserRepository.findByEmailNormalized("owner@example.com").orElseThrow().getPasswordHash();
 
-        StartedAudit startedAudit = startAnonymousAudit("example.com");
-        CsrfState registrationCsrf = fetchCsrfState(startedAudit.sessionCookie());
+        StartedAudit startedAudit = startVisitorAudit("example.com");
+        String guestSessionCookie = continueAsGuestAndExtractSessionCookie(startedAudit.claimToken());
+        CsrfState registrationCsrf = fetchCsrfState(guestSessionCookie);
         var registerResult = restTestClient.post()
                 .uri("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -250,7 +226,7 @@ class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest
         String mergeSessionCookie = extractCookieOrFallback(
                 registerResult.getResponseHeaders(),
                 "seogeo_session",
-                startedAudit.sessionCookie()
+                guestSessionCookie
         );
 
         AuthUserEntity pendingUser = authUserRepository.findByEmailNormalized("owner@example.com").orElseThrow();

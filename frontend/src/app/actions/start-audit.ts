@@ -79,6 +79,11 @@ export async function startAuditAction(
     }
 
     const viewer = await getCurrentUser();
+    const claimToken =
+      typeof payload.claimToken === "string" && payload.claimToken.trim()
+        ? payload.claimToken
+        : null;
+    const claimQuery = claimToken ? `?claim=${encodeURIComponent(claimToken)}` : "";
 
     return {
       ok: true,
@@ -86,16 +91,17 @@ export async function startAuditAction(
       projectWarning,
       projectSlug,
       workspaceKind: viewer?.accountKind ?? null,
+      claimToken,
       jobId: typeof payload.jobId === "string" ? payload.jobId : null,
       status: typeof payload.status === "string" ? payload.status : null,
       targetUrl,
       streamUrl:
         typeof payload.jobId === "string"
-          ? `/api/audits/${payload.jobId}/stream`
+          ? `/api/audits/${payload.jobId}/stream${claimQuery}`
           : null,
       reportUrl:
         typeof payload.jobId === "string"
-          ? `/api/audits/${payload.jobId}/report`
+          ? `/api/audits/${payload.jobId}/report${claimQuery}`
           : null,
     };
   } catch {

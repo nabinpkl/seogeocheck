@@ -14,6 +14,7 @@ import {
 import type { AuditReport } from "@/types/audit";
 import { useAuditStore } from "@/store/use-audit-store";
 import { buildProjectAuditHref } from "@/features/dashboard/lib/routes";
+import { SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/routes";
 import {
   buildFamilyChecklistGroups,
   buildAuditCheckRowModel,
@@ -182,7 +183,8 @@ export function useAuditSectionController({
   const report = reportQuery.data;
 
   const effectiveAccountKind = actionState.workspaceKind ?? viewer?.accountKind ?? null;
-  const showAnonymousUpgradePanel = effectiveAccountKind === "ANONYMOUS";
+  const pendingClaimToken =
+    !effectiveAccountKind && actionState.claimToken ? actionState.claimToken : null;
 
   const currentProgress =
     [...events].reverse().find((event) => typeof event.progress === "number")
@@ -477,11 +479,11 @@ export function useAuditSectionController({
           document
             .getElementById("family-checklists")
             ?.scrollIntoView({ behavior: "smooth" }),
-        claimPanel: showAnonymousUpgradePanel
+        claimPanel: pendingClaimToken
           ? {
-            message: "Saved only in this browser for now.",
-            signUpHref: "/sign-up",
-            signInHref: "/sign-in",
+            message: "Save this audit and open your workspace.",
+            signUpHref: `${SIGN_UP_PATH}?claim=${encodeURIComponent(pendingClaimToken)}`,
+            signInHref: `${SIGN_IN_PATH}?claim=${encodeURIComponent(pendingClaimToken)}`,
           }
           : null,
         onReAudit: handleReAudit,

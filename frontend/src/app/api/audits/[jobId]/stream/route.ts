@@ -7,13 +7,18 @@ type RouteContext = {
 };
 
 export async function GET(_request: Request, { params }: RouteContext) {
+  const requestUrl = new URL(_request.url);
   const { jobId } = await params;
-  const response = await backendFetchWithSession(`/audits/${jobId}/stream`, {
-    method: "GET",
-    headers: {
-      Accept: "text/event-stream",
-    },
-  });
+  const claim = requestUrl.searchParams.get("claim");
+  const response = await backendFetchWithSession(
+    `/audits/${jobId}/stream${claim ? `?claim=${encodeURIComponent(claim)}` : ""}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "text/event-stream",
+      },
+    }
+  );
 
   if (!response.ok) {
     return new Response(response.body, {

@@ -180,7 +180,7 @@ export function ProjectDashboard({
               <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/70 px-4 py-4">
                 <p className="text-sm font-semibold text-slate-950">Start with one project</p>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Create a project first, then add sites and pages to build its audit history.
+                  Create a project, then add sites and pages to organize your audits.
                 </p>
               </div>
             ) : null}

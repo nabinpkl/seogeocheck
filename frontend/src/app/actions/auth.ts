@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import {
+  continueAsGuest,
   clearFrontendSessionCookie,
   deleteCurrentAccount,
   getCurrentUser,
@@ -111,6 +112,23 @@ export async function signUpAction(
   }
 
   redirect(`${VERIFY_EMAIL_PATH}?status=sent&email=${encodeURIComponent(email)}`);
+}
+
+export async function continueAsGuestAction(
+  _previousState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const claimToken = readString(formData, "claimToken") || null;
+  const result = await continueAsGuest(claimToken);
+  if (!result.ok) {
+    return {
+      ...initialAuthActionState,
+      code: result.code,
+      error: result.message,
+    };
+  }
+
+  redirect(DASHBOARD_PATH);
 }
 
 export async function requestPasswordResetAction(

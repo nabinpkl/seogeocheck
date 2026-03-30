@@ -3,8 +3,10 @@
 import * as React from "react";
 import { Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { AuthUser } from "@/features/auth/lib/server-auth";
 import { cn } from "@/lib/utils";
+import { SidebarContent } from "./SidebarContent";
 
 type DashboardHeaderProps = {
   user: AuthUser;
@@ -12,6 +14,7 @@ type DashboardHeaderProps = {
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const notificationsRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -31,10 +34,20 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/80 px-4 shadow-sm shadow-black/[0.03] backdrop-blur-md sm:px-6 lg:px-8">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground lg:hidden">
-          <Menu className="size-5" />
-          <span className="sr-only">Toggle Menu</span>
-        </Button>
+        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground lg:hidden">
+              <Menu className="size-5" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 border-r-0 w-64 bg-sidebar">
+            <SidebarContent 
+              user={user} 
+              onItemClick={() => setIsMobileMenuOpen(false)} 
+            />
+          </SheetContent>
+        </Sheet>
         <div className="hidden sm:block">
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">
             Project Workspace
@@ -73,7 +86,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         </div>
 
         <div className="hidden min-w-0 rounded-full border border-border/60 bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground lg:block">
-          {user.email ?? "Saved in this browser"}
+          {user.email ?? "Guest Mode"}
         </div>
       </div>
     </header>

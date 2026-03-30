@@ -150,7 +150,7 @@ export function AuditInputPanel({
 
         {isDashboard ? (
           <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest text-left pl-2">
-            Audited site will be added in this project.
+            Audited site will be added in this project/account.
           </p>
         ) : (
           <div

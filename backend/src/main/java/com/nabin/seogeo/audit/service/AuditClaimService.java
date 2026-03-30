@@ -62,6 +62,42 @@ public class AuditClaimService {
     }
 
     @Transactional
+    public String issueClaimTokenForUnownedRun(String jobId) {
+        AuditRunEntity run = auditPersistenceService.findRun(jobId)
+                .orElseThrow(() -> new AuditClaimNotAvailableException(jobId));
+
+        if (run.getOwnerUserId() != null) {
+            throw new AuditClaimNotAvailableException(jobId);
+        }
+
+        OffsetDateTime now = now();
+        String rawToken = generateRawToken();
+
+        AuditClaimTokenEntity token = new AuditClaimTokenEntity();
+        token.setId(UUID.randomUUID());
+        token.setJobId(jobId);
+        token.setTokenHash(hashToken(rawToken));
+        token.setExpiresAt(now.plus(authProperties.getAuditClaimTokenTtl()));
+        token.setCreatedAt(now);
+        auditClaimTokenRepository.save(token);
+
+        return rawToken;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canAccessAudit(String jobId, String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            return false;
+        }
+
+        return auditClaimTokenRepository.findByTokenHash(hashToken(rawToken))
+                .filter(this::isActive)
+                .map(AuditClaimTokenEntity::getJobId)
+                .filter(jobId::equals)
+                .isPresent();
+    }
+
+    @Transactional
     public boolean tryReserveClaim(String rawToken, UUID userId) {
         AuditClaimTokenEntity token = resolveActiveToken(rawToken);
         if (token == null) {

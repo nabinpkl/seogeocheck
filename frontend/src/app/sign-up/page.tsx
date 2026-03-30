@@ -22,7 +22,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
   return (
     <AuthPageFrame viewer={viewer} minimal>
-      <SignUpForm claimToken={claimToken} />
+      <SignUpForm claimToken={claimToken} viewer={viewer} />
     </AuthPageFrame>
   );
 }

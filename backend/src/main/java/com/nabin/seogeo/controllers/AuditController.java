@@ -9,9 +9,6 @@ import com.nabin.seogeo.audit.service.AuditClaimService;
 import com.nabin.seogeo.audit.service.AuditOrchestrationService;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
-import com.nabin.seogeo.auth.service.AuthService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.Authentication;
@@ -25,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -46,47 +44,54 @@ public class AuditController {
     private final AuditPersistenceService auditPersistenceService;
     private final AuditClaimService auditClaimService;
     private final AuditProperties auditProperties;
-    private final AuthService authService;
 
     public AuditController(
             AuditOrchestrationService auditOrchestrationService,
             AuditPersistenceService auditPersistenceService,
             AuditClaimService auditClaimService,
-            AuditProperties auditProperties,
-            AuthService authService
+            AuditProperties auditProperties
     ) {
         this.auditOrchestrationService = auditOrchestrationService;
         this.auditPersistenceService = auditPersistenceService;
         this.auditClaimService = auditClaimService;
         this.auditProperties = auditProperties;
-        this.authService = authService;
     }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> createAudit(
             @Valid @RequestBody StartAuditRequest request,
-            Authentication authentication,
-            HttpServletRequest httpServletRequest,
-            HttpServletResponse httpServletResponse
+            Authentication authentication
     ) {
         String normalizedUrl = normalizeUrl(request.url());
         String jobId = "audit_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         OffsetDateTime createdAt = OffsetDateTime.now();
-        UUID ownerUserId = authService.resolveOrCreateCurrentUser(authentication, httpServletRequest, httpServletResponse).getId();
+        UUID ownerUserId = authenticatedUserId(authentication);
 
         auditOrchestrationService.startAudit(jobId, normalizedUrl, createdAt, ownerUserId);
 
-        return ResponseEntity.accepted().body(Map.of(
-                "jobId", jobId,
-                "status", AuditStatus.QUEUED.name(),
-                "streamUrl", buildAuditPath(jobId, "stream"),
-                "reportUrl", buildAuditPath(jobId, "report")
-        ));
+        String claimToken = ownerUserId == null
+                ? auditClaimService.issueClaimTokenForUnownedRun(jobId)
+                : null;
+
+        Map<String, Object> responseBody = new java.util.LinkedHashMap<>();
+        responseBody.put("jobId", jobId);
+        responseBody.put("status", AuditStatus.QUEUED.name());
+        responseBody.put("streamUrl", buildAuditPath(jobId, "stream"));
+        responseBody.put("reportUrl", buildAuditPath(jobId, "report"));
+        if (claimToken != null) {
+            responseBody.put("claimToken", claimToken);
+        }
+
+        return ResponseEntity.accepted().body(responseBody);
     }
 
     @GetMapping(path = "/{jobId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamAudit(@PathVariable String jobId, Authentication authentication) {
-        AuditRunEntity run = auditPersistenceService.findVisibleRun(jobId, authenticatedUserId(authentication))
+    public SseEmitter streamAudit(
+            @PathVariable String jobId,
+            @RequestParam(value = "claim", required = false) String claimToken,
+            Authentication authentication
+    ) {
+        AuditRunEntity run = findVisibleRun(jobId, authentication, claimToken)
                 .orElseThrow(() -> new AuditNotFoundException(jobId));
 
         SseEmitter emitter = new SseEmitter(0L);
@@ -107,8 +112,12 @@ public class AuditController {
     }
 
     @GetMapping("/{jobId}/report")
-    public ResponseEntity<Object> getReport(@PathVariable String jobId, Authentication authentication) {
-        AuditRunEntity run = auditPersistenceService.findVisibleRun(jobId, authenticatedUserId(authentication))
+    public ResponseEntity<Object> getReport(
+            @PathVariable String jobId,
+            @RequestParam(value = "claim", required = false) String claimToken,
+            Authentication authentication
+    ) {
+        AuditRunEntity run = findVisibleRun(jobId, authentication, claimToken)
                 .orElseThrow(() -> new AuditNotFoundException(jobId));
 
         if (auditPersistenceService.findReport(jobId).isPresent()) {
@@ -149,6 +158,21 @@ public class AuditController {
             lastSeen = event.sequence();
         }
         return lastSeen;
+    }
+
+    private java.util.Optional<AuditRunEntity> findVisibleRun(
+            String jobId,
+            Authentication authentication,
+            String claimToken
+    ) {
+        UUID requesterUserId = authenticatedUserId(authentication);
+        if (requesterUserId != null) {
+            return auditPersistenceService.findVisibleRun(jobId, requesterUserId);
+        }
+        if (auditClaimService.canAccessAudit(jobId, claimToken)) {
+            return auditPersistenceService.findRun(jobId);
+        }
+        return java.util.Optional.empty();
     }
 
     private void tailAuditStream(String jobId, long lastSeen, SseEmitter emitter, AtomicBoolean active) {

@@ -3,26 +3,33 @@
 import * as React from "react";
 import Link from "next/link";
 import { useActionState } from "react";
-import { AlertCircle, ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { AuthSubmitButton } from "./AuthSubmitButton";
 import { initialAuthActionState } from "@/app/actions/auth-state";
-import { signUpAction } from "@/app/actions/auth";
+import { continueAsGuestAction, signUpAction } from "@/app/actions/auth";
+import type { AuthUser } from "@/features/auth/lib/server-auth";
 import { SIGN_IN_PATH } from "@/lib/routes";
 
 type SignUpFormProps = {
   claimToken: string;
+  viewer: AuthUser | null;
 };
 
-export function SignUpForm({ claimToken }: SignUpFormProps) {
+export function SignUpForm({ claimToken, viewer }: SignUpFormProps) {
   const [state, formAction] = useActionState(signUpAction, initialAuthActionState);
+  const [guestState, guestFormAction] = useActionState(
+    continueAsGuestAction,
+    initialAuthActionState
+  );
   const signInHref = claimToken
     ? `${SIGN_IN_PATH}?claim=${encodeURIComponent(claimToken)}`
     : SIGN_IN_PATH;
   const showExistingAccountAction = state.code === "EMAIL_ALREADY_REGISTERED";
+  const showGuestOption = !viewer?.isAnonymous;
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -34,10 +41,43 @@ export function SignUpForm({ claimToken }: SignUpFormProps) {
       <CardHeader className="space-y-3 border-b border-border/70 pb-6">
         <CardTitle className="text-2xl font-semibold text-slate-950">Create your account</CardTitle>
         <CardDescription className="text-sm leading-6 text-slate-600">
-          Use your email to create an account, to get started and track your progress.
+          {claimToken
+            ? "Save this audit and open your workspace. Use email for cross-device access, or continue as a guest on this device."
+            : "Use your email to create an account, or continue as a guest to explore the dashboard before committing an email."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 p-6">
+        {showGuestOption ? (
+          <div className="rounded-3xl border border-emerald-200/80 bg-emerald-50/80 p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl bg-emerald-600 p-2 text-white shadow-sm">
+                <Sparkles className="size-4" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-slate-950">Want to explore first?</p>
+                <p className="text-sm leading-6 text-slate-600">
+                  Continue as a guest to open the workspace without using email yet. Guest progress stays on this device only.
+                </p>
+              </div>
+            </div>
+            <form action={guestFormAction} className="mt-4">
+              <input type="hidden" name="claimToken" value={claimToken} />
+              <AuthSubmitButton
+                type="submit"
+                idleLabel={claimToken ? "Continue as Guest" : "Explore as Guest"}
+                pendingLabel="Opening workspace"
+                className="h-11 rounded-xl px-5 text-sm font-semibold"
+              />
+            </form>
+            {guestState.error ? (
+              <div className="mt-3 flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                <span>{guestState.error}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <form action={formAction} className="space-y-5">
           <input type="hidden" name="claimToken" value={claimToken} />
 

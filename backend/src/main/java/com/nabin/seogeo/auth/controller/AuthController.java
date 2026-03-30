@@ -72,6 +72,22 @@ public class AuthController {
         return ResponseEntity.ok(new LoginResponse(true, UserResponse.from(user)));
     }
 
+    @PostMapping("/guest")
+    public ResponseEntity<LoginResponse> continueAsGuest(
+            @RequestBody(required = false) GuestRequest request,
+            Authentication authentication,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
+    ) {
+        AuthenticatedUser user = authService.createGuest(
+                request == null ? null : request.claimToken(),
+                authentication,
+                httpServletRequest,
+                httpServletResponse
+        );
+        return ResponseEntity.ok(new LoginResponse(true, UserResponse.from(user)));
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request.email());
@@ -175,6 +191,9 @@ public class AuthController {
             @NotBlank String password,
             String claimToken
     ) {
+    }
+
+    public record GuestRequest(String claimToken) {
     }
 
     public record VerifyEmailRequest(@NotBlank String token) {

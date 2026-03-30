@@ -96,7 +96,7 @@ public class AuditPersistenceService {
 
     @Transactional
     public void ensureQueuedRun(String jobId, String targetUrl, OffsetDateTime requestedAt) {
-        AuditRunEntity run = auditRunRepository.findById(jobId)
+        AuditRunEntity run = auditRunRepository.findByIdForUpdate(jobId)
                 .orElseGet(() -> {
                     AuditRunEntity created = new AuditRunEntity();
                     created.setJobId(jobId);
@@ -329,7 +329,7 @@ public class AuditPersistenceService {
     }
 
     private AuditRunEntity getRunOrThrow(String jobId) {
-        return auditRunRepository.findById(jobId)
+        return auditRunRepository.findByIdForUpdate(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Audit not found: " + jobId));
     }
 
