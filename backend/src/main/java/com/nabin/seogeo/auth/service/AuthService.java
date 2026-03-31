@@ -366,6 +366,7 @@ public class AuthService {
         deleteSessionsForPrincipal(principalName);
 
         deleteOwnedAuditAndProjectData(user.getId());
+        deleteOauthAuthorizationsForPrincipal(principalName);
         auditClaimTokenRepository.deleteByReservedUserId(user.getId());
         authPasswordResetTokenRepository.deleteByUserId(user.getId());
         authEmailVerificationTokenRepository.deleteByUserId(user.getId());
@@ -880,6 +881,11 @@ public class AuthService {
                 principalName
         );
         jdbcTemplate.update("delete from spring_session where principal_name = ?", principalName);
+    }
+
+    private void deleteOauthAuthorizationsForPrincipal(String principalName) {
+        jdbcTemplate.update("delete from oauth2_authorization_consent where principal_name = ?", principalName);
+        jdbcTemplate.update("delete from oauth2_authorization where principal_name = ?", principalName);
     }
 
     private void deleteOwnedAuditAndProjectData(UUID userId) {

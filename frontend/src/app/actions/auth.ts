@@ -7,6 +7,7 @@ import {
   deleteCurrentAccount,
   getCurrentUser,
   loginWithPassword,
+  normalizeAuthRedirectTarget,
   logoutBackendSession,
   registerAccountWithClaim,
   requestPasswordReset,
@@ -25,7 +26,7 @@ function readPassword(formData: FormData, key: string) {
 }
 
 function sanitizeNextPath(nextPath: string) {
-  return nextPath.startsWith("/") ? nextPath : DASHBOARD_PATH;
+  return normalizeAuthRedirectTarget(nextPath) ?? DASHBOARD_PATH;
 }
 
 function validatePassword(password: string) {

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -81,35 +82,22 @@ class SeoGeoApplicationTests {
 
 	@Test
 	void reportReturnsAcceptedBeforeItIsReady() {
-		var startResult = restTestClient.post()
-				.uri("/audits")
-				.contentType(MediaType.APPLICATION_JSON)
-				.body(Map.of("url", "example.com"))
-				.exchange()
-				.expectStatus().isEqualTo(HttpStatus.ACCEPTED)
-				.returnResult(Map.class);
-		String jobId = String.valueOf(startResult.getResponseBody().get("jobId"));
+		AuditStart auditStart = startAudit("example.com");
 
 		var reportResult = restTestClient.get()
-				.uri("/audits/{jobId}/report", jobId)
+				.uri("/audits/{jobId}/report", auditStart.jobId())
+				.header(HttpHeaders.COOKIE, auditStart.sessionCookie())
 				.exchange()
 				.expectStatus().isEqualTo(HttpStatus.ACCEPTED)
 				.returnResult(Map.class);
 
 		assertThat(reportResult.getResponseBody()).isNotNull();
-		assertThat(reportResult.getResponseBody().get("jobId")).isEqualTo(jobId);
+		assertThat(reportResult.getResponseBody().get("jobId")).isEqualTo(auditStart.jobId());
 	}
 
 	@Test
 	void reportEventuallyReturnsVerifiedEvidence() throws Exception {
-		var startResult = restTestClient.post()
-				.uri("/audits")
-				.contentType(MediaType.APPLICATION_JSON)
-				.body(Map.of("url", "example.com"))
-				.exchange()
-				.expectStatus().isEqualTo(HttpStatus.ACCEPTED)
-				.returnResult(Map.class);
-		String jobId = String.valueOf(startResult.getResponseBody().get("jobId"));
+		AuditStart auditStart = startAudit("example.com");
 
 		Instant deadline = Instant.now().plus(Duration.ofSeconds(8));
 		Map reportBody = null;
@@ -117,7 +105,8 @@ class SeoGeoApplicationTests {
 
 		while (Instant.now().isBefore(deadline)) {
 			var reportResult = restTestClient.get()
-					.uri("/audits/{jobId}/report", jobId)
+					.uri("/audits/{jobId}/report", auditStart.jobId())
+					.header(HttpHeaders.COOKIE, auditStart.sessionCookie())
 					.exchange()
 					.returnResult(Map.class);
 			reportStatus = HttpStatus.valueOf(reportResult.getStatus().value());
@@ -133,14 +122,15 @@ class SeoGeoApplicationTests {
 		assertThat(reportBody).isNotNull();
 		assertThat(reportStatus).isEqualTo(HttpStatus.OK);
 		var verifiedReport = restTestClient.get()
-				.uri("/audits/{jobId}/report", jobId)
+				.uri("/audits/{jobId}/report", auditStart.jobId())
+				.header(HttpHeaders.COOKIE, auditStart.sessionCookie())
 				.exchange()
 				.expectStatus().isOk()
 				.returnResult(AuditReportSchema.class)
 				.getResponseBody();
 
 		assertThat(verifiedReport).isNotNull();
-		assertThat(verifiedReport.getJobId()).isEqualTo(jobId);
+		assertThat(verifiedReport.getJobId()).isEqualTo(auditStart.jobId());
 		assertThat(verifiedReport.getStatus()).isEqualTo(AuditReportSchema.AuditStatus.VERIFIED);
 		assertThat(verifiedReport.getSignature()).isNotNull();
 		assertThat(verifiedReport.getReportType()).isEqualTo("SEO_SIGNALS_SIGNED_AUDIT");
@@ -150,11 +140,12 @@ class SeoGeoApplicationTests {
 
 	@Test
 	void streamReplaysEventsInOrderAndCompletesAfterReportIsPersisted() throws Exception {
-		String jobId = startAudit("example.com");
-		awaitVerifiedReport(jobId);
+		AuditStart auditStart = startAudit("example.com");
+		awaitVerifiedReport(auditStart);
 
 		var streamResult = restTestClient.get()
-				.uri("/audits/{jobId}/stream", jobId)
+				.uri("/audits/{jobId}/stream", auditStart.jobId())
+				.header(HttpHeaders.COOKIE, auditStart.sessionCookie())
 				.accept(MediaType.TEXT_EVENT_STREAM)
 				.exchange()
 				.expectStatus().isOk()
@@ -169,21 +160,22 @@ class SeoGeoApplicationTests {
 		assertThat(body).contains("\"type\":\"complete\"");
 
 		var reportResult = restTestClient.get()
-				.uri("/audits/{jobId}/report", jobId)
+				.uri("/audits/{jobId}/report", auditStart.jobId())
+				.header(HttpHeaders.COOKIE, auditStart.sessionCookie())
 				.exchange()
 				.expectStatus().isOk()
 				.returnResult(AuditReportSchema.class);
 
 		assertThat(reportResult.getResponseBody()).isNotNull();
 		assertThat(reportResult.getResponseBody().getStatus()).isEqualTo(AuditReportSchema.AuditStatus.VERIFIED);
-		assertThat(auditEventRepository.findByJobIdOrderBySequenceAsc(jobId))
+		assertThat(auditEventRepository.findByJobIdOrderBySequenceAsc(auditStart.jobId()))
 				.extracting(event -> event.getEventType())
 				.endsWith("complete");
 	}
 
 	@Test
 	void failedAuditReturnsTerminalFailurePayload() throws InterruptedException {
-		String jobId = startAudit("https://fail.example.com");
+		AuditStart auditStart = startAudit("https://fail.example.com");
 
 		Instant deadline = Instant.now().plus(Duration.ofSeconds(8));
 		Map reportBody = null;
@@ -191,7 +183,8 @@ class SeoGeoApplicationTests {
 
 		while (Instant.now().isBefore(deadline)) {
 			var reportResult = restTestClient.get()
-					.uri("/audits/{jobId}/report", jobId)
+					.uri("/audits/{jobId}/report", auditStart.jobId())
+					.header(HttpHeaders.COOKIE, auditStart.sessionCookie())
 					.exchange()
 					.returnResult(Map.class);
 			reportStatus = HttpStatus.valueOf(reportResult.getStatus().value());
@@ -204,17 +197,17 @@ class SeoGeoApplicationTests {
 
 		assertThat(reportStatus).isEqualTo(HttpStatus.OK);
 		assertThat(reportBody).isNotNull();
-		assertThat(reportBody).containsEntry("jobId", jobId);
+		assertThat(reportBody).containsEntry("jobId", auditStart.jobId());
 		assertThat(reportBody).containsEntry("status", "FAILED");
 		assertThat(String.valueOf(reportBody.get("message")))
 				.isEqualTo("We couldn't finish reviewing this site. Please try again in a moment.");
-		assertThat(auditRunRepository.findById(jobId)).isPresent();
-		assertThat(auditRunRepository.findById(jobId).orElseThrow().getStatus()).isEqualTo(AuditStatus.FAILED);
+		assertThat(auditRunRepository.findById(auditStart.jobId())).isPresent();
+		assertThat(auditRunRepository.findById(auditStart.jobId()).orElseThrow().getStatus()).isEqualTo(AuditStatus.FAILED);
 	}
 
 	@Test
 	void unreachableAuditReturnsSpecificSeoSignalFailureMessage() throws InterruptedException {
-		String jobId = startAudit("https://unreachable.example.com");
+		AuditStart auditStart = startAudit("https://unreachable.example.com");
 
 		Instant deadline = Instant.now().plus(Duration.ofSeconds(8));
 		Map reportBody = null;
@@ -222,7 +215,8 @@ class SeoGeoApplicationTests {
 
 		while (Instant.now().isBefore(deadline)) {
 			var reportResult = restTestClient.get()
-					.uri("/audits/{jobId}/report", jobId)
+					.uri("/audits/{jobId}/report", auditStart.jobId())
+					.header(HttpHeaders.COOKIE, auditStart.sessionCookie())
 					.exchange()
 					.returnResult(Map.class);
 			reportStatus = HttpStatus.valueOf(reportResult.getStatus().value());
@@ -235,15 +229,15 @@ class SeoGeoApplicationTests {
 
 		assertThat(reportStatus).isEqualTo(HttpStatus.OK);
 		assertThat(reportBody).isNotNull();
-		assertThat(reportBody).containsEntry("jobId", jobId);
+		assertThat(reportBody).containsEntry("jobId", auditStart.jobId());
 		assertThat(reportBody).containsEntry("status", "FAILED");
 		assertThat(String.valueOf(reportBody.get("message")))
 				.isEqualTo("We couldn't reach that URL. Make sure the site is publicly accessible and try again.");
-		assertThat(auditRunRepository.findById(jobId)).isPresent();
-		assertThat(auditRunRepository.findById(jobId).orElseThrow().getStatus()).isEqualTo(AuditStatus.FAILED);
+		assertThat(auditRunRepository.findById(auditStart.jobId())).isPresent();
+		assertThat(auditRunRepository.findById(auditStart.jobId()).orElseThrow().getStatus()).isEqualTo(AuditStatus.FAILED);
 	}
 
-	private String startAudit(String url) {
+	private AuditStart startAudit(String url) {
 		var startResult = restTestClient.post()
 				.uri("/audits")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -251,14 +245,24 @@ class SeoGeoApplicationTests {
 				.exchange()
 				.expectStatus().isEqualTo(HttpStatus.ACCEPTED)
 				.returnResult(Map.class);
-		return String.valueOf(startResult.getResponseBody().get("jobId"));
+		Map<String, Object> responseBody = startResult.getResponseBody();
+		String sessionCookie = extractCookie(startResult.getResponseHeaders(), "seogeo_session");
+		String claimToken = responseBody.get("claimToken") == null ? null : String.valueOf(responseBody.get("claimToken"));
+		if (sessionCookie == null && claimToken != null) {
+			sessionCookie = continueAsGuestAndExtractSessionCookie(claimToken);
+		}
+		return new AuditStart(
+				String.valueOf(responseBody.get("jobId")),
+				sessionCookie
+		);
 	}
 
-	private void awaitVerifiedReport(String jobId) throws InterruptedException {
+	private void awaitVerifiedReport(AuditStart auditStart) throws InterruptedException {
 		Instant deadline = Instant.now().plus(Duration.ofSeconds(8));
 		while (Instant.now().isBefore(deadline)) {
 			var reportResult = restTestClient.get()
-					.uri("/audits/{jobId}/report", jobId)
+					.uri("/audits/{jobId}/report", auditStart.jobId())
+					.header(HttpHeaders.COOKIE, auditStart.sessionCookie())
 					.exchange()
 					.returnResult(Map.class);
 			if (reportResult.getStatus().value() == HttpStatus.OK.value()
@@ -270,5 +274,43 @@ class SeoGeoApplicationTests {
 		}
 
 		throw new AssertionError("Audit report was not verified in time.");
+	}
+
+	private static String extractCookie(HttpHeaders headers, String name) {
+		return headers.getValuesAsList(HttpHeaders.SET_COOKIE).stream()
+				.map(value -> value.split(";", 2)[0])
+				.filter(value -> value.startsWith(name + "="))
+				.findFirst()
+				.orElse(null);
+	}
+
+	private String continueAsGuestAndExtractSessionCookie(String claimToken) {
+		CsrfState csrfState = fetchCsrfState();
+		var guestResult = restTestClient.post()
+				.uri("/auth/guest")
+				.contentType(MediaType.APPLICATION_JSON)
+				.header("X-XSRF-TOKEN", csrfState.token())
+				.header(HttpHeaders.COOKIE, csrfState.cookie())
+				.body(Map.of("claimToken", claimToken))
+				.exchange()
+				.expectStatus().isOk()
+				.returnResult(Map.class);
+		return extractCookie(guestResult.getResponseHeaders(), "seogeo_session");
+	}
+
+	private CsrfState fetchCsrfState() {
+		var csrfResult = restTestClient.get()
+				.uri("/auth/csrf")
+				.exchange()
+				.expectStatus().isOk()
+				.returnResult(Map.class);
+		String cookie = extractCookie(csrfResult.getResponseHeaders(), "XSRF-TOKEN");
+		return new CsrfState(String.valueOf(csrfResult.getResponseBody().get("token")), cookie);
+	}
+
+	private record AuditStart(String jobId, String sessionCookie) {
+	}
+
+	private record CsrfState(String token, String cookie) {
 	}
 }

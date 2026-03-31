@@ -16,9 +16,10 @@ import { RESET_PASSWORD_PATH, SIGN_UP_PATH } from "@/lib/routes";
 type SignInFormProps = {
   nextPath: string;
   claimToken: string;
+  oauthOnly?: boolean;
 };
 
-export function SignInForm({ nextPath, claimToken }: SignInFormProps) {
+export function SignInForm({ nextPath, claimToken, oauthOnly = false }: SignInFormProps) {
   const [state, formAction] = useActionState(signInAction, initialAuthActionState);
   const signUpHref = claimToken
     ? `${SIGN_UP_PATH}?claim=${encodeURIComponent(claimToken)}`
@@ -27,12 +28,14 @@ export function SignInForm({ nextPath, claimToken }: SignInFormProps) {
 
   return (
     <Card className="border-white/80 bg-white/96 shadow-2xl shadow-emerald-950/10">
-      <CardHeader className="space-y-3 border-b border-border/70 pb-6">
-        <CardTitle className="text-2xl font-semibold text-slate-950">Sign in</CardTitle>
-        <CardDescription className="text-sm leading-6 text-slate-600">
-          Pick up where you left off and move straight into your audit workspace.
-        </CardDescription>
-      </CardHeader>
+        <CardHeader className="space-y-3 border-b border-border/70 pb-6">
+          <CardTitle className="text-2xl font-semibold text-slate-950">Sign in</CardTitle>
+          <CardDescription className="text-sm leading-6 text-slate-600">
+            {oauthOnly
+              ? "Sign in to continue the authorization request."
+              : "Pick up where you left off and move straight into your audit workspace."}
+          </CardDescription>
+        </CardHeader>
       <CardContent className="space-y-6 p-6">
         <form action={formAction} className="space-y-5">
           <input type="hidden" name="next" value={nextPath} />
@@ -99,19 +102,21 @@ export function SignInForm({ nextPath, claimToken }: SignInFormProps) {
           />
         </form>
 
-        <div className="rounded-2xl border border-border/70 bg-muted/45 px-4 py-4 text-sm text-slate-600">
-          <p className="font-medium text-slate-900">New here?</p>
-          <p className="mt-1">
-            Create an account, to save your progress and track multiple pages of your site.
-          </p>
-          <Link
-            href={signUpHref}
-            className="mt-3 inline-flex items-center gap-2 font-semibold text-primary transition hover:text-primary/80"
-          >
-            Create an account
-            <ArrowRight className="size-4" />
-          </Link>
-        </div>
+        {oauthOnly ? null : (
+          <div className="rounded-2xl border border-border/70 bg-muted/45 px-4 py-4 text-sm text-slate-600">
+            <p className="font-medium text-slate-900">New here?</p>
+            <p className="mt-1">
+              Create an account, to save your progress and track multiple pages of your site.
+            </p>
+            <Link
+              href={signUpHref}
+              className="mt-3 inline-flex items-center gap-2 font-semibold text-primary transition hover:text-primary/80"
+            >
+              Create an account
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

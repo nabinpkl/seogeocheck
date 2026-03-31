@@ -58,6 +58,8 @@ abstract class AbstractAuthIntegrationTest {
     void setUp() {
         jdbcTemplate.update("delete from spring_session_attributes");
         jdbcTemplate.update("delete from spring_session");
+        jdbcTemplate.update("delete from oauth2_authorization_consent");
+        jdbcTemplate.update("delete from oauth2_authorization");
         jdbcTemplate.update("delete from audit_claim_tokens");
         jdbcTemplate.update("delete from audit_run_summary_high_issues");
         jdbcTemplate.update("delete from audit_run_summaries");
@@ -111,6 +113,22 @@ abstract class AbstractAuthIntegrationTest {
 
     protected String loginAndExtractSessionCookie(String email, String password) {
         return loginAndExtractSessionCookie(email, password, null);
+    }
+
+    protected String createGuestAndExtractSessionCookie() {
+        CsrfState csrf = fetchCsrfState();
+        var guestResult = restTestClient.post()
+                .uri("/auth/guest")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-XSRF-TOKEN", csrf.token())
+                .header(HttpHeaders.COOKIE, csrf.cookie())
+                .body(Map.of())
+                .exchange()
+                .expectStatus().isOk()
+                .returnResult(Map.class);
+        String cookie = extractCookie(guestResult.getResponseHeaders(), "seogeo_session");
+        assertThat(cookie).contains("seogeo_session=");
+        return cookie;
     }
 
     protected String loginAndExtractSessionCookie(String email, String password, String claimToken) {

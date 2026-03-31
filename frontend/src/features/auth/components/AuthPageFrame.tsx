@@ -7,6 +7,7 @@ import type { AuthUser } from "@/features/auth/lib/server-auth";
 
 type AuthPageFrameProps = {
   viewer: AuthUser | null;
+  hideSignUpCta?: boolean;
   eyebrow?: string;
   title?: string;
   description?: string;
@@ -20,6 +21,7 @@ type AuthPageFrameProps = {
 
 export function AuthPageFrame({
   viewer,
+  hideSignUpCta = false,
   eyebrow,
   title,
   description,
@@ -33,7 +35,7 @@ export function AuthPageFrame({
   if (minimal) {
     return (
       <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(33,196,132,0.17),transparent_28%),linear-gradient(180deg,#f7fffb_0%,#eef8f5_48%,#f8fbfa_100%)] text-foreground">
-        <Navbar viewer={viewer} />
+        <Navbar viewer={viewer} hideSignUpCta={hideSignUpCta} />
         <PageShell size="wide" className="relative overflow-hidden py-10 sm:py-14 lg:py-18">
           <div className="absolute left-0 top-8 h-48 w-48 rounded-full bg-primary/12 blur-3xl" />
           <div className="absolute bottom-0 right-0 h-56 w-56 rounded-full bg-chart-2/10 blur-3xl" />
@@ -46,7 +48,7 @@ export function AuthPageFrame({
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(33,196,132,0.17),transparent_28%),linear-gradient(180deg,#f7fffb_0%,#eef8f5_48%,#f8fbfa_100%)] text-foreground">
-      <Navbar viewer={viewer} />
+      <Navbar viewer={viewer} hideSignUpCta={hideSignUpCta} />
       <PageShell size="wide" className="relative overflow-hidden py-10 sm:py-14 lg:py-18">
         <div className="absolute left-0 top-8 h-48 w-48 rounded-full bg-primary/12 blur-3xl" />
         <div className="absolute bottom-0 right-0 h-56 w-56 rounded-full bg-chart-2/10 blur-3xl" />

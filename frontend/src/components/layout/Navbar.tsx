@@ -19,9 +19,10 @@ type NavbarProps = {
     email: string | null;
     isAnonymous?: boolean;
   } | null;
+  hideSignUpCta?: boolean;
 };
 
-export function Navbar({ viewer = null }: NavbarProps) {
+export function Navbar({ viewer = null, hideSignUpCta = false }: NavbarProps) {
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const pathname = usePathname();
@@ -153,12 +154,14 @@ export function Navbar({ viewer = null }: NavbarProps) {
                 >
                   <Link href={SIGN_IN_PATH}>Sign In</Link>
                 </Button>
-                <Button
-                  asChild
-                  className="h-10 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <Link href={SIGN_UP_PATH}>Try For Free</Link>
-                </Button>
+                {hideSignUpCta ? null : (
+                  <Button
+                    asChild
+                    className="h-10 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <Link href={SIGN_UP_PATH}>Try For Free</Link>
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -227,7 +230,7 @@ export function Navbar({ viewer = null }: NavbarProps) {
                   {viewer ? "Dashboard" : "Sign In"}
                   </Link>
               </Button>
-              {!viewer ? (
+              {!viewer && !hideSignUpCta ? (
                 <Button
                   asChild
                   className="h-12 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-primary/10 transition hover:scale-[1.02] active:scale-[0.98]"

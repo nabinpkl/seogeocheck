@@ -43,7 +43,7 @@ type ParsedSetCookie = {
 const BACKEND_SESSION_COOKIE = "seogeo_session";
 const BACKEND_CSRF_COOKIE = "XSRF-TOKEN";
 
-function getBackendBaseUrl() {
+export function getBackendBaseUrl() {
   return (
     process.env.BACKEND_URL ??
     process.env.NEXT_PUBLIC_BACKEND_URL ??
@@ -53,6 +53,27 @@ function getBackendBaseUrl() {
 
 function buildBackendUrl(path: string) {
   return new URL(path, getBackendBaseUrl()).toString();
+}
+
+export function normalizeAuthRedirectTarget(nextTarget: string | null | undefined) {
+  if (!nextTarget) {
+    return null;
+  }
+
+  if (nextTarget.startsWith("/")) {
+    return nextTarget;
+  }
+
+  try {
+    const targetUrl = new URL(nextTarget);
+    const backendUrl = new URL(getBackendBaseUrl());
+    if (targetUrl.origin !== backendUrl.origin) {
+      return null;
+    }
+    return targetUrl.toString();
+  } catch {
+    return null;
+  }
 }
 
 function isProduction() {
