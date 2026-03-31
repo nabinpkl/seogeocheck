@@ -16,8 +16,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -165,20 +167,29 @@ public class AuthMergeService {
     }
 
     private void moveProjects(UUID sourceUserId, UUID targetUserId, OffsetDateTime now) {
-        List<ProjectEntity> sourceProjects = projectRepository.findByOwnerUserIdOrderByCreatedAtAsc(sourceUserId);
+        boolean targetAlreadyHasDefault = projectRepository.findByOwnerUserIdAndIsDefaultTrue(targetUserId).isPresent();
+        Set<String> reservedSlugs = new HashSet<>(projectRepository.findByOwnerUserIdOrderByIsDefaultDescCreatedAtAsc(targetUserId).stream()
+                .map(ProjectEntity::getSlug)
+                .toList());
+        List<ProjectEntity> sourceProjects = projectRepository.findByOwnerUserIdOrderByIsDefaultDescCreatedAtAsc(sourceUserId);
         for (ProjectEntity project : sourceProjects) {
+            String candidateSlug = generateUniqueProjectSlug(reservedSlugs, project.getSlug());
+            reservedSlugs.add(candidateSlug);
             project.setOwnerUserId(targetUserId);
-            project.setSlug(generateUniqueProjectSlug(targetUserId, project.getSlug()));
+            if (project.isDefault() && targetAlreadyHasDefault) {
+                project.setDefault(false);
+            }
+            project.setSlug(candidateSlug);
             project.setUpdatedAt(now);
         }
         projectRepository.saveAll(sourceProjects);
     }
 
-    private String generateUniqueProjectSlug(UUID ownerUserId, String requestedSlug) {
+    private String generateUniqueProjectSlug(Set<String> reservedSlugs, String requestedSlug) {
         String baseSlug = requestedSlug == null || requestedSlug.isBlank() ? "project" : requestedSlug;
         String candidate = baseSlug;
         int suffix = 2;
-        while (projectRepository.existsByOwnerUserIdAndSlug(ownerUserId, candidate)) {
+        while (reservedSlugs.contains(candidate)) {
             candidate = baseSlug + "-" + suffix;
             suffix++;
         }

@@ -4,6 +4,7 @@ import com.nabin.seogeo.audit.persistence.AuditClaimTokenEntity;
 import com.nabin.seogeo.audit.persistence.AuditClaimTokenRepository;
 import com.nabin.seogeo.audit.persistence.AuditRunEntity;
 import com.nabin.seogeo.auth.config.AuthProperties;
+import com.nabin.seogeo.project.service.ProjectService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,17 +25,20 @@ public class AuditClaimService {
     private final AuditPersistenceService auditPersistenceService;
     private final AuditClaimTokenRepository auditClaimTokenRepository;
     private final AuthProperties authProperties;
+    private final ProjectService projectService;
     private final Clock clock;
 
     public AuditClaimService(
             AuditPersistenceService auditPersistenceService,
             AuditClaimTokenRepository auditClaimTokenRepository,
             AuthProperties authProperties,
+            ProjectService projectService,
             Clock clock
     ) {
         this.auditPersistenceService = auditPersistenceService;
         this.auditClaimTokenRepository = auditClaimTokenRepository;
         this.authProperties = authProperties;
+        this.projectService = projectService;
         this.clock = clock;
     }
 
@@ -144,6 +148,8 @@ public class AuditClaimService {
 
         try {
             auditPersistenceService.claimRun(lockedToken.getJobId(), userId);
+            String projectSlug = projectService.ensureDefaultProject(userId).slug();
+            projectService.attachAuditToProject(userId, projectSlug, lockedToken.getJobId());
         } catch (IllegalArgumentException | AuditPersistenceService.AuditAlreadyClaimedException exception) {
             return false;
         }

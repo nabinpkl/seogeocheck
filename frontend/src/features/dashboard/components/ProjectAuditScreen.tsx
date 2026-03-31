@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useShallow } from "zustand/react/shallow";
 import {
   ArrowLeft,
@@ -15,21 +15,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AuditLiveStreamPanel } from "@/features/audit/components/AuditLiveStreamPanel";
-import { AuditProgressSidebar } from "@/features/audit/components/AuditProgressSidebar";
+import { AuditExperiencePanel } from "@/features/audit/components/AuditExperiencePanel";
 import { AuditReportDetail } from "@/features/audit/components/AuditReportDetail";
-import { AuditStatusHeader } from "@/features/audit/components/AuditStatusHeader";
-import { auditReportQueryKey, ReportPendingError } from "@/lib/audit-query";
+import { useAuditExperience } from "@/features/audit/hooks/useAuditExperience";
 import { cn } from "@/lib/utils";
 import { useAuditStore } from "@/store/use-audit-store";
 import type { AuditReport } from "@/types/audit";
-import {
-  buildAuditHeaderModel,
-  buildAuditStreamRowModel,
-  formatConnectionLabel,
-  isIssueCheck,
-  isPassedCheck,
-} from "@/features/audit/lib/view-models";
+import { startAuditAction } from "@/app/actions/start-audit";
+import { initialAuditActionState } from "@/app/actions/start-audit-state";
 import { buildProjectAuditHref } from "../lib/routes";
 import type { DashboardAuditSummary } from "../types/audits";
 import type { DashboardProjectSummary, ProjectTrackedUrlSummary } from "../types/projects";
@@ -40,23 +33,8 @@ type ProjectAuditScreenProps = {
   audits: DashboardAuditSummary[];
   selectedAudit: DashboardAuditSummary | null;
   initialReport: AuditReport | null;
+  autoStartUrl?: string | null;
 };
-
-async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
-  const response = await fetch(reportUrl, {
-    cache: "no-store",
-  });
-
-  if (response.status === 202) {
-    throw new ReportPendingError();
-  }
-
-  if (!response.ok) {
-    throw new Error("We couldn't load your audit results.");
-  }
-
-  return (await response.json()) as AuditReport;
-}
 
 function formatTimestamp(value?: string | null) {
   if (!value) {
@@ -93,6 +71,16 @@ function formatStatus(status?: string | null) {
   }
 }
 
+function countHighIssues(report: AuditReport | null) {
+  if (!report?.checks) {
+    return 0;
+  }
+
+  return report.checks.filter(
+    (check) => check.status === "issue" && check.severity === "high"
+  ).length;
+}
+
 function statusTone(status?: string | null) {
   switch (status) {
     case "VERIFIED":
@@ -126,7 +114,21 @@ export function ProjectAuditScreen({
   audits,
   selectedAudit: selectedAuditProp,
   initialReport,
+  autoStartUrl = null,
 }: ProjectAuditScreenProps) {
+  const router = useRouter();
+  const refreshedJobIdsRef = React.useRef<Set<string>>(new Set());
+  const autoStartedRef = React.useRef(false);
+  const [startedAuditMeta, setStartedAuditMeta] = React.useState<{
+    jobId: string;
+    targetUrl: string;
+    createdAt: string;
+  } | null>(null);
+  const [startState, startFormAction] = React.useActionState(
+    startAuditAction,
+    initialAuditActionState
+  );
+  const injectedAuditCreatedAtRef = React.useRef<Record<string, string>>({});
   const {
     jobId,
     targetUrl,
@@ -148,14 +150,131 @@ export function ProjectAuditScreen({
       liveError: state.error,
     }))
   );
-  const { connectToStream, markVerified } = useAuditStore(
+  const { primeAudit, connectToStream, markVerified } = useAuditStore(
     useShallow((state) => ({
+      primeAudit: state.primeAudit,
       connectToStream: state.connectToStream,
       markVerified: state.markVerified,
     }))
   );
 
-  const latestAudit = audits[0] ?? null;
+  React.useEffect(() => {
+    if (!autoStartUrl || autoStartedRef.current) {
+      return;
+    }
+
+    autoStartedRef.current = true;
+    const formData = new FormData();
+    formData.append("url", autoStartUrl);
+    formData.append("projectSlug", project.slug);
+    React.startTransition(() => {
+      startFormAction(formData);
+    });
+  }, [autoStartUrl, project.slug, startFormAction]);
+
+  React.useEffect(() => {
+    if (
+      !startState.ok ||
+      !startState.jobId ||
+      !startState.streamUrl ||
+      !startState.reportUrl ||
+      !startState.status
+    ) {
+      return;
+    }
+
+    primeAudit({
+      jobId: startState.jobId,
+      targetUrl: startState.targetUrl,
+      streamUrl: startState.streamUrl,
+      reportUrl: startState.reportUrl,
+      status: startState.status === "QUEUED" ? "QUEUED" : "STREAMING",
+    });
+    connectToStream();
+    setStartedAuditMeta({
+      jobId: startState.jobId,
+      targetUrl: startState.targetUrl,
+      createdAt: new Date().toISOString(),
+    });
+    window.history.replaceState(
+      null,
+      "",
+      buildProjectAuditHref(project.slug, trackedUrl.trackedUrl, startState.jobId)
+    );
+  }, [
+    connectToStream,
+    primeAudit,
+    project.slug,
+    startState.jobId,
+    startState.ok,
+    startState.reportUrl,
+    startState.status,
+    startState.streamUrl,
+    startState.targetUrl,
+    trackedUrl.trackedUrl,
+  ]);
+
+  const injectedLiveAudit = React.useMemo<DashboardAuditSummary | null>(() => {
+    if (startedAuditMeta && jobId === startedAuditMeta.jobId) {
+      return {
+        jobId: startedAuditMeta.jobId,
+        targetUrl: startedAuditMeta.targetUrl,
+        status,
+        createdAt: startedAuditMeta.createdAt,
+        completedAt: null,
+        score: null,
+        projectSlug: project.slug,
+        projectName: project.name,
+        trackedUrl: trackedUrl.trackedUrl,
+      };
+    }
+
+    if (!jobId || !targetUrl || targetUrl !== trackedUrl.trackedUrl) {
+      return null;
+    }
+
+    if (audits.some((audit) => audit.jobId === jobId)) {
+      return null;
+    }
+
+    if (!injectedAuditCreatedAtRef.current[jobId]) {
+      injectedAuditCreatedAtRef.current[jobId] = new Date().toISOString();
+    }
+
+    return {
+      jobId,
+      targetUrl,
+      status,
+      createdAt: injectedAuditCreatedAtRef.current[jobId],
+      completedAt: null,
+      score: null,
+      projectSlug: project.slug,
+      projectName: project.name,
+      trackedUrl: trackedUrl.trackedUrl,
+    };
+  }, [
+    audits,
+    jobId,
+    project.name,
+    project.slug,
+    startedAuditMeta,
+    status,
+    targetUrl,
+    trackedUrl.trackedUrl,
+  ]);
+
+  const baseAudits = React.useMemo(() => {
+    if (!injectedLiveAudit) {
+      return audits;
+    }
+
+    return [injectedLiveAudit, ...audits].filter(
+      (audit, index, collection) =>
+        collection.findIndex((candidate) => candidate.jobId === audit.jobId) === index
+    );
+  }, [audits, injectedLiveAudit]);
+
+  const latestAudit = baseAudits[0] ?? null;
   const selectedAudit = selectedAuditProp ?? latestAudit;
   const selectedRunIsLatest = Boolean(
     latestAudit && selectedAudit && latestAudit.jobId === selectedAudit.jobId
@@ -168,80 +287,97 @@ export function ProjectAuditScreen({
       targetUrl === trackedUrl.trackedUrl
   );
 
-  React.useEffect(() => {
-    if (isLiveForSelectedAudit && streamUrl && connectionStatus === "idle") {
-      connectToStream();
-    }
-  }, [connectToStream, connectionStatus, isLiveForSelectedAudit, streamUrl]);
-
-  const liveReportQuery = useQuery({
-    queryKey: isLiveForSelectedAudit && selectedAudit ? auditReportQueryKey(selectedAudit.jobId) : ["project-audit-report", "idle"],
-    enabled: Boolean(isLiveForSelectedAudit && selectedAudit && reportUrl),
-    queryFn: () => fetchAuditReport(reportUrl!),
-    retry: (failureCount, error) => error instanceof ReportPendingError && failureCount < 20,
-    retryDelay: 750,
-    staleTime: 0,
-    initialData: isLiveForSelectedAudit ? (initialReport ?? undefined) : undefined,
-  });
-
-  React.useEffect(() => {
-    if (liveReportQuery.data && status !== "VERIFIED" && isLiveForSelectedAudit) {
-      markVerified();
-    }
-  }, [isLiveForSelectedAudit, liveReportQuery.data, markVerified, status]);
-
-  const report = isLiveForSelectedAudit ? (liveReportQuery.data ?? initialReport) : initialReport;
-  const hasAuditFailed = isLiveForSelectedAudit ? status === "FAILED" : selectedAudit?.status === "FAILED";
-  const pendingReport =
-    isLiveForSelectedAudit &&
-    (liveReportQuery.fetchStatus === "fetching" || liveReportQuery.error instanceof ReportPendingError);
-  const userFacingError =
-    liveError ||
-    (liveReportQuery.error instanceof Error && !(liveReportQuery.error instanceof ReportPendingError)
-      ? liveReportQuery.error.message
-      : null);
-  const headerModel = buildAuditHeaderModel({
+  const experience = useAuditExperience({
+    reportQueryKeyId: selectedAudit?.jobId ?? null,
     status: isLiveForSelectedAudit ? status : selectedAudit?.status ?? "VERIFIED",
-    isPending: false,
-    targetUrl: trackedUrl.trackedUrl,
+    displayTargetUrl: trackedUrl.trackedUrl,
     placeholderUrl: trackedUrl.trackedUrl,
-    hasAuditFailed,
-    pendingReport,
-    hasReport: Boolean(report),
-    reportScore:
-      typeof report?.summary?.score === "number"
-        ? report.summary.score
-        : selectedAudit?.score ?? trackedUrl.currentScore ?? 0,
-    userFacingError,
+    reportUrl,
+    streamUrl,
+    connectionStatus,
+    events,
+    liveError,
+    isLiveSession: isLiveForSelectedAudit,
+    initialReport,
+    reportScoreFallback: selectedAudit?.score ?? trackedUrl.currentScore ?? 0,
+    onConnectToStream: connectToStream,
+    onMarkVerified: markVerified,
   });
 
-  const liveChecks = events.filter((event) => event.type === "check");
-  const liveFindings = liveChecks.filter((event) => isIssueCheck(event.checkStatus));
-  const livePassedChecks = liveChecks.filter((event) => isPassedCheck(event.checkStatus));
-  const currentProgress =
-    [...events].reverse().find((event) => typeof event.progress === "number")?.progress ?? 0;
-  const progressValue = hasAuditFailed ? 100 : report ? 100 : currentProgress;
-  const progressLabel = hasAuditFailed
-    ? "Failed"
-    : report
-      ? "Ready"
-      : currentProgress === 0
-        ? "Starting..."
-        : `${currentProgress}%`;
-  const currentStepMessage = hasAuditFailed
-    ? userFacingError ?? "We couldn't finish this audit."
-    : pendingReport
-      ? "Putting the final touches on this audit"
-      : report
-        ? "This audit is ready"
-        : "Checking this page";
-  const operationState = hasAuditFailed
-    ? "failed"
-    : pendingReport
-      ? "pending"
-      : report
-        ? "ready"
-        : "active";
+  const report = experience.report;
+  const hasAuditFailed = experience.hasAuditFailed;
+
+  const effectiveSelectedAudit = React.useMemo(() => {
+    if (!selectedAudit) {
+      return null;
+    }
+
+    if (!isLiveForSelectedAudit) {
+      return selectedAudit;
+    }
+
+    return {
+      ...selectedAudit,
+      status,
+      score:
+        typeof report?.summary?.score === "number"
+          ? report.summary.score
+          : selectedAudit.score,
+      completedAt:
+        status === "VERIFIED" && typeof report?.generatedAt === "string"
+          ? report.generatedAt
+          : selectedAudit.completedAt,
+    };
+  }, [isLiveForSelectedAudit, report, selectedAudit, status]);
+
+  const effectiveAudits = React.useMemo(
+    () =>
+      baseAudits.map((audit) =>
+        effectiveSelectedAudit && audit.jobId === effectiveSelectedAudit.jobId
+          ? effectiveSelectedAudit
+          : audit
+      ),
+    [baseAudits, effectiveSelectedAudit]
+  );
+
+  const effectiveLatestAudit = effectiveAudits[0] ?? null;
+  const effectiveTrackedUrl = React.useMemo(() => {
+    if (!isLiveForSelectedAudit || !selectedRunIsLatest) {
+      return trackedUrl;
+    }
+
+    return {
+      ...trackedUrl,
+      latestAuditStatus: status,
+      currentScore:
+        typeof report?.summary?.score === "number"
+          ? report.summary.score
+          : trackedUrl.currentScore,
+      currentCriticalIssueCount:
+        report ? countHighIssues(report) : trackedUrl.currentCriticalIssueCount,
+      latestVerifiedAt:
+        status === "VERIFIED" && typeof report?.generatedAt === "string"
+          ? report.generatedAt
+          : trackedUrl.latestVerifiedAt,
+      latestAuditAt:
+        typeof report?.generatedAt === "string"
+          ? report.generatedAt
+          : trackedUrl.latestAuditAt,
+    };
+  }, [isLiveForSelectedAudit, report, selectedRunIsLatest, status, trackedUrl]);
+
+  React.useEffect(() => {
+    if (!isLiveForSelectedAudit || !selectedAudit || (!report && !hasAuditFailed)) {
+      return;
+    }
+
+    if (refreshedJobIdsRef.current.has(selectedAudit.jobId)) {
+      return;
+    }
+
+    refreshedJobIdsRef.current.add(selectedAudit.jobId);
+    router.refresh();
+  }, [hasAuditFailed, isLiveForSelectedAudit, report, router, selectedAudit]);
 
   return (
     <div className="space-y-8">
@@ -252,7 +388,7 @@ export function ProjectAuditScreen({
           </Link>
           <ChevronRight className="size-4" />
           <Link
-            href={`/dashboard/projects/${encodeURIComponent(project.slug)}`}
+            href={`/dashboard?project=${encodeURIComponent(project.slug)}`}
             className="transition hover:text-slate-900"
           >
             {project.name}
@@ -264,9 +400,9 @@ export function ProjectAuditScreen({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <Button asChild variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-slate-600">
-              <Link href={`/dashboard/projects/${encodeURIComponent(project.slug)}`}>
+              <Link href={`/dashboard?project=${encodeURIComponent(project.slug)}`}>
                 <ArrowLeft className="size-4" />
-                Back to project
+                Back to dashboard
               </Link>
             </Button>
             <div className="space-y-2">
@@ -278,7 +414,7 @@ export function ProjectAuditScreen({
               </h1>
               <p className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                 <Clock3 className="size-4" />
-                Latest audit {formatTimestamp(latestAudit?.completedAt ?? latestAudit?.createdAt ?? trackedUrl.latestAuditAt)}
+                Latest audit {formatTimestamp(effectiveLatestAudit?.completedAt ?? effectiveLatestAudit?.createdAt ?? effectiveTrackedUrl.latestAuditAt)}
               </p>
             </div>
           </div>
@@ -300,7 +436,7 @@ export function ProjectAuditScreen({
         </div>
       </div>
 
-      {!selectedRunIsLatest && latestAudit ? (
+      {!selectedRunIsLatest && effectiveLatestAudit ? (
         <Card className="border-amber-200/70 bg-amber-50/70 shadow-sm">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
@@ -310,7 +446,7 @@ export function ProjectAuditScreen({
                   : "You are viewing an older audit for this page."}
               </p>
               <p className="text-sm text-slate-600">
-                Latest audit updated {formatTimestamp(latestAudit.completedAt ?? latestAudit.createdAt)}.
+                Latest audit updated {formatTimestamp(effectiveLatestAudit.completedAt ?? effectiveLatestAudit.createdAt)}.
               </p>
             </div>
             <Button asChild className="h-10 rounded-full px-4 text-sm font-semibold">
@@ -328,7 +464,7 @@ export function ProjectAuditScreen({
           <Card className="border-white/80 bg-white/95 shadow-sm">
             <CardContent className="flex flex-wrap items-center gap-3 p-5">
               <Badge className={cn("border font-semibold", statusTone(selectedAudit?.status))}>
-                {formatStatus(selectedAudit?.status)}
+                {formatStatus(effectiveSelectedAudit?.status)}
               </Badge>
               {selectedRunIsLatest ? (
                 <Badge className="border border-emerald-200 bg-emerald-50 font-semibold text-emerald-700">
@@ -339,50 +475,33 @@ export function ProjectAuditScreen({
                   Historical run
                 </Badge>
               )}
-              {selectedAudit ? (
+              {effectiveSelectedAudit ? (
                 <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Audit ID {selectedAudit.jobId}
+                  Audit ID {effectiveSelectedAudit.jobId}
                 </span>
               ) : null}
-              {selectedAudit ? (
+              {effectiveSelectedAudit ? (
                 <span className="text-sm text-slate-500">
-                  {formatTimestamp(selectedAudit.completedAt ?? selectedAudit.createdAt)}
+                  {formatTimestamp(effectiveSelectedAudit.completedAt ?? effectiveSelectedAudit.createdAt)}
                 </span>
               ) : null}
             </CardContent>
           </Card>
 
-          {isLiveForSelectedAudit && (!report || pendingReport || hasAuditFailed) ? (
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="space-y-6">
-                <AuditStatusHeader model={headerModel} />
-                <AuditLiveStreamPanel rows={events.map(buildAuditStreamRowModel)} />
+          <AuditExperiencePanel
+            headerModel={experience.headerModel}
+            showLivePanels={experience.showLivePanels}
+            liveProgress={experience.liveProgress}
+            liveStreamRows={experience.liveStreamRows}
+            reportContent={report ? <AuditReportDetail report={report} /> : null}
+            emptyContent={
+              <div className="rounded-3xl border border-slate-200 bg-white/95 px-6 py-8 text-sm leading-6 text-slate-600 shadow-sm">
+                {selectedAudit
+                  ? "This audit run does not have a completed result yet. Choose another run from the right or start a new audit."
+                  : "This page does not have an audit result yet. Start a new audit to generate a full page result here."}
               </div>
-
-              <AuditProgressSidebar
-                connectionLabel={formatConnectionLabel(connectionStatus, status)}
-                hasAuditFailed={hasAuditFailed}
-                targetUrlLabel={trackedUrl.trackedUrl}
-                gapsCount={liveFindings.length}
-                signalsCount={livePassedChecks.length}
-                progressValue={progressValue}
-                progressLabel={progressLabel}
-                progressBarClassName={hasAuditFailed ? "bg-rose-500" : "bg-primary"}
-                currentStepMessage={currentStepMessage}
-                operationState={operationState}
-              />
-            </div>
-          ) : null}
-
-          {report ? (
-            <AuditReportDetail report={report} />
-          ) : (
-            <div className="rounded-3xl border border-slate-200 bg-white/95 px-6 py-8 text-sm leading-6 text-slate-600 shadow-sm">
-              {selectedAudit
-                ? "This audit run does not have a completed result yet. Choose another run from the right or start a new audit."
-                : "This page does not have an audit result yet. Start a new audit to generate a full page result here."}
-            </div>
-          )}
+            }
+          />
         </div>
 
         <aside className="space-y-4">
@@ -400,7 +519,7 @@ export function ProjectAuditScreen({
                     Latest Score
                   </p>
                   <p className="mt-1 text-3xl font-black tracking-tight text-slate-950">
-                    {typeof trackedUrl.currentScore === "number" ? trackedUrl.currentScore : "Not scored yet"}
+                    {typeof effectiveTrackedUrl.currentScore === "number" ? effectiveTrackedUrl.currentScore : "Not scored yet"}
                   </p>
                 </div>
                 <div>
@@ -408,14 +527,14 @@ export function ProjectAuditScreen({
                     Priority Issues
                   </p>
                   <p className="mt-1 text-3xl font-black tracking-tight text-slate-950">
-                    {trackedUrl.currentCriticalIssueCount}
+                    {effectiveTrackedUrl.currentCriticalIssueCount}
                   </p>
                 </div>
               </div>
               <div className="space-y-2 border-t border-slate-100 pt-4 text-sm text-slate-600">
-                <p>Latest status: <span className="font-semibold text-slate-900">{formatStatus(trackedUrl.latestAuditStatus)}</span></p>
-                <p>Saved audits: <span className="font-semibold text-slate-900">{audits.length}</span></p>
-                <p>Latest completed audit: <span className="font-semibold text-slate-900">{formatTimestamp(trackedUrl.latestVerifiedAt ?? trackedUrl.latestAuditAt)}</span></p>
+                <p>Latest status: <span className="font-semibold text-slate-900">{formatStatus(effectiveTrackedUrl.latestAuditStatus)}</span></p>
+                <p>Saved audits: <span className="font-semibold text-slate-900">{effectiveAudits.length}</span></p>
+                <p>Latest completed audit: <span className="font-semibold text-slate-900">{formatTimestamp(effectiveTrackedUrl.latestVerifiedAt ?? effectiveTrackedUrl.latestAuditAt)}</span></p>
               </div>
             </CardContent>
           </Card>
@@ -428,13 +547,13 @@ export function ProjectAuditScreen({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 p-4">
-              {audits.length === 0 ? (
+              {effectiveAudits.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
                   No audit runs are saved for this page yet.
                 </div>
               ) : (
-                audits.map((audit, index) => {
-                  const isSelected = selectedAudit?.jobId === audit.jobId;
+                effectiveAudits.map((audit, index) => {
+                  const isSelected = effectiveSelectedAudit?.jobId === audit.jobId;
                   const isLatest = index === 0;
 
                   return (

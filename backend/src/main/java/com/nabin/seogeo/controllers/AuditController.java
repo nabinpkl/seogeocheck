@@ -9,6 +9,7 @@ import com.nabin.seogeo.audit.service.AuditClaimService;
 import com.nabin.seogeo.audit.service.AuditOrchestrationService;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
+import com.nabin.seogeo.project.service.ProjectService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.Authentication;
@@ -43,17 +44,20 @@ public class AuditController {
     private final AuditOrchestrationService auditOrchestrationService;
     private final AuditPersistenceService auditPersistenceService;
     private final AuditClaimService auditClaimService;
+    private final ProjectService projectService;
     private final AuditProperties auditProperties;
 
     public AuditController(
             AuditOrchestrationService auditOrchestrationService,
             AuditPersistenceService auditPersistenceService,
             AuditClaimService auditClaimService,
+            ProjectService projectService,
             AuditProperties auditProperties
     ) {
         this.auditOrchestrationService = auditOrchestrationService;
         this.auditPersistenceService = auditPersistenceService;
         this.auditClaimService = auditClaimService;
+        this.projectService = projectService;
         this.auditProperties = auditProperties;
     }
 
@@ -66,8 +70,14 @@ public class AuditController {
         String jobId = "audit_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         OffsetDateTime createdAt = OffsetDateTime.now();
         UUID ownerUserId = authenticatedUserId(authentication);
+        String resolvedProjectSlug = ownerUserId == null
+                ? null
+                : projectService.resolveRequestedOrDefaultProjectSlug(ownerUserId, request.projectSlug());
 
         auditOrchestrationService.startAudit(jobId, normalizedUrl, createdAt, ownerUserId);
+        if (resolvedProjectSlug != null) {
+            projectService.attachAuditToProject(ownerUserId, resolvedProjectSlug, jobId);
+        }
 
         String claimToken = ownerUserId == null
                 ? auditClaimService.issueClaimTokenForUnownedRun(jobId)
@@ -78,6 +88,9 @@ public class AuditController {
         responseBody.put("status", AuditStatus.QUEUED.name());
         responseBody.put("streamUrl", buildAuditPath(jobId, "stream"));
         responseBody.put("reportUrl", buildAuditPath(jobId, "report"));
+        if (resolvedProjectSlug != null) {
+            responseBody.put("projectSlug", resolvedProjectSlug);
+        }
         if (claimToken != null) {
             responseBody.put("claimToken", claimToken);
         }
@@ -260,7 +273,7 @@ public class AuditController {
         return candidate;
     }
 
-    public record StartAuditRequest(@NotBlank String url) {
+    public record StartAuditRequest(@NotBlank String url, String projectSlug) {
     }
 
     private UUID authenticatedUserId(Authentication authentication) {
@@ -299,6 +312,14 @@ public class AuditController {
         return ResponseEntity.badRequest().body(Map.of(
                 "error", "INVALID_AUDIT_URL",
                 "message", "Enter a valid website URL to start the audit."
+        ));
+    }
+
+    @ExceptionHandler(ProjectService.ProjectNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleProjectNotFound(ProjectService.ProjectNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "error", "PROJECT_NOT_FOUND",
+                "message", exception.getMessage()
         ));
     }
 }

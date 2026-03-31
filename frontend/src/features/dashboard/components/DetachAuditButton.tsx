@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { Unlink2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   detachAuditFromProjectAction,
@@ -34,8 +34,14 @@ export function DetachAuditButton({
     router.refresh();
   }, [router, state.ok]);
 
+  const handleSubmit = React.useCallback((event: React.FormEvent<HTMLFormElement>) => {
+    if (typeof window !== "undefined" && !window.confirm("Delete this audit and its saved history?")) {
+      event.preventDefault();
+    }
+  }, []);
+
   return (
-    <form action={action} className="contents">
+    <form action={action} className="contents" onSubmit={handleSubmit}>
       <input type="hidden" name="projectSlug" value={projectSlug} />
       <input type="hidden" name="jobId" value={jobId} />
       <Button
@@ -44,8 +50,8 @@ export function DetachAuditButton({
         className={compact ? "h-8 rounded-full px-3 text-xs" : "h-9 rounded-full px-4 text-xs font-semibold"}
         disabled={isPending}
       >
-        <Unlink2 className="size-4" />
-        {isPending ? "Removing..." : "Remove from Project"}
+        <Trash2 className="size-4" />
+        {isPending ? "Deleting..." : "Delete Audit"}
       </Button>
       {state.error ? (
         <span className="text-xs font-medium text-rose-600">{state.error}</span>

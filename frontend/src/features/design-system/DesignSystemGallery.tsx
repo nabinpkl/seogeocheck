@@ -59,7 +59,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { AuditCallout } from "@/features/audit/components/AuditCallout";
 import { AuditCategoryScoreGrid } from "@/features/audit/components/AuditCategoryScoreGrid";
 import { AuditCheckRow } from "@/features/audit/components/AuditCheckRow";
-import { AuditProgressSidebar } from "@/features/audit/components/AuditProgressSidebar";
+import { AuditLiveProgressPanel } from "@/features/audit/components/AuditLiveProgressPanel";
 import { AuditResultActions } from "@/features/audit/components/AuditResultActions";
 import { AuditScoreHero } from "@/features/audit/components/AuditScoreHero";
 import { AuditStatusHeader } from "@/features/audit/components/AuditStatusHeader";
@@ -491,7 +491,22 @@ export function DesignSystemGallery() {
 
           <AuditCategoryScoreGrid categories={sampleCategories} />
 
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_360px]">
+          <div className="space-y-6">
+            <AuditLiveProgressPanel
+              phaseLabel="Comparing rendered and source content"
+              phaseDetail="Rendered comparison is ready, and the live score is adjusting as new signals finish."
+              gapsCount={4}
+              signalsCount={11}
+              progressValue={72}
+              progressLabel="72% complete"
+              progressBarClassName="bg-primary"
+              liveScoreState="provisional"
+              liveScoreValue={81}
+              evaluatedChecksCount={15}
+              showLiveMetrics
+              operationState="active"
+            />
+
             <div className="space-y-4">
               <AuditCheckRow model={sampleIssueRow} />
               <AuditCheckRow model={samplePassedRow} />
@@ -500,19 +515,6 @@ export function DesignSystemGallery() {
                 onReset={() => undefined}
               />
             </div>
-
-            <AuditProgressSidebar
-              connectionLabel="On"
-              hasAuditFailed={false}
-              targetUrlLabel="https://seogeocheck.com"
-              gapsCount={4}
-              signalsCount={11}
-              progressValue={72}
-              progressLabel="72%"
-              progressBarClassName="bg-primary"
-              currentStepMessage="Comparing source HTML and rendered DOM"
-              operationState="active"
-            />
           </div>
         </div>
       </PageShell>

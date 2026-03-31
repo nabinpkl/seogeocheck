@@ -11,7 +11,9 @@ import java.util.UUID;
 
 public interface ProjectRepository extends JpaRepository<ProjectEntity, UUID> {
 
-    List<ProjectEntity> findByOwnerUserIdOrderByCreatedAtAsc(UUID ownerUserId);
+    List<ProjectEntity> findByOwnerUserIdOrderByIsDefaultDescCreatedAtAsc(UUID ownerUserId);
+
+    Optional<ProjectEntity> findByOwnerUserIdAndIsDefaultTrue(UUID ownerUserId);
 
     Optional<ProjectEntity> findByOwnerUserIdAndSlug(UUID ownerUserId, String slug);
 

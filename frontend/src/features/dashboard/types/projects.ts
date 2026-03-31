@@ -16,6 +16,7 @@ export type ProjectTopIssue = {
 export type DashboardProjectSummary = {
   id: string;
   slug: string;
+  isDefault: boolean;
   name: string;
   description: string | null;
   createdAt: string;

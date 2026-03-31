@@ -13,7 +13,7 @@ export function AuditSection({
   viewer?: AuthUser | null;
   projectSlug?: string | null;
 }) {
-  const viewProps = useAuditSectionController({ viewer, projectSlug });
+  const viewProps = useAuditSectionController({ viewer, projectSlug, variant });
 
   return <AuditSectionView {...viewProps} variant={variant} />;
 }

@@ -138,6 +138,16 @@ public class AccountProjectController {
         ));
     }
 
+    @ExceptionHandler(ProjectService.AuditDeletionNotAllowedException.class)
+    public ResponseEntity<Map<String, Object>> handleAuditDeletionNotAllowed(
+            ProjectService.AuditDeletionNotAllowedException exception
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "error", "AUDIT_DELETE_NOT_ALLOWED",
+                "message", exception.getMessage()
+        ));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException exception) {
         return ResponseEntity.badRequest().body(Map.of(
@@ -155,6 +165,7 @@ public class AccountProjectController {
     public record ProjectSummaryResponse(
             String id,
             String slug,
+            boolean isDefault,
             String name,
             String description,
             OffsetDateTime createdAt,
@@ -174,6 +185,7 @@ public class AccountProjectController {
             return new ProjectSummaryResponse(
                     summary.id().toString(),
                     summary.slug(),
+                    summary.isDefault(),
                     summary.name(),
                     summary.description(),
                     summary.createdAt(),

@@ -16,29 +16,73 @@ type ProjectAuditPageProps = {
   }>;
   searchParams?: Promise<{
     run?: string;
+    start?: string;
+    url?: string;
   }>;
 };
+
+function buildPendingTrackedUrlSummary(trackedUrl: string) {
+  try {
+    const parsed = new URL(trackedUrl);
+    return {
+      id: `pending:${trackedUrl}`,
+      trackedUrl,
+      normalizedUrl: trackedUrl,
+      normalizedHost: parsed.hostname,
+      normalizedPath: parsed.pathname || "/",
+      auditCount: 0,
+      latestAuditAt: null,
+      latestAuditStatus: null,
+      latestVerifiedAt: null,
+      currentScore: null,
+      currentCriticalIssueCount: 0,
+    };
+  } catch {
+    return {
+      id: `pending:${trackedUrl}`,
+      trackedUrl,
+      normalizedUrl: trackedUrl,
+      normalizedHost: "",
+      normalizedPath: "/",
+      auditCount: 0,
+      latestAuditAt: null,
+      latestAuditStatus: null,
+      latestVerifiedAt: null,
+      currentScore: null,
+      currentCriticalIssueCount: 0,
+    };
+  }
+}
 
 export default async function ProjectAuditPage({ params, searchParams }: ProjectAuditPageProps) {
   const { slug, trackedUrl: encodedTrackedUrl } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const requestedRunId = typeof resolvedSearchParams.run === "string" ? resolvedSearchParams.run : null;
+  const autoStartRequested = resolvedSearchParams.start === "1";
+  const autoStartUrl =
+    autoStartRequested && typeof resolvedSearchParams.url === "string" && resolvedSearchParams.url.trim().length > 0
+      ? resolvedSearchParams.url.trim()
+      : null;
   const trackedUrl = decodeURIComponent(encodedTrackedUrl);
 
-  const [project, trackedUrls, audits] = await Promise.all([
-    getAccountProject(slug),
-    getAccountProjectUrls(slug),
-    getAccountProjectAudits(slug, trackedUrl),
-  ]);
+  const project = await getAccountProject(slug);
 
   if (!project) {
     notFound();
   }
 
+  const [trackedUrls, audits] = autoStartUrl
+    ? [[], []]
+    : await Promise.all([
+        getAccountProjectUrls(slug),
+        getAccountProjectAudits(slug, trackedUrl),
+      ]);
+
   const trackedUrlSummary = trackedUrls.find((item) => item.trackedUrl === trackedUrl);
-  if (!trackedUrlSummary) {
+  if (!trackedUrlSummary && !autoStartUrl) {
     notFound();
   }
+  const effectiveTrackedUrlSummary = trackedUrlSummary ?? buildPendingTrackedUrlSummary(trackedUrl);
 
   const selectedAudit =
     (requestedRunId ? audits.find((audit) => audit.jobId === requestedRunId) : null) ??
@@ -53,10 +97,11 @@ export default async function ProjectAuditPage({ params, searchParams }: Project
       <PageShell size="wide" className="pt-12 pb-8">
         <ProjectAuditScreen
           project={project}
-          trackedUrl={trackedUrlSummary}
+          trackedUrl={effectiveTrackedUrlSummary}
           audits={audits}
           selectedAudit={selectedAudit}
           initialReport={initialReport}
+          autoStartUrl={autoStartUrl}
         />
       </PageShell>
     </div>

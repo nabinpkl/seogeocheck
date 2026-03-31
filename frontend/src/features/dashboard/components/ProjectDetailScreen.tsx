@@ -73,7 +73,14 @@ export function ProjectDetailScreen({
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
               Project Overview
             </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">{project.name}</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950">{project.name}</h1>
+              {project.isDefault ? (
+                <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
+                  Default Project
+                </Badge>
+              ) : null}
+            </div>
             <p className="max-w-3xl text-sm leading-6 text-slate-600">
               {project.description || "Use this project to keep related pages together and monitor performance in one place."}
             </p>

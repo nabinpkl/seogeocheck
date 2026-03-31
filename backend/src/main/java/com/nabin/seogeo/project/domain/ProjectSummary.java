@@ -7,6 +7,7 @@ import java.util.UUID;
 public record ProjectSummary(
         UUID id,
         String slug,
+        boolean isDefault,
         String name,
         String description,
         OffsetDateTime createdAt,

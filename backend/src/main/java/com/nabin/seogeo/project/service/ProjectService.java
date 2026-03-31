@@ -69,7 +69,7 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<ProjectSummary> listProjects(UUID ownerUserId) {
-        List<ProjectEntity> projects = projectRepository.findByOwnerUserIdOrderByCreatedAtAsc(ownerUserId);
+        List<ProjectEntity> projects = projectRepository.findByOwnerUserIdOrderByIsDefaultDescCreatedAtAsc(ownerUserId);
         return buildSummaries(projects);
     }
 
@@ -92,10 +92,24 @@ public class ProjectService {
         entity.setName(requireName(name));
         entity.setDescription(normalizeNullable(description));
         entity.setSlug(generateUniqueSlug(ownerUserId, name));
+        entity.setDefault(false);
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         projectRepository.save(entity);
         return buildSummaries(List.of(entity)).getFirst();
+    }
+
+    @Transactional
+    public ProjectSummary ensureDefaultProject(UUID ownerUserId) {
+        return buildSummaries(List.of(ensureDefaultProjectEntity(ownerUserId))).getFirst();
+    }
+
+    @Transactional
+    public String resolveRequestedOrDefaultProjectSlug(UUID ownerUserId, String requestedSlug) {
+        if (requestedSlug == null || requestedSlug.isBlank()) {
+            return ensureDefaultProjectEntity(ownerUserId).getSlug();
+        }
+        return getOwnedProject(ownerUserId, requestedSlug).getSlug();
     }
 
     @Transactional
@@ -115,7 +129,7 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<AccountAuditSummary> listOwnedAudits(UUID ownerUserId, String projectSlug) {
-        Map<String, ProjectEntity> projectsBySlug = projectRepository.findByOwnerUserIdOrderByCreatedAtAsc(ownerUserId).stream()
+        Map<String, ProjectEntity> projectsBySlug = projectRepository.findByOwnerUserIdOrderByIsDefaultDescCreatedAtAsc(ownerUserId).stream()
                 .collect(LinkedHashMap::new, (map, project) -> map.put(project.getSlug(), project), Map::putAll);
 
         UUID filteredProjectId = null;
@@ -313,11 +327,15 @@ public class ProjectService {
             created.setLinkedByUserId(ownerUserId);
             return created;
         });
+        UUID previousTrackedUrlId = link.getTrackedUrlId();
         link.setProjectId(project.getId());
         link.setTrackedUrlId(trackedUrl.getId());
         link.setLinkedAt(now);
         link.setLinkedByUserId(ownerUserId);
         auditProjectLinkRepository.save(link);
+        if (previousTrackedUrlId != null && !Objects.equals(previousTrackedUrlId, trackedUrl.getId())) {
+            cleanupTrackedUrlIfEmpty(previousTrackedUrlId);
+        }
 
         AuditRunSummaryEntity summary = auditRunSummaryRepository.findById(jobId).orElse(null);
         return new AccountAuditSummary(
@@ -340,16 +358,23 @@ public class ProjectService {
         if (link == null || !Objects.equals(link.getProjectId(), project.getId())) {
             return;
         }
+
+        AuditRunEntity run = auditPersistenceService.findVisibleRun(jobId, ownerUserId)
+                .filter(item -> Objects.equals(item.getOwnerUserId(), ownerUserId))
+                .orElseThrow(() -> new ProjectNotFoundException(slug));
+        if (!run.getStatus().isTerminal()) {
+            throw new AuditDeletionNotAllowedException(jobId);
+        }
+
         UUID trackedUrlId = link.getTrackedUrlId();
         auditProjectLinkRepository.delete(link);
-        if (auditProjectLinkRepository.findByTrackedUrlIdOrderByLinkedAtDesc(trackedUrlId).isEmpty()) {
-            projectTrackedUrlRepository.deleteById(trackedUrlId);
-        }
+        auditPersistenceService.deleteRun(jobId);
+        cleanupTrackedUrlIfEmpty(trackedUrlId);
     }
 
     @Transactional(readOnly = true)
     public List<ProjectEntity> listOwnedProjectEntities(UUID ownerUserId) {
-        return projectRepository.findByOwnerUserIdOrderByCreatedAtAsc(ownerUserId);
+        return projectRepository.findByOwnerUserIdOrderByIsDefaultDescCreatedAtAsc(ownerUserId);
     }
 
     private ProjectEntity getOwnedProject(UUID ownerUserId, String slug) {
@@ -478,6 +503,7 @@ public class ProjectService {
             summaries.add(new ProjectSummary(
                     project.getId(),
                     project.getSlug(),
+                    project.isDefault(),
                     project.getName(),
                     project.getDescription(),
                     project.getCreatedAt(),
@@ -506,6 +532,32 @@ public class ProjectService {
                 .max(Comparator.comparing(AuditRunEntity::getCompletedAt, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(AuditRunEntity::getCreatedAt))
                 .orElse(null);
+    }
+
+    private ProjectEntity ensureDefaultProjectEntity(UUID ownerUserId) {
+        return projectRepository.findByOwnerUserIdAndIsDefaultTrue(ownerUserId)
+                .orElseGet(() -> {
+                    OffsetDateTime now = OffsetDateTime.now();
+                    ProjectEntity entity = new ProjectEntity();
+                    entity.setId(UUID.randomUUID());
+                    entity.setOwnerUserId(ownerUserId);
+                    entity.setSlug(generateUniqueSlug(ownerUserId, "Workspace"));
+                    entity.setName("Workspace");
+                    entity.setDescription(null);
+                    entity.setDefault(true);
+                    entity.setCreatedAt(now);
+                    entity.setUpdatedAt(now);
+                    return projectRepository.save(entity);
+                });
+    }
+
+    private void cleanupTrackedUrlIfEmpty(UUID trackedUrlId) {
+        if (trackedUrlId == null) {
+            return;
+        }
+        if (auditProjectLinkRepository.findByTrackedUrlIdOrderByLinkedAtDesc(trackedUrlId).isEmpty()) {
+            projectTrackedUrlRepository.deleteById(trackedUrlId);
+        }
     }
 
     private String generateUniqueSlug(UUID ownerUserId, String name) {
@@ -544,6 +596,12 @@ public class ProjectService {
     public static final class ProjectNotFoundException extends RuntimeException {
         public ProjectNotFoundException(String slug) {
             super("Project not found: " + slug);
+        }
+    }
+
+    public static final class AuditDeletionNotAllowedException extends RuntimeException {
+        public AuditDeletionNotAllowedException(String jobId) {
+            super("Audit must be finished before it can be deleted: " + jobId);
         }
     }
 }

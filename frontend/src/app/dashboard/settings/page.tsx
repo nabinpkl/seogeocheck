@@ -28,7 +28,7 @@ export default async function DashboardSettingsPage() {
 
         <AccountSettingsPanel
           user={{
-            email: viewer.email,
+            email: viewer.email ?? "",
             emailVerified: viewer.emailVerified,
             createdAt: viewer.createdAt,
           }}

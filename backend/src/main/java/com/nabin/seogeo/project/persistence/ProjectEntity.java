@@ -27,6 +27,9 @@ public class ProjectEntity {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
+    @Column(name = "is_default", nullable = false)
+    private boolean isDefault;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -71,6 +74,14 @@ public class ProjectEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public boolean isDefault() {
+        return isDefault;
+    }
+
+    public void setDefault(boolean aDefault) {
+        isDefault = aDefault;
     }
 
     public OffsetDateTime getCreatedAt() {

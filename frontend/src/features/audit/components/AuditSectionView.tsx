@@ -3,21 +3,20 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AuditInputPanel } from "./AuditInputPanel";
-import { AuditLiveStreamPanel } from "./AuditLiveStreamPanel";
-import { AuditProgressSidebar } from "./AuditProgressSidebar";
+import { AuditExperiencePanel } from "./AuditExperiencePanel";
 import { AuditResultActions } from "./AuditResultActions";
-import { AuditStatusHeader } from "./AuditStatusHeader";
 import { AuditResultsSection } from "./AuditResultsSection";
 import type { AuditSectionViewProps } from "../types/section";
 
 export function AuditSectionView({
   inputRef,
   resultPanelRef,
+  liveProgressRef,
   visibility,
   inputPanel,
   statusHeader,
   liveStream,
-  progressSidebar,
+  liveProgress,
   results,
   actions,
   variant = "hero",
@@ -49,50 +48,24 @@ export function AuditSectionView({
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
             className="mx-auto mt-16 min-h-[400px] w-full max-w-6xl"
           >
-            <div
-              className={`grid gap-6 ${
-                visibility.showProgressSidebar
-                  ? "lg:grid-cols-[1fr_380px]"
-                  : "grid-cols-1"
-              }`}
-            >
-              <div className="flex flex-col gap-6">
-                <AuditStatusHeader
-                  model={statusHeader.model}
-                  claimPanel={results?.claimPanel}
-                  actions={
-                    statusHeader.showCompactActions ? (
-                      <AuditResultActions
-                        compact
-                        onReAudit={actions.onReAudit}
-                        onReset={actions.onReset}
-                      />
-                    ) : null
-                  }
-                />
-
-                {visibility.showLiveStream ? (
-                  <AuditLiveStreamPanel rows={liveStream.rows} />
-                ) : null}
-
-                {results ? <AuditResultsSection {...results} /> : null}
-              </div>
-
-              {visibility.showProgressSidebar ? (
-                <AuditProgressSidebar
-                  connectionLabel={progressSidebar.connectionLabel}
-                  hasAuditFailed={progressSidebar.hasAuditFailed}
-                  targetUrlLabel={progressSidebar.targetUrlLabel}
-                  gapsCount={progressSidebar.gapsCount}
-                  signalsCount={progressSidebar.signalsCount}
-                  progressValue={progressSidebar.progressValue}
-                  progressLabel={progressSidebar.progressLabel}
-                  progressBarClassName={progressSidebar.progressBarClassName}
-                  currentStepMessage={progressSidebar.currentStepMessage}
-                  operationState={progressSidebar.operationState}
-                />
-              ) : null}
-            </div>
+            <AuditExperiencePanel
+              headerModel={statusHeader.model}
+              claimPanel={results?.claimPanel}
+              headerActions={
+                statusHeader.showCompactActions ? (
+                  <AuditResultActions
+                    compact
+                    onReAudit={actions.onReAudit}
+                    onReset={actions.onReset}
+                  />
+                ) : null
+              }
+              showLivePanels={visibility.showLiveProgress || visibility.showLiveStream}
+              liveProgress={liveProgress}
+              liveStreamRows={liveStream.rows}
+              reportContent={results ? <AuditResultsSection {...results} /> : null}
+              liveProgressRef={liveProgressRef}
+            />
           </motion.div>
         ) : null}
       </AnimatePresence>

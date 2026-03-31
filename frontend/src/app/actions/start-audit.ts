@@ -2,9 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  attachAuditToProject,
   backendFetchWithSession,
-  BackendRequestError,
   parseJsonResponse,
 } from "@/lib/backend-server";
 import { getCurrentUser } from "@/features/auth/lib/server-auth";
@@ -47,7 +45,10 @@ export async function startAuditAction(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: targetUrl }),
+      body: JSON.stringify({
+        url: targetUrl,
+        projectSlug,
+      }),
     });
 
     const payload =
@@ -64,18 +65,13 @@ export async function startAuditAction(
       };
     }
 
-    let projectWarning: string | null = null;
-    if (projectSlug && typeof payload.jobId === "string") {
-      try {
-        await attachAuditToProject(projectSlug, payload.jobId);
-        revalidatePath("/dashboard");
-        revalidatePath(`/dashboard/projects/${projectSlug}`);
-      } catch (error) {
-        projectWarning =
-          error instanceof BackendRequestError
-            ? "Your audit started, but we couldn't add it to the selected project."
-            : "Your audit started, but we couldn't add it to the selected project.";
-      }
+    const resolvedProjectSlug =
+      typeof payload.projectSlug === "string" && payload.projectSlug.trim()
+        ? payload.projectSlug
+        : projectSlug;
+    if (resolvedProjectSlug) {
+      revalidatePath("/dashboard");
+      revalidatePath(`/dashboard/projects/${resolvedProjectSlug}`);
     }
 
     const viewer = await getCurrentUser();
@@ -88,8 +84,8 @@ export async function startAuditAction(
     return {
       ok: true,
       error: null,
-      projectWarning,
-      projectSlug,
+      projectWarning: null,
+      projectSlug: resolvedProjectSlug,
       workspaceKind: viewer?.accountKind ?? null,
       claimToken,
       jobId: typeof payload.jobId === "string" ? payload.jobId : null,

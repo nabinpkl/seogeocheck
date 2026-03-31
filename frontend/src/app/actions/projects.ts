@@ -132,7 +132,7 @@ export async function detachAuditFromProjectAction(
   } catch (error) {
     return {
       ok: false,
-      error: toProjectUiError(error, "We couldn't remove this audit from the project right now."),
+      error: toProjectUiError(error, "We couldn't delete this audit right now."),
     };
   }
 }

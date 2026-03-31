@@ -33,7 +33,7 @@ function getInitials(email: string) {
 }
 
 function getUserLabel(user: AuthUser) {
-  return user.email ?? "Guest Mode";
+  return user.email ?? "Guest User";
 }
 
 type SidebarContentProps = {

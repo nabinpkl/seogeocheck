@@ -131,7 +131,7 @@ export function Navbar({ viewer = null }: NavbarProps) {
                       : "border-white/20 bg-white/8 text-white/70"
                   }`}
                 >
-                  {viewer.isAnonymous ? "Saved In Browser" : viewer.email}
+                  {viewer.isAnonymous ? "Guest User" : viewer.email}
                 </div>
                 <Button
                   asChild

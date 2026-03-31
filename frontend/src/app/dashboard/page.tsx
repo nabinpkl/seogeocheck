@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { PageShell } from "@/components/ui/page-shell";
 import { ProjectDashboard } from "@/features/dashboard/components/ProjectDashboard";
 import { getCurrentUser } from "@/features/auth/lib/server-auth";
-import { getAccountAudits, getAccountProjects, getAccountProjectUrls } from "@/lib/backend-server";
+import { getAccountProjects, getAccountProjectUrls } from "@/lib/backend-server";
 
 type DashboardPageProps = {
   searchParams?: Promise<{
@@ -26,10 +26,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect(`/dashboard?project=${encodeURIComponent(projects[0].slug)}`);
   }
 
-  const [audits, trackedUrls] = await Promise.all([
-    getAccountAudits(selectedProjectSlug),
-    selectedProjectSlug ? getAccountProjectUrls(selectedProjectSlug) : Promise.resolve([]),
-  ]);
+  const trackedUrls = selectedProjectSlug ? await getAccountProjectUrls(selectedProjectSlug) : [];
 
   return (
     <div className="min-h-screen pb-24 bg-slate-50/50">
@@ -43,7 +40,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <ProjectDashboard
           viewer={viewer}
           projects={projects}
-          audits={audits}
           trackedUrls={trackedUrls}
           selectedProjectSlug={selectedProjectSlug}
         />

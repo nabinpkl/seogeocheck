@@ -2,41 +2,35 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useDeferredValue } from "react";
 import {
   Activity,
-  ArrowRight,
-  Clock3,
-  ExternalLink,
-  FileSearch,
   FolderTree,
   Globe,
-  Search,
 } from "lucide-react";
 import { AuditSection } from "@/features/audit/AuditSection";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/features/auth/lib/server-auth";
-import type { DashboardAuditSummary } from "../types/audits";
 import type { DashboardProjectSummary, ProjectTrackedUrlSummary } from "../types/projects";
 import { buildProjectAuditHref } from "../lib/routes";
 import { ProjectFormDialog } from "./ProjectFormDialog";
-import { AttachAuditDialog } from "./AttachAuditDialog";
-import { DetachAuditButton } from "./DetachAuditButton";
 
 type ProjectDashboardProps = {
   viewer: AuthUser | null;
   projects: DashboardProjectSummary[];
-  audits: DashboardAuditSummary[];
   trackedUrls: ProjectTrackedUrlSummary[];
   selectedProjectSlug: string | null;
 };
 
-function statusTone(status: string) {
+function isLiveStatus(status: string | null) {
+  return status === "STREAMING" || status === "COMPLETE" || status === "QUEUED";
+}
+
+function statusTone(status?: string | null) {
   switch (status) {
+    case "VERIFIED":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
     case "FAILED":
       return "bg-rose-50 text-rose-700 border-rose-200";
     case "STREAMING":
@@ -46,25 +40,6 @@ function statusTone(status: string) {
     default:
       return "bg-slate-100 text-slate-600 border-slate-200";
   }
-}
-
-function formatStatus(status: string) {
-  switch (status) {
-    case "FAILED":
-      return "Needs attention";
-    case "STREAMING":
-      return "Running";
-    case "COMPLETE":
-      return "Finishing";
-    case "QUEUED":
-      return "Starting";
-    default:
-      return status;
-  }
-}
-
-function isLiveStatus(status: string | null) {
-  return status === "STREAMING" || status === "COMPLETE" || status === "QUEUED";
 }
 
 function formatTimestamp(value: string | null) {
@@ -99,40 +74,14 @@ function pluralize(count: number, singular: string, plural = `${singular}s`) {
 export function ProjectDashboard({
   viewer,
   projects,
-  audits,
   trackedUrls,
   selectedProjectSlug,
 }: ProjectDashboardProps) {
   const hasProjects = projects.length > 0;
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const deferredQuery = useDeferredValue(searchQuery.trim().toLowerCase());
 
   const selectedProject = React.useMemo(
     () => projects.find((project) => project.slug === selectedProjectSlug) ?? null,
     [projects, selectedProjectSlug]
-  );
-
-  const filteredAudits = React.useMemo(() => {
-    if (!deferredQuery) {
-      return audits;
-    }
-
-    return audits.filter((audit) => {
-      const haystack = [
-        audit.targetUrl,
-        audit.jobId,
-        audit.projectName ?? "",
-        audit.trackedUrl ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(deferredQuery);
-    });
-  }, [audits, deferredQuery]);
-
-  const unassignedAudits = React.useMemo(
-    () => audits.filter((audit) => !audit.projectSlug),
-    [audits]
   );
 
   const trackedUrlCount = selectedProject?.trackedUrlCount ?? 0;
@@ -199,7 +148,14 @@ export function ProjectDashboard({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-950">{project.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-slate-950">{project.name}</p>
+                        {project.isDefault ? (
+                          <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
+                            Default
+                          </Badge>
+                        ) : null}
+                      </div>
                       <p className="mt-1 text-xs text-slate-500">
                         {project.trackedUrlCount} pages
                       </p>
@@ -212,10 +168,6 @@ export function ProjectDashboard({
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
                       {pluralize(project.auditCount, "audit")}
                     </p>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
-                      View
-                      <ExternalLink className="size-3.5" />
-                    </span>
                   </div>
                 </Link>
               ))}
@@ -225,35 +177,6 @@ export function ProjectDashboard({
       </aside>
 
       <div className="space-y-10">
-        {unassignedAudits.length > 0 ? (
-          <Card className="border-amber-200/80 bg-amber-50/70 shadow-sm">
-            <CardHeader className="border-b border-amber-200/60">
-              <CardTitle className="text-lg text-slate-950">Audits Not Yet in a Project</CardTitle>
-              <CardDescription>
-                Audits saved to your account stay here until you place them in a project.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 p-4">
-              {unassignedAudits.slice(0, 4).map((audit) => (
-                <div
-                  key={audit.jobId}
-                  className="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/90 p-4 lg:flex-row lg:items-center lg:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-950">{audit.targetUrl}</p>
-                    <p className="mt-1 text-xs text-slate-500">Created {formatTimestamp(audit.createdAt)}</p>
-                  </div>
-                  <AttachAuditDialog
-                    audit={audit}
-                    projects={projects}
-                    defaultProjectSlug={selectedProjectSlug}
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
-
         {hasProjects && selectedProject ? (
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="border-white/80 bg-white/95 shadow-sm">
@@ -450,140 +373,6 @@ export function ProjectDashboard({
               </div>
             )}
           </div>
-        ) : null}
-
-        {!selectedProject ? (
-        <div className="space-y-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                Audit History
-              </p>
-              <h2 className="mt-1 text-2xl font-semibold text-slate-950">
-                Audits saved to this account
-              </h2>
-            </div>
-
-            <div className="relative w-full sm:w-72">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search audit IDs or URLs"
-                className="h-11 rounded-full border-slate-200 bg-white pl-10"
-              />
-            </div>
-          </div>
-
-          {filteredAudits.length === 0 ? (
-            <Card className="border-dashed border-slate-200 bg-white/90">
-              <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-                <div className="rounded-2xl bg-slate-100 p-3 text-slate-500">
-                  <FileSearch className="size-5" />
-                </div>
-                <div className="space-y-1">
-                  <CardTitle className="text-lg text-slate-900">
-                    {audits.length === 0 ? "No saved audits yet" : "No audits match this search"}
-                  </CardTitle>
-                  <p className="max-w-lg text-sm leading-6 text-slate-600">
-                    {audits.length === 0
-                      ? "Start a new audit above or save one from the homepage to begin building your history."
-                      : "Try another audit ID or URL."}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-3">
-              {filteredAudits.map((audit) => (
-                <Card key={audit.jobId} className="border-white/80 bg-white/95 shadow-sm">
-                  <CardContent className="flex flex-col gap-4 p-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className={cn("border font-semibold", statusTone(audit.status))}>
-                            {formatStatus(audit.status)}
-                          </Badge>
-                          {audit.projectSlug ? (
-                            <Badge className="border border-slate-200 bg-slate-50 font-semibold text-slate-700">
-                              {audit.projectName}
-                            </Badge>
-                          ) : (
-                            <Badge className="border border-amber-200 bg-amber-50 font-semibold text-amber-700">
-                              Not in a project
-                            </Badge>
-                          )}
-                          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                            Audit ID {audit.jobId}
-                          </span>
-                        </div>
-
-                        <div className="min-w-0">
-                          <Link
-                            href={
-                              audit.projectSlug && audit.trackedUrl
-                                ? buildProjectAuditHref(audit.projectSlug, audit.trackedUrl)
-                                : `/dashboard/audits/${audit.jobId}`
-                            }
-                            className="inline-flex items-center gap-2 text-lg font-semibold text-slate-950 transition hover:text-primary"
-                          >
-                            <span className="truncate">{audit.targetUrl}</span>
-                            <ArrowRight className="size-4" />
-                          </Link>
-                          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                            <Clock3 className="size-4" />
-                            Updated {formatTimestamp(audit.completedAt ?? audit.createdAt)}
-                            {audit.trackedUrl ? (
-                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                                {audit.trackedUrl}
-                              </span>
-                            ) : null}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 self-end lg:self-start">
-                        <div className="text-right">
-                          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
-                            Score
-                          </p>
-                          <p className="mt-1 text-3xl font-black tracking-tight text-slate-950">
-                            {typeof audit.score === "number" ? audit.score : "Pending"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
-                      <Button asChild variant="ghost" className="h-9 rounded-full px-4 text-xs font-semibold text-primary">
-                        <Link
-                          href={
-                            audit.projectSlug && audit.trackedUrl
-                              ? buildProjectAuditHref(audit.projectSlug, audit.trackedUrl)
-                              : `/dashboard/audits/${audit.jobId}`
-                          }
-                        >
-                          Open report
-                          <ArrowRight className="size-4" />
-                        </Link>
-                      </Button>
-
-                      {audit.projectSlug ? (
-                        <DetachAuditButton projectSlug={audit.projectSlug} jobId={audit.jobId} />
-                      ) : (
-                        <AttachAuditDialog
-                          audit={audit}
-                          projects={projects}
-                          defaultProjectSlug={selectedProjectSlug}
-                        />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
         ) : null}
       </div>
     </div>

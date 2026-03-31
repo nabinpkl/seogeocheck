@@ -2,57 +2,38 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import { startAuditAction } from "@/app/actions/start-audit";
 import { initialAuditActionState } from "@/app/actions/start-audit-state";
 import type { AuthUser } from "@/features/auth/lib/server-auth";
-import {
-  auditReportQueryKey,
-  ReportPendingError,
-} from "@/lib/audit-query";
-import type { AuditReport } from "@/types/audit";
+import { auditReportQueryKey } from "@/lib/audit-query";
 import { useAuditStore } from "@/store/use-audit-store";
 import { buildProjectAuditHref } from "@/features/dashboard/lib/routes";
 import { SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/routes";
 import {
   buildFamilyChecklistGroups,
   buildAuditCheckRowModel,
-  buildAuditHeaderModel,
-  buildAuditStreamRowModel,
   buildCategoryScoreModels,
-  formatConnectionLabel,
   isIssueCheck,
   isNotApplicableCheck,
   isPassedCheck,
   isSystemErrorCheck,
 } from "../lib/view-models";
 import type { AuditSectionViewProps } from "../types/section";
-
-async function fetchAuditReport(reportUrl: string): Promise<AuditReport> {
-  const response = await fetch(reportUrl, {
-    cache: "no-store",
-  });
-
-  if (response.status === 202) {
-    throw new ReportPendingError();
-  }
-
-  if (!response.ok) {
-    throw new Error("We couldn't load your audit results.");
-  }
-
-  return (await response.json()) as AuditReport;
-}
+import { useAuditExperience } from "./useAuditExperience";
 
 type UseAuditSectionControllerOptions = {
   viewer: AuthUser | null;
   projectSlug: string | null;
+  variant: "hero" | "dashboard";
 };
+
 
 export function useAuditSectionController({
   viewer,
   projectSlug,
+  variant,
 }: UseAuditSectionControllerOptions): AuditSectionViewProps {
   const router = useRouter();
   const [url, setUrl] = React.useState("");
@@ -61,19 +42,23 @@ export function useAuditSectionController({
     startAuditAction,
     initialAuditActionState
   );
-  const [handoffJobId, setHandoffJobId] = React.useState<string | null>(null);
+  const [focusedLiveProgressKey, setFocusedLiveProgressKey] = React.useState<string | null>(
+    null
+  );
   const [focusedResultJobId, setFocusedResultJobId] = React.useState<string | null>(
     null
   );
   const [isTyping, setIsTyping] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const resultPanelRef = React.useRef<HTMLDivElement | null>(null);
+  const liveProgressRef = React.useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
 
   const {
     jobId,
     targetUrl,
     reportUrl,
+    streamUrl,
     status,
     connectionStatus,
     events,
@@ -83,6 +68,7 @@ export function useAuditSectionController({
       jobId: state.jobId,
       targetUrl: state.targetUrl,
       reportUrl: state.reportUrl,
+      streamUrl: state.streamUrl,
       status: state.status,
       connectionStatus: state.connectionStatus,
       events: state.events,
@@ -102,6 +88,17 @@ export function useAuditSectionController({
   React.useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  React.useEffect(() => {
+    if (variant !== "dashboard") {
+      return;
+    }
+
+    reset();
+    setFocusedLiveProgressKey(null);
+    setFocusedResultJobId(null);
+    setClientError(null);
+  }, [reset, variant]);
 
   React.useEffect(() => {
     if (!clientError) {
@@ -134,64 +131,38 @@ export function useAuditSectionController({
       status: actionState.status === "QUEUED" ? "QUEUED" : "STREAMING",
     });
     connectToStream();
-    setHandoffJobId(null);
-    if (actionState.projectSlug) {
-      router.push(buildProjectAuditHref(actionState.projectSlug, actionState.targetUrl));
-      return;
-    }
-    window.scrollTo(0, 0);
   }, [
     actionState.jobId,
     actionState.ok,
-    actionState.projectSlug,
     actionState.reportUrl,
     actionState.status,
     actionState.streamUrl,
     actionState.targetUrl,
     connectToStream,
     primeAudit,
-    router,
   ]);
-
-  React.useEffect(() => {
-    if (status !== "COMPLETE" || !jobId || !reportUrl || handoffJobId === jobId) {
-      return;
-    }
-
-    setHandoffJobId(jobId);
-    void queryClient.invalidateQueries({
-      queryKey: auditReportQueryKey(jobId),
-    });
-  }, [handoffJobId, jobId, queryClient, reportUrl, status]);
-
-  const reportQuery = useQuery({
-    queryKey: jobId ? auditReportQueryKey(jobId) : ["audit-report", "idle"],
-    enabled: Boolean(jobId && reportUrl && handoffJobId === jobId),
-    queryFn: () => fetchAuditReport(reportUrl!),
-    retry: (failureCount, error) =>
-      error instanceof ReportPendingError && failureCount < 20,
-    retryDelay: 750,
-    staleTime: 0,
-  });
-
-  React.useEffect(() => {
-    if (reportQuery.data && status !== "VERIFIED") {
-      markVerified();
-    }
-  }, [markVerified, reportQuery.data, status]);
-
-  const report = reportQuery.data;
 
   const effectiveAccountKind = actionState.workspaceKind ?? viewer?.accountKind ?? null;
   const pendingClaimToken =
     !effectiveAccountKind && actionState.claimToken ? actionState.claimToken : null;
 
-  const currentProgress =
-    [...events].reverse().find((event) => typeof event.progress === "number")
-      ?.progress ?? 0;
-  const pendingReport =
-    reportQuery.fetchStatus === "fetching" ||
-    reportQuery.error instanceof ReportPendingError;
+  const experience = useAuditExperience({
+    reportQueryKeyId: jobId,
+    status,
+    isPending,
+    displayTargetUrl: targetUrl || null,
+    placeholderUrl: actionState.targetUrl || null,
+    reportUrl,
+    streamUrl,
+    connectionStatus,
+    events,
+    liveError: actionState.error || liveError,
+    isLiveSession: Boolean(jobId),
+    onConnectToStream: connectToStream,
+    onMarkVerified: markVerified,
+  });
+
+  const report = experience.report;
   const reportChecks = Array.isArray(report?.checks) ? report.checks : [];
   const reportFindings = reportChecks.filter((check) => isIssueCheck(check.status));
   const reportPassedChecks = reportChecks.filter((check) => isPassedCheck(check.status));
@@ -200,11 +171,6 @@ export function useAuditSectionController({
   );
   const reportSystemErrorChecks = reportChecks.filter((check) =>
     isSystemErrorCheck(check.status)
-  );
-  const liveChecks = events.filter((event) => event.type === "check");
-  const liveFindings = liveChecks.filter((event) => isIssueCheck(event.checkStatus));
-  const livePassedChecks = liveChecks.filter((event) =>
-    isPassedCheck(event.checkStatus)
   );
   const reportScore =
     typeof report?.summary?.score === "number" ? report.summary.score : 0;
@@ -228,39 +194,46 @@ export function useAuditSectionController({
     typeof report?.summary?.systemErrorCount === "number"
       ? report.summary.systemErrorCount
       : reportSystemErrorChecks.length;
-  const hasAuditFailed = status === "FAILED";
+  const hasAuditFailed = experience.hasAuditFailed;
   const isAuditSettled = Boolean(report) || status === "FAILED";
   const isAuditActive = Boolean(jobId) && !isAuditSettled;
-  const showProgressSidebar = !report;
-  const categoryScores = buildCategoryScoreModels(report);
-  const userFacingError =
-    actionState.error ||
-    liveError ||
-    (reportQuery.error instanceof Error &&
-      !(reportQuery.error instanceof ReportPendingError)
-      ? reportQuery.error.message
-      : null);
+  const categoryScores = buildCategoryScoreModels(report ?? undefined);
+  const userFacingError = experience.userFacingError;
+  const liveProgressScrollKey = jobId ?? (isPending ? "pending" : null);
+  const navigateToProjectAudit = React.useCallback(
+    (nextUrl: string) => {
+      if (variant !== "dashboard" || !projectSlug) {
+        return false;
+      }
 
-  const isInitialProgress =
-    !report && !hasAuditFailed && currentProgress === 0 && status !== "COMPLETE";
+      router.push(
+        `${buildProjectAuditHref(projectSlug, nextUrl)}?start=1&url=${encodeURIComponent(nextUrl)}`
+      );
+      return true;
+    },
+    [projectSlug, router, variant]
+  );
 
-  const progressValue = hasAuditFailed ? 100 : report ? 100 : currentProgress;
-  const progressLabel = hasAuditFailed
-    ? "Failed"
-    : report
-      ? "Ready"
-      : isInitialProgress
-        ? "Starting..."
-        : `${currentProgress}%`;
+  React.useEffect(() => {
+    if (
+      !liveProgressScrollKey ||
+      focusedLiveProgressKey === liveProgressScrollKey ||
+      !liveProgressRef.current ||
+      report
+    ) {
+      return;
+    }
 
-  const progressBarClassName = hasAuditFailed ? "bg-rose-500" : "bg-primary";
-  const currentStepMessage = hasAuditFailed
-    ? userFacingError ?? "We couldn't finish reviewing this site."
-    : pendingReport
-      ? "Putting the final touches on your results"
-      : report
-        ? "Your results are ready"
-        : "Checking your site";
+    const rect = liveProgressRef.current.getBoundingClientRect();
+    const centeredTop =
+      rect.top + window.scrollY - Math.max((window.innerHeight - rect.height) / 2, 96);
+
+    window.scrollTo({
+      top: Math.max(centeredTop, 0),
+      behavior: "smooth",
+    });
+    setFocusedLiveProgressKey(liveProgressScrollKey);
+  }, [focusedLiveProgressKey, liveProgressScrollKey, report]);
 
   React.useEffect(() => {
     if (
@@ -286,18 +259,26 @@ export function useAuditSectionController({
       event?.stopPropagation();
       window.scrollTo(0, 0);
 
+      const nextUrl = targetUrl || url.trim();
+      if (nextUrl && navigateToProjectAudit(nextUrl)) {
+        return;
+      }
+
       React.startTransition(() => {
         const formData = new FormData();
-        formData.append("url", targetUrl || "");
+        formData.append("url", nextUrl);
+        if (projectSlug) {
+          formData.append("projectSlug", projectSlug);
+        }
         formAction(formData);
       });
     },
-    [formAction, targetUrl]
+    [formAction, navigateToProjectAudit, projectSlug, targetUrl, url]
   );
 
   const handleReset = React.useCallback(() => {
     reset();
-    setHandoffJobId(null);
+    setFocusedLiveProgressKey(null);
     setFocusedResultJobId(null);
     setUrl("");
     setClientError(null);
@@ -334,10 +315,19 @@ export function useAuditSectionController({
           setTimeout(() => {
             const formData = new FormData();
             formData.append("url", targetExampleUrl);
-            React.startTransition(() => {
-              formAction(formData);
-              setIsTyping(false);
-            });
+            if (projectSlug) {
+              formData.append("projectSlug", projectSlug);
+            }
+            const navigated = navigateToProjectAudit("https://example.com");
+            if (!navigated) {
+              React.startTransition(() => {
+                formAction(formData);
+                setIsTyping(false);
+              });
+              return;
+            }
+
+            setIsTyping(false);
           }, 350);
         }
       }
@@ -345,7 +335,7 @@ export function useAuditSectionController({
 
     setUrl("");
     animateTyping(1);
-  }, [formAction, isAuditActive, isPending, isTyping]);
+  }, [formAction, isAuditActive, isPending, isTyping, navigateToProjectAudit, projectSlug]);
 
   const handleSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -375,8 +365,13 @@ export function useAuditSectionController({
       }
 
       setClientError(null);
+
+      if (navigateToProjectAudit(normalizedTargetUrl)) {
+        event.preventDefault();
+        return;
+      }
     },
-    [url]
+    [navigateToProjectAudit, url]
   );
 
   const topRecommendationRows = reportChecks
@@ -392,46 +387,29 @@ export function useAuditSectionController({
     );
   const [topRecommendationHeroRow, ...topRecommendationRowsRest] = topRecommendationRows;
   const familyGroups = buildFamilyChecklistGroups(reportChecks);
-  const headerModel = buildAuditHeaderModel({
-    status,
-    isPending,
-    targetUrl: targetUrl || null,
-    placeholderUrl: actionState.targetUrl || null,
-    hasAuditFailed,
-    pendingReport,
-    hasReport: Boolean(report),
-    reportScore,
-    userFacingError,
-  });
   const topRecommendationHero = topRecommendationHeroRow
     ? { ...topRecommendationHeroRow, isHero: true }
     : null;
-  const currentOperationState = hasAuditFailed
-    ? "failed"
-    : pendingReport
-      ? "pending"
-      : report
-        ? "ready"
-        : "active";
 
   return {
     inputRef,
     resultPanelRef,
+    liveProgressRef,
     visibility: {
       showResultPanel: Boolean(jobId || isPending || userFacingError),
-      showLiveStream: !report,
-      showProgressSidebar,
+      showLiveStream: experience.showLivePanels,
+      showLiveProgress: experience.showLivePanels,
     },
-      inputPanel: {
-        action: formAction,
-        onSubmit: handleSubmit,
-        url,
-        clientError,
-        notice: actionState.projectWarning,
-        projectSlug,
-        isPending,
-        isAuditActive,
-        isTyping,
+    inputPanel: {
+      action: formAction,
+      onSubmit: handleSubmit,
+      url,
+      clientError,
+      notice: actionState.projectWarning,
+      projectSlug,
+      isPending,
+      isAuditActive,
+      isTyping,
       onUrlChange: (value) => {
         setUrl(value);
         if (clientError) {
@@ -441,24 +419,13 @@ export function useAuditSectionController({
       onExampleAudit: simulateExampleAudit,
     },
     statusHeader: {
-      model: headerModel,
+      model: experience.headerModel,
       showCompactActions: (Boolean(report) || hasAuditFailed) && !isAuditActive,
     },
     liveStream: {
-      rows: events.map(buildAuditStreamRowModel),
+      rows: experience.liveStreamRows,
     },
-    progressSidebar: {
-      connectionLabel: formatConnectionLabel(connectionStatus, status),
-      hasAuditFailed,
-      targetUrlLabel: targetUrl || actionState.targetUrl || "Waiting",
-      gapsCount: liveFindings.length,
-      signalsCount: livePassedChecks.length,
-      progressValue,
-      progressLabel,
-      progressBarClassName,
-      currentStepMessage,
-      operationState: currentOperationState,
-    },
+    liveProgress: experience.liveProgress,
     results: report
       ? {
         reportScore,

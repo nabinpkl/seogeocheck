@@ -67,6 +67,19 @@ class AuthAnonymousWorkspaceIntegrationTests extends AbstractAuthIntegrationTest
         expectOwnedAudits(sessionCookie, startedAudit.jobId());
 
         restTestClient.get()
+                .uri("/account/projects")
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(List.class)
+                .value(body -> {
+                    assertThat(body).hasSize(1);
+                    Map<String, Object> project = (Map<String, Object>) body.getFirst();
+                    assertThat(project.get("isDefault")).isEqualTo(true);
+                    assertThat(project.get("auditCount")).isEqualTo(1);
+                });
+
+        restTestClient.get()
                 .uri("/audits/{jobId}/report", startedAudit.jobId())
                 .header(HttpHeaders.COOKIE, sessionCookie)
                 .exchange()

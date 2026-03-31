@@ -37,10 +37,11 @@ export type AuditResultsSectionProps = {
 export type AuditSectionViewProps = {
   inputRef: React.RefObject<HTMLInputElement | null>;
   resultPanelRef: React.RefObject<HTMLDivElement | null>;
+  liveProgressRef: React.RefObject<HTMLDivElement | null>;
   visibility: {
     showResultPanel: boolean;
     showLiveStream: boolean;
-    showProgressSidebar: boolean;
+    showLiveProgress: boolean;
   };
   inputPanel: {
     action: (formData: FormData) => void;
@@ -62,16 +63,18 @@ export type AuditSectionViewProps = {
   liveStream: {
     rows: AuditStreamRowModel[];
   };
-  progressSidebar: {
-    connectionLabel: string;
-    hasAuditFailed: boolean;
-    targetUrlLabel: string;
+  liveProgress: {
+    phaseLabel: string;
+    phaseDetail: string;
     gapsCount: number;
     signalsCount: number;
     progressValue: number;
     progressLabel: string;
     progressBarClassName: string;
-    currentStepMessage: string;
+    liveScoreState: "waiting" | "provisional" | "final";
+    liveScoreValue: number | null;
+    evaluatedChecksCount: number;
+    showLiveMetrics: boolean;
     operationState: "failed" | "pending" | "ready" | "active";
   };
   results: AuditResultsSectionProps | null;

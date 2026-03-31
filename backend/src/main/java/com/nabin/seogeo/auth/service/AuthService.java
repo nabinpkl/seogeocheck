@@ -18,6 +18,7 @@ import com.nabin.seogeo.auth.persistence.AuthUserMergeIntentRepository;
 import com.nabin.seogeo.auth.persistence.AuthUserEntity;
 import com.nabin.seogeo.auth.persistence.AuthUserRepository;
 import com.nabin.seogeo.project.persistence.ProjectRepository;
+import com.nabin.seogeo.project.service.ProjectService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -77,6 +78,7 @@ public class AuthService {
     private final AuthEmailSender authEmailSender;
     private final AuthProperties authProperties;
     private final AuditClaimService auditClaimService;
+    private final ProjectService projectService;
     private final AuthSessionService authSessionService;
     private final AuthMergeService authMergeService;
     private final AuthFrontendLinkService authFrontendLinkService;
@@ -99,6 +101,7 @@ public class AuthService {
             AuthEmailSender authEmailSender,
             AuthProperties authProperties,
             AuditClaimService auditClaimService,
+            ProjectService projectService,
             AuthSessionService authSessionService,
             AuthMergeService authMergeService,
             AuthFrontendLinkService authFrontendLinkService,
@@ -120,6 +123,7 @@ public class AuthService {
         this.authEmailSender = authEmailSender;
         this.authProperties = authProperties;
         this.auditClaimService = auditClaimService;
+        this.projectService = projectService;
         this.authSessionService = authSessionService;
         this.authMergeService = authMergeService;
         this.authFrontendLinkService = authFrontendLinkService;
@@ -240,6 +244,7 @@ public class AuthService {
             user.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
             user.setUpdatedAt(now);
             authUserRepository.save(user);
+            projectService.ensureDefaultProject(user.getId());
             issueVerificationIfAllowed(user, now);
             auditClaimService.tryReserveClaim(claimToken, user.getId());
             return RegistrationResult.pendingVerification(user.getId());
@@ -256,6 +261,7 @@ public class AuthService {
         user.setUpdatedAt(now);
         user.setFailedLoginCount(0);
         authUserRepository.saveAndFlush(user);
+        projectService.ensureDefaultProject(user.getId());
         issueVerificationIfAllowed(user, now);
         auditClaimService.tryReserveClaim(claimToken, user.getId());
         return RegistrationResult.pendingVerification(user.getId());
@@ -297,6 +303,7 @@ public class AuthService {
         user.setLastLoginAt(now);
         user.setUpdatedAt(now);
         authUserRepository.save(user);
+        projectService.ensureDefaultProject(user.getId());
 
         AuthenticatedUser authenticatedUser = authSessionService.authenticateUser(user, request, response);
         authSessionService.clearPendingVerificationUser(request);
@@ -383,6 +390,7 @@ public class AuthService {
         user.setAccountKind(AuthAccountKind.EMAIL_VERIFIED);
         user.setUpdatedAt(now);
         authUserRepository.save(user);
+        projectService.ensureDefaultProject(user.getId());
 
         supersedeActiveVerificationTokens(user.getId(), now, token.getId());
         boolean authenticated = authSessionService.tryAutoAuthenticateVerifiedUser(user, request, response);
@@ -455,6 +463,7 @@ public class AuthService {
     ) {
         AuthenticatedUser authenticatedUser = authenticatedUserFromPrincipal(principal);
         if (authenticatedUser != null) {
+            projectService.ensureDefaultProject(authenticatedUser.getId());
             return authenticatedUser;
         }
 
@@ -467,6 +476,7 @@ public class AuthService {
         anonymousUser.setCreatedAt(now);
         anonymousUser.setUpdatedAt(now);
         authUserRepository.saveAndFlush(anonymousUser);
+        projectService.ensureDefaultProject(anonymousUser.getId());
         return authSessionService.authenticateUser(anonymousUser, request, response);
     }
 
@@ -479,6 +489,7 @@ public class AuthService {
     ) {
         AuthenticatedUser authenticatedUser = authenticatedUserFromPrincipal(principal);
         if (authenticatedUser != null) {
+            projectService.ensureDefaultProject(authenticatedUser.getId());
             auditClaimService.tryClaimAudit(claimToken, authenticatedUser.getId());
             return authenticatedUser;
         }
@@ -492,6 +503,7 @@ public class AuthService {
         anonymousUser.setCreatedAt(now);
         anonymousUser.setUpdatedAt(now);
         authUserRepository.saveAndFlush(anonymousUser);
+        projectService.ensureDefaultProject(anonymousUser.getId());
 
         AuthenticatedUser guestUser = authSessionService.authenticateUser(anonymousUser, request, response);
         auditClaimService.tryClaimAudit(claimToken, anonymousUser.getId());
@@ -545,6 +557,7 @@ public class AuthService {
             existingUser.setAccountKind(AuthAccountKind.EMAIL_UNVERIFIED);
             existingUser.setUpdatedAt(now);
             authUserRepository.save(existingUser);
+            projectService.ensureDefaultProject(existingUser.getId());
             issueVerificationIfAllowed(existingUser, now);
             auditClaimService.tryReserveClaim(claimToken, existingUser.getId());
             return RegistrationResult.pendingVerification(existingUser.getId());
@@ -600,6 +613,7 @@ public class AuthService {
         user.setUpdatedAt(now);
         user.setFailedLoginCount(0);
         authUserRepository.saveAndFlush(user);
+        projectService.ensureDefaultProject(user.getId());
         issueVerificationIfAllowed(user, now);
         auditClaimService.tryReserveClaim(claimToken, user.getId());
         return RegistrationResult.pendingVerification(user.getId());

@@ -30,10 +30,13 @@ export function AuditLiveStreamPanel({
 }) {
   return (
     <SurfaceCard>
-      <SectionEyebrow className="mb-6">Live Audit Stream</SectionEyebrow>
+      <SectionEyebrow className="mb-2">Recent Activity</SectionEyebrow>
+      <p className="mb-6 text-sm leading-6 text-slate-500">
+        Live events appear here as the audit advances. The newest updates stay at the top.
+      </p>
       {rows.length === 0 ? (
         <EmptyPanelState>
-          Waiting for technical signals...
+          Waiting for the first live audit update...
         </EmptyPanelState>
       ) : (
         <div className="space-y-4">

@@ -11,6 +11,7 @@ import com.nabin.seogeo.audit.domain.AuditReportRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.persistence.AuditEventEntity;
 import com.nabin.seogeo.audit.persistence.AuditEventRepository;
+import com.nabin.seogeo.audit.persistence.AuditClaimTokenRepository;
 import com.nabin.seogeo.audit.persistence.AuditReportEntity;
 import com.nabin.seogeo.audit.persistence.AuditReportRepository;
 import com.nabin.seogeo.audit.persistence.AuditRunEntity;
@@ -39,6 +40,7 @@ public class AuditPersistenceService {
     private final AuditRunRepository auditRunRepository;
     private final AuditEventRepository auditEventRepository;
     private final AuditReportRepository auditReportRepository;
+    private final AuditClaimTokenRepository auditClaimTokenRepository;
     private final ObjectMapper objectMapper;
     private final AuditContractSchemaValidator auditContractSchemaValidator;
     private final UrlNormalizationService urlNormalizationService;
@@ -49,6 +51,7 @@ public class AuditPersistenceService {
             AuditRunRepository auditRunRepository,
             AuditEventRepository auditEventRepository,
             AuditReportRepository auditReportRepository,
+            AuditClaimTokenRepository auditClaimTokenRepository,
             ObjectMapper objectMapper,
             AuditContractSchemaValidator auditContractSchemaValidator,
             UrlNormalizationService urlNormalizationService,
@@ -58,6 +61,7 @@ public class AuditPersistenceService {
         this.auditRunRepository = auditRunRepository;
         this.auditEventRepository = auditEventRepository;
         this.auditReportRepository = auditReportRepository;
+        this.auditClaimTokenRepository = auditClaimTokenRepository;
         this.objectMapper = objectMapper;
         this.auditContractSchemaValidator = auditContractSchemaValidator;
         this.urlNormalizationService = urlNormalizationService;
@@ -290,6 +294,14 @@ public class AuditPersistenceService {
         }
 
         throw new AuditAlreadyClaimedException(jobId);
+    }
+
+    @Transactional
+    public void deleteRun(String jobId) {
+        auditClaimTokenRepository.deleteByJobIdIn(List.of(jobId));
+        auditEventRepository.deleteByJobIdIn(List.of(jobId));
+        auditReportRepository.deleteByJobIdIn(List.of(jobId));
+        auditRunRepository.deleteById(jobId);
     }
 
     @Transactional(readOnly = true)

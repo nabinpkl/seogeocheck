@@ -53,11 +53,11 @@ export function ProjectFormDialog({
     }
 
     setOpen(false);
-    if (mode === "create") {
-      router.push(attachJobId ? "/dashboard" : `/dashboard?project=${encodeURIComponent(state.projectSlug)}`);
-    } else {
-      router.push(`/dashboard/projects/${encodeURIComponent(state.projectSlug)}`);
-    }
+    router.push(
+      mode === "create" && attachJobId
+        ? "/dashboard"
+        : `/dashboard?project=${encodeURIComponent(state.projectSlug)}`
+    );
     router.refresh();
   }, [attachJobId, mode, router, state.ok, state.projectSlug]);
 

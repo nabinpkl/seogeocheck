@@ -99,10 +99,53 @@ class ProjectIntegrationTests {
                 .expectStatus().isOk()
                 .expectBody(List.class)
                 .value(body -> {
-                    Map<String, Object> project = (Map<String, Object>) body.getFirst();
+                    Map<String, Object> project = findProject(body, projectSlug);
                     assertThat(project.get("trackedUrlCount")).isEqualTo(1);
                     assertThat(project.get("auditCount")).isEqualTo(2);
                     assertThat(project.get("projectScore")).isNotNull();
+                });
+    }
+
+    @Test
+    void loginCreatesDefaultProjectAndStartingAuditWithoutSelectedProjectAttachesItThere() throws InterruptedException {
+        String sessionCookie = registerAndVerify("owner@example.com", "CorrectHorse1!");
+        String jobId = startOwnedAudit(sessionCookie, "https://example.com");
+        awaitVerifiedReport(sessionCookie, jobId);
+
+        restTestClient.get()
+                .uri("/account/projects")
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(List.class)
+                .value(body -> {
+                    assertThat(body).hasSize(1);
+                    Map<String, Object> project = (Map<String, Object>) body.getFirst();
+                    assertThat(project.get("isDefault")).isEqualTo(true);
+                    assertThat(project.get("trackedUrlCount")).isEqualTo(1);
+                    assertThat(project.get("auditCount")).isEqualTo(1);
+                });
+    }
+
+    @Test
+    void startingAuditWithExplicitProjectAttachesItToThatProject() throws InterruptedException {
+        String sessionCookie = registerAndVerify("owner@example.com", "CorrectHorse1!");
+        String projectSlug = createProject(sessionCookie, "Docs");
+
+        String jobId = startOwnedAudit(sessionCookie, "https://example.com/docs", projectSlug);
+        awaitVerifiedReport(sessionCookie, jobId);
+
+        restTestClient.get()
+                .uri("/account/projects/{slug}/urls", projectSlug)
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(List.class)
+                .value(body -> {
+                    assertThat(body).hasSize(1);
+                    Map<String, Object> trackedUrl = (Map<String, Object>) body.getFirst();
+                    assertThat(trackedUrl.get("trackedUrl")).isEqualTo("https://example.com/docs");
+                    assertThat(trackedUrl.get("auditCount")).isEqualTo(1);
                 });
     }
 
@@ -161,6 +204,38 @@ class ProjectIntegrationTests {
                 });
     }
 
+    @Test
+    void sameNormalizedUrlCanExistInDifferentProjectsWithSeparateHistories() throws InterruptedException {
+        String sessionCookie = registerAndVerify("owner@example.com", "CorrectHorse1!");
+        String docsSlug = createProject(sessionCookie, "Docs");
+        String marketingSlug = createProject(sessionCookie, "Marketing");
+
+        String docsJobId = startOwnedAudit(sessionCookie, "https://example.com/pricing", docsSlug);
+        String marketingJobId = startOwnedAudit(sessionCookie, "https://example.com/pricing", marketingSlug);
+        awaitVerifiedReport(sessionCookie, docsJobId);
+        awaitVerifiedReport(sessionCookie, marketingJobId);
+
+        assertProjectUrlCount(sessionCookie, docsSlug, 1, 1);
+        assertProjectUrlCount(sessionCookie, marketingSlug, 1, 1);
+    }
+
+    @Test
+    void deletingLastAuditRemovesTrackedUrlAndReportAccess() throws InterruptedException {
+        String sessionCookie = registerAndVerify("owner@example.com", "CorrectHorse1!");
+        String projectSlug = createProject(sessionCookie, "Docs");
+        String jobId = startOwnedAudit(sessionCookie, "https://example.com/docs", projectSlug);
+        awaitVerifiedReport(sessionCookie, jobId);
+
+        deleteAudit(sessionCookie, projectSlug, jobId);
+
+        assertProjectUrlCount(sessionCookie, projectSlug, 0, 0);
+        restTestClient.get()
+                .uri("/audits/{jobId}/report", jobId)
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
     private String registerAndVerify(String email, String password) {
         AuthUserEntity user = new AuthUserEntity();
         user.setId(UUID.randomUUID());
@@ -189,11 +264,18 @@ class ProjectIntegrationTests {
     }
 
     private String startOwnedAudit(String sessionCookie, String url) {
+        return startOwnedAudit(sessionCookie, url, null);
+    }
+
+    private String startOwnedAudit(String sessionCookie, String url, String projectSlug) {
         Map<String, Object> responseBody = restTestClient.post()
                 .uri("/audits")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.COOKIE, sessionCookie)
-                .body(Map.of("url", url))
+                .body(projectSlug == null ? Map.of("url", url) : Map.of(
+                        "url", url,
+                        "projectSlug", projectSlug
+                ))
                 .exchange()
                 .expectStatus().isAccepted()
                 .returnResult(Map.class)
@@ -243,6 +325,40 @@ class ProjectIntegrationTests {
                 .header(HttpHeaders.COOKIE, combineCookies(sessionCookie, csrf.cookie()))
                 .exchange()
                 .expectStatus().isOk();
+    }
+
+    private void deleteAudit(String sessionCookie, String slug, String jobId) {
+        CsrfState csrf = fetchCsrfState(sessionCookie);
+        restTestClient.delete()
+                .uri("/account/projects/{slug}/audits/{jobId}", slug, jobId)
+                .header("X-XSRF-TOKEN", csrf.token())
+                .header(HttpHeaders.COOKIE, combineCookies(sessionCookie, csrf.cookie()))
+                .exchange()
+                .expectStatus().isNoContent();
+    }
+
+    private void assertProjectUrlCount(String sessionCookie, String projectSlug, int trackedUrlCount, int auditCount) {
+        restTestClient.get()
+                .uri("/account/projects/{slug}/urls", projectSlug)
+                .header(HttpHeaders.COOKIE, sessionCookie)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(List.class)
+                .value(body -> {
+                    assertThat(body).hasSize(trackedUrlCount);
+                    if (trackedUrlCount > 0) {
+                        Map<String, Object> trackedUrl = (Map<String, Object>) body.getFirst();
+                        assertThat(trackedUrl.get("auditCount")).isEqualTo(auditCount);
+                    }
+                });
+    }
+
+    private Map<String, Object> findProject(List<?> body, String slug) {
+        return body.stream()
+                .map(item -> (Map<String, Object>) item)
+                .filter(project -> slug.equals(project.get("slug")))
+                .findFirst()
+                .orElseThrow();
     }
 
     private CsrfState fetchCsrfState() {
