@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-abstract class AbstractAuthIntegrationTest {
+public abstract class AbstractAuthIntegrationTest {
 
     @Autowired
     protected RestTestClient restTestClient;

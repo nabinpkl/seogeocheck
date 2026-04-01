@@ -22,6 +22,8 @@ repositories {
 dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+	implementation 'io.modelcontextprotocol.sdk:mcp-core:1.1.0'
+	implementation 'io.modelcontextprotocol.sdk:mcp-json-jackson2:1.1.0'
 	implementation 'com.networknt:json-schema-validator:2.0.1'
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'

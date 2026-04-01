@@ -128,6 +128,7 @@ public class OAuthAuthorizationServerConfiguration {
         if (decoder instanceof org.springframework.security.oauth2.jwt.NimbusJwtDecoder nimbusJwtDecoder) {
             nimbusJwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                     JwtValidators.createDefaultWithIssuer(oAuthProperties.getIssuer()),
+                    new JwtClaimValidator<>("aud", aud -> containsAudience(aud, oAuthProperties.getMcpResourceUri())),
                     new JwtClaimValidator<>("scope", scope -> containsScope(scope, oAuthProperties.getMcpScope())),
                     new JwtClaimValidator<>("email_verified", Boolean.TRUE::equals),
                     new JwtClaimValidator<>("account_kind",
@@ -152,7 +153,10 @@ public class OAuthAuthorizationServerConfiguration {
     }
 
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(AuthUserRepository authUserRepository) {
+    OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
+            AuthUserRepository authUserRepository,
+            OAuthProperties oAuthProperties
+    ) {
         return (context) -> {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 return;
@@ -168,6 +172,7 @@ public class OAuthAuthorizationServerConfiguration {
 
             AuthUserEntity user = userOptional.get();
             context.getClaims().subject(principalName);
+            context.getClaims().claim("aud", oAuthProperties.getMcpResourceUri());
             context.getClaims().claim("scope", String.join(" ", context.getAuthorizedScopes()));
             context.getClaims().claim("account_kind", user.getAccountKind().name());
             context.getClaims().claim("email_verified", user.getEmailVerifiedAt() != null);
@@ -287,7 +292,7 @@ public class OAuthAuthorizationServerConfiguration {
                 .oauth2ResourceServer((oauth2) -> oauth2
                         .protectedResourceMetadata((metadata) -> metadata
                                 .protectedResourceMetadataCustomizer((builder) -> builder
-                                        .resource(oAuthProperties.getIssuer().replaceAll("/$", "") + "/mcp")
+                                        .resource(oAuthProperties.getMcpResourceUri())
                                         .authorizationServer(oAuthProperties.getIssuer())
                                         .scope(oAuthProperties.getMcpScope())
                                         .resourceName("SEOGEO MCP")
@@ -307,6 +312,20 @@ public class OAuthAuthorizationServerConfiguration {
         if (claimValue instanceof Iterable<?> iterable) {
             for (Object value : iterable) {
                 if (expectedScope.equals(String.valueOf(value))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsAudience(Object claimValue, String expectedAudience) {
+        if (claimValue instanceof String value) {
+            return expectedAudience.equals(value);
+        }
+        if (claimValue instanceof Iterable<?> iterable) {
+            for (Object value : iterable) {
+                if (expectedAudience.equals(String.valueOf(value))) {
                     return true;
                 }
             }

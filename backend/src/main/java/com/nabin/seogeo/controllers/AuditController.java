@@ -8,6 +8,7 @@ import com.nabin.seogeo.audit.persistence.AuditRunEntity;
 import com.nabin.seogeo.audit.service.AuditClaimService;
 import com.nabin.seogeo.audit.service.AuditOrchestrationService;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
+import com.nabin.seogeo.audit.service.OwnedAuditService;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
 import com.nabin.seogeo.project.service.ProjectService;
 import jakarta.validation.Valid;
@@ -45,6 +46,7 @@ public class AuditController {
     private final AuditPersistenceService auditPersistenceService;
     private final AuditClaimService auditClaimService;
     private final ProjectService projectService;
+    private final OwnedAuditService ownedAuditService;
     private final AuditProperties auditProperties;
 
     public AuditController(
@@ -52,12 +54,14 @@ public class AuditController {
             AuditPersistenceService auditPersistenceService,
             AuditClaimService auditClaimService,
             ProjectService projectService,
+            OwnedAuditService ownedAuditService,
             AuditProperties auditProperties
     ) {
         this.auditOrchestrationService = auditOrchestrationService;
         this.auditPersistenceService = auditPersistenceService;
         this.auditClaimService = auditClaimService;
         this.projectService = projectService;
+        this.ownedAuditService = ownedAuditService;
         this.auditProperties = auditProperties;
     }
 
@@ -66,34 +70,31 @@ public class AuditController {
             @Valid @RequestBody StartAuditRequest request,
             Authentication authentication
     ) {
+        UUID ownerUserId = authenticatedUserId(authentication);
+        if (ownerUserId != null) {
+            OwnedAuditService.OwnedAuditStartResult result = ownedAuditService.startOwnedAudit(ownerUserId, request.url(), request.projectSlug());
+            Map<String, Object> responseBody = new java.util.LinkedHashMap<>();
+            responseBody.put("jobId", result.jobId());
+            responseBody.put("status", result.status().name());
+            responseBody.put("streamUrl", buildAuditPath(result.jobId(), "stream"));
+            responseBody.put("reportUrl", buildAuditPath(result.jobId(), "report"));
+            responseBody.put("projectSlug", result.projectSlug());
+            return ResponseEntity.accepted().body(responseBody);
+        }
+
         String normalizedUrl = normalizeUrl(request.url());
         String jobId = "audit_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         OffsetDateTime createdAt = OffsetDateTime.now();
-        UUID ownerUserId = authenticatedUserId(authentication);
-        String resolvedProjectSlug = ownerUserId == null
-                ? null
-                : projectService.resolveRequestedOrDefaultProjectSlug(ownerUserId, request.projectSlug());
+        auditOrchestrationService.startAudit(jobId, normalizedUrl, createdAt, null);
 
-        auditOrchestrationService.startAudit(jobId, normalizedUrl, createdAt, ownerUserId);
-        if (resolvedProjectSlug != null) {
-            projectService.attachAuditToProject(ownerUserId, resolvedProjectSlug, jobId);
-        }
-
-        String claimToken = ownerUserId == null
-                ? auditClaimService.issueClaimTokenForUnownedRun(jobId)
-                : null;
+        String claimToken = auditClaimService.issueClaimTokenForUnownedRun(jobId);
 
         Map<String, Object> responseBody = new java.util.LinkedHashMap<>();
         responseBody.put("jobId", jobId);
         responseBody.put("status", AuditStatus.QUEUED.name());
         responseBody.put("streamUrl", buildAuditPath(jobId, "stream"));
         responseBody.put("reportUrl", buildAuditPath(jobId, "report"));
-        if (resolvedProjectSlug != null) {
-            responseBody.put("projectSlug", resolvedProjectSlug);
-        }
-        if (claimToken != null) {
-            responseBody.put("claimToken", claimToken);
-        }
+        responseBody.put("claimToken", claimToken);
 
         return ResponseEntity.accepted().body(responseBody);
     }
@@ -130,6 +131,15 @@ public class AuditController {
             @RequestParam(value = "claim", required = false) String claimToken,
             Authentication authentication
     ) {
+        UUID requesterUserId = authenticatedUserId(authentication);
+        if (requesterUserId != null) {
+            OwnedAuditService.OwnedAuditReportResult result = ownedAuditService.getOwnedAuditReport(requesterUserId, jobId);
+            if (result.report() != null) {
+                return ResponseEntity.ok(result.report());
+            }
+            return responseForOwnedAuditReport(result);
+        }
+
         AuditRunEntity run = findVisibleRun(jobId, authentication, claimToken)
                 .orElseThrow(() -> new AuditNotFoundException(jobId));
 
@@ -320,6 +330,29 @@ public class AuditController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "error", "PROJECT_NOT_FOUND",
                 "message", exception.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(OwnedAuditService.AuditNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleOwnedAuditNotFound(OwnedAuditService.AuditNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "error", "AUDIT_NOT_FOUND",
+                "message", exception.getReason()
+        ));
+    }
+
+    private ResponseEntity<Object> responseForOwnedAuditReport(OwnedAuditService.OwnedAuditReportResult result) {
+        if (result.status() == AuditStatus.FAILED) {
+            return ResponseEntity.ok(Map.of(
+                    "jobId", result.jobId(),
+                    "status", result.status().name(),
+                    "message", result.message()
+            ));
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
+                "jobId", result.jobId(),
+                "status", result.status().name(),
+                "message", result.message()
         ));
     }
 }

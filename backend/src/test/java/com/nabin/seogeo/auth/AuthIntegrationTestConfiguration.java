@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 @TestConfiguration
-class AuthIntegrationTestConfiguration {
+public class AuthIntegrationTestConfiguration {
 
     @Bean
     @Primary

@@ -1,5 +1,10 @@
 package com.nabin.seogeo.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nabin.seogeo.auth.config.OAuthProperties;
+import com.nabin.seogeo.audit.service.OwnedAuditService;
+import com.nabin.seogeo.project.domain.ProjectSummary;
+import com.nabin.seogeo.project.service.ProjectService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -18,14 +23,14 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.nabin.seogeo.auth.config.OAuthProperties;
-
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -41,12 +46,23 @@ class OAuthAuthorizationServerIntegrationTests extends AbstractAuthIntegrationTe
     private static final String CLIENT_ID = "claude-code-test";
     private static final String REDIRECT_URI = "https://claude.ai/oauth/callback";
     private static final String REQUESTED_SCOPE = "seogeo:mcp";
+    private static final String MCP_ACCEPT = "application/json, text/event-stream";
+    private static final String MCP_SESSION_ID_HEADER = "mcp-session-id";
 
     @Autowired
     private JwtEncoder jwtEncoder;
 
     @Autowired
     private OAuthProperties oAuthProperties;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private ProjectService projectService;
+
+    @Autowired
+    private OwnedAuditService ownedAuditService;
 
     @Test
     void authorizeWithoutSessionRedirectsToFrontendSignInWithOriginalAuthorizeUrl() {
@@ -88,7 +104,7 @@ class OAuthAuthorizationServerIntegrationTests extends AbstractAuthIntegrationTe
     }
 
     @Test
-    void verifiedUserCanApproveConsentExchangeCodeAndCallMcp() {
+    void verifiedUserCanApproveConsentExchangeCodeInitializeMcpAndListTools() throws Exception {
         String sessionCookie = verifyAndLogin("owner@example.com", "CorrectHorseBattery1!");
         AuthorizationCodeGrant grant = startAuthorizationGrant(sessionCookie, "browser-state", "oauth-verifier");
 
@@ -105,21 +121,23 @@ class OAuthAuthorizationServerIntegrationTests extends AbstractAuthIntegrationTe
 
         String code = approveConsent(sessionCookie, grant.consentState(), "browser-state");
         Map<String, Object> tokenBody = exchangeAuthorizationCode(code, "oauth-verifier");
-
         assertThat(tokenBody.get("access_token")).isInstanceOf(String.class);
         assertThat(tokenBody.get("refresh_token")).isInstanceOf(String.class);
         assertThat(tokenBody).containsEntry("scope", REQUESTED_SCOPE);
 
-        restTestClient.get()
-                .uri("/mcp")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenBody.get("access_token"))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(Map.class)
-                .value(body -> {
-                    assertThat(body).containsEntry("status", "ready");
-                    assertThat(body).containsEntry("transport", "streamable-http");
-                });
+        McpClientSession mcpSession = initializeMcpSession(String.valueOf(tokenBody.get("access_token")));
+        Map<String, Object> response = mcpRequest(mcpSession, "tools-list-1", "tools/list", Map.of());
+        Map<String, Object> result = castMap(response.get("result"));
+        List<Map<String, Object>> tools = castListOfMaps(result.get("tools"));
+
+        assertThat(tools).extracting(tool -> String.valueOf(tool.get("name")))
+                .containsExactlyInAnyOrder(
+                        "projects_list",
+                        "project_get",
+                        "project_audits_list",
+                        "audit_start",
+                        "audit_report_get"
+                );
     }
 
     @Test
@@ -295,39 +313,152 @@ class OAuthAuthorizationServerIntegrationTests extends AbstractAuthIntegrationTe
                 .expectStatus().isOk()
                 .expectBody(Map.class)
                 .value(body -> {
-                    assertThat(body.get("resource")).asString().contains("/mcp");
+                    assertThat(body.get("resource")).isEqualTo(oAuthProperties.getMcpResourceUri());
                     assertThat((List<String>) body.get("authorization_servers")).contains(oAuthProperties.getIssuer());
                     assertThat((List<String>) body.get("scopes_supported")).contains(REQUESTED_SCOPE);
                 });
     }
 
     @Test
-    void mcpRejectsMissingAndInvalidJwtClaims() {
-        restTestClient.get()
+    void mcpRejectsMissingInvalidJwtClaimsAndAudience() {
+        Map<String, Object> initializeRequest = initializeRequest("init-auth");
+
+        restTestClient.post()
                 .uri("/mcp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.ACCEPT, MCP_ACCEPT)
+                .body(initializeRequest)
                 .exchange()
                 .expectStatus().isUnauthorized()
                 .expectHeader().value(HttpHeaders.WWW_AUTHENTICATE, value -> assertThat(value).contains("Bearer"));
 
-        restTestClient.get()
-                .uri("/mcp")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + mintAccessToken(Map.of(
-                        "scope", REQUESTED_SCOPE,
-                        "email_verified", false,
-                        "account_kind", "EMAIL_VERIFIED"
-                )))
-                .exchange()
-                .expectStatus().isUnauthorized();
+        expectUnauthorizedMcpInitialization(mintAccessToken(Map.of(
+                "scope", REQUESTED_SCOPE,
+                "email_verified", true,
+                "account_kind", "EMAIL_VERIFIED"
+        )));
+        expectUnauthorizedMcpInitialization(mintAccessToken(Map.of(
+                "aud", "https://wrong.example/mcp",
+                "scope", REQUESTED_SCOPE,
+                "email_verified", true,
+                "account_kind", "EMAIL_VERIFIED"
+        )));
+        expectUnauthorizedMcpInitialization(mintAccessToken(Map.of(
+                "aud", oAuthProperties.getMcpResourceUri(),
+                "scope", REQUESTED_SCOPE,
+                "email_verified", false,
+                "account_kind", "EMAIL_VERIFIED"
+        )));
+        expectUnauthorizedMcpInitialization(mintAccessToken(Map.of(
+                "aud", oAuthProperties.getMcpResourceUri(),
+                "scope", REQUESTED_SCOPE,
+                "email_verified", true,
+                "account_kind", "ANONYMOUS"
+        )));
+    }
 
-        restTestClient.get()
-                .uri("/mcp")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + mintAccessToken(Map.of(
-                        "scope", REQUESTED_SCOPE,
-                        "email_verified", true,
-                        "account_kind", "ANONYMOUS"
-                )))
-                .exchange()
-                .expectStatus().isUnauthorized();
+    @Test
+    void projectsListAndProjectGetRespectOwnership() throws Exception {
+        String ownerCookie = verifyAndLogin("projects-owner@example.com", "CorrectHorseBattery1!");
+        String otherCookie = verifyAndLogin("projects-other@example.com", "CorrectHorseBattery1!");
+        McpClientSession ownerMcp = initializeMcpSession(authorizeAccessToken(ownerCookie, "projects-owner-state", "projects-owner-verifier"));
+
+        ProjectSummary ownerProject = createProject("projects-owner@example.com", "Owner Project", "owner only");
+        ProjectSummary otherProject = createProject("projects-other@example.com", "Other Project", "other only");
+
+        Map<String, Object> projectsList = callTool(ownerMcp, "projects_list", Map.of(), "projects-list");
+        assertThat(projectsList)
+                .withFailMessage("Expected structured MCP result for projects_list but got: %s", projectsList)
+                .containsKey("structuredContent");
+        List<Map<String, Object>> structuredProjects = castListOfMaps(projectsList.get("structuredContent"));
+        assertThat(structuredProjects).extracting(project -> String.valueOf(project.get("slug")))
+                .contains(ownerProject.slug())
+                .doesNotContain(otherProject.slug());
+
+        Map<String, Object> projectGet = callTool(ownerMcp, "project_get", Map.of("slug", ownerProject.slug()), "project-get-owner");
+        assertThat(projectGet.get("isError")).isEqualTo(false);
+        assertThat(castMap(projectGet.get("structuredContent"))).containsEntry("slug", ownerProject.slug());
+
+        Map<String, Object> notFound = callTool(ownerMcp, "project_get", Map.of("slug", otherProject.slug()), "project-get-other");
+        assertThat(notFound.get("isError")).isEqualTo(true);
+        assertThat(castMap(notFound.get("structuredContent"))).containsEntry("error", "NOT_FOUND");
+    }
+
+    @Test
+    void projectAuditsListReturnsOnlyProjectAudits() throws Exception {
+        String sessionCookie = verifyAndLogin("project-audits@example.com", "CorrectHorseBattery1!");
+        McpClientSession mcpSession = initializeMcpSession(authorizeAccessToken(sessionCookie, "project-audits-state", "project-audits-verifier"));
+        UUID ownerUserId = userIdForEmail("project-audits@example.com");
+
+        ProjectSummary alphaProject = projectService.createProject(ownerUserId, "Alpha", "alpha project");
+        ProjectSummary betaProject = projectService.createProject(ownerUserId, "Beta", "beta project");
+
+        String alphaJobId = ownedAuditService.startOwnedAudit(ownerUserId, "example.com", alphaProject.slug()).jobId();
+        String betaJobId = ownedAuditService.startOwnedAudit(ownerUserId, "example.org", betaProject.slug()).jobId();
+
+        Map<String, Object> toolResult = callTool(
+                mcpSession,
+                "project_audits_list",
+                Map.of("projectSlug", alphaProject.slug()),
+                "project-audits-list"
+        );
+        assertThat(toolResult)
+                .withFailMessage("Expected structured MCP result for project_audits_list but got: %s", toolResult)
+                .containsKey("structuredContent");
+
+        List<Map<String, Object>> audits = castListOfMaps(toolResult.get("structuredContent"));
+        assertThat(audits).extracting(audit -> String.valueOf(audit.get("jobId")))
+                .contains(alphaJobId)
+                .doesNotContain(betaJobId);
+    }
+
+    @Test
+    void auditStartAndAuditReportToolsReturnPendingVerifiedAndFailedStates() throws Exception {
+        String sessionCookie = verifyAndLogin("audit-tools@example.com", "CorrectHorseBattery1!");
+        McpClientSession mcpSession = initializeMcpSession(authorizeAccessToken(sessionCookie, "audit-tools-state", "audit-tools-verifier"));
+        UUID ownerUserId = userIdForEmail("audit-tools@example.com");
+        ProjectSummary project = projectService.createProject(ownerUserId, "MCP Audits", "tool-owned audits");
+
+        Map<String, Object> startResult = callTool(
+                mcpSession,
+                "audit_start",
+                Map.of("url", "example.com", "projectSlug", project.slug()),
+                "audit-start-success"
+        );
+        Map<String, Object> startPayload = castMap(startResult.get("structuredContent"));
+        assertThat(startResult.get("isError")).isEqualTo(false);
+        assertThat(startPayload).containsEntry("status", "QUEUED");
+        assertThat(startPayload).containsEntry("projectSlug", project.slug());
+        String successJobId = String.valueOf(startPayload.get("jobId"));
+
+        Map<String, Object> pendingResult = callTool(
+                mcpSession,
+                "audit_report_get",
+                Map.of("jobId", successJobId),
+                "audit-report-pending"
+        );
+        Map<String, Object> pendingPayload = castMap(pendingResult.get("structuredContent"));
+        assertThat(pendingResult.get("isError")).isEqualTo(false);
+        assertThat(String.valueOf(pendingPayload.get("status"))).isIn("QUEUED", "STREAMING", "COMPLETE", "VERIFIED");
+        if (!"VERIFIED".equals(String.valueOf(pendingPayload.get("status")))) {
+            assertThat(pendingPayload).containsEntry("message", "Your final report is still being prepared.");
+        }
+
+        Map<String, Object> verifiedPayload = awaitAuditStatus(mcpSession, successJobId, "VERIFIED", Duration.ofSeconds(8));
+        assertThat(verifiedPayload).containsEntry("jobId", successJobId);
+        assertThat(verifiedPayload.get("report")).isInstanceOf(Map.class);
+
+        Map<String, Object> failingStartResult = callTool(
+                mcpSession,
+                "audit_start",
+                Map.of("url", "https://fail.example.com", "projectSlug", project.slug()),
+                "audit-start-fail"
+        );
+        String failingJobId = String.valueOf(castMap(failingStartResult.get("structuredContent")).get("jobId"));
+
+        Map<String, Object> failedPayload = awaitAuditStatus(mcpSession, failingJobId, "FAILED", Duration.ofSeconds(8));
+        assertThat(failedPayload).containsEntry("jobId", failingJobId);
+        assertThat(failedPayload.get("message")).isInstanceOf(String.class);
     }
 
     @Test
@@ -411,6 +542,156 @@ class OAuthAuthorizationServerIntegrationTests extends AbstractAuthIntegrationTe
         return result.getResponseBody();
     }
 
+    private String authorizeAccessToken(String sessionCookie, String state, String codeVerifier) {
+        AuthorizationCodeGrant grant = startAuthorizationGrant(sessionCookie, state, codeVerifier);
+        String code = approveConsent(sessionCookie, grant.consentState(), state);
+        return String.valueOf(exchangeAuthorizationCode(code, codeVerifier).get("access_token"));
+    }
+
+    private McpClientSession initializeMcpSession(String accessToken) throws Exception {
+        var result = restTestClient.post()
+                .uri("/mcp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.ACCEPT, MCP_ACCEPT)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .body(initializeRequest("init-" + UUID.randomUUID()))
+                .exchange()
+                .expectStatus().isOk()
+                .returnResult(String.class);
+
+        String sessionId = result.getResponseHeaders().getFirst(MCP_SESSION_ID_HEADER);
+        assertThat(sessionId).isNotBlank();
+        Map<String, Object> body = readJson(result.getResponseBody());
+        Map<String, Object> initializeResult = castMap(body.get("result"));
+        assertThat(initializeResult).containsKey("serverInfo");
+        assertThat(initializeResult).containsKey("capabilities");
+
+        restTestClient.post()
+                .uri("/mcp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.ACCEPT, MCP_ACCEPT)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .header(MCP_SESSION_ID_HEADER, sessionId)
+                .body(Map.of(
+                        "jsonrpc", "2.0",
+                        "method", "notifications/initialized",
+                        "params", Map.of()
+                ))
+                .exchange()
+                .expectStatus().isAccepted();
+
+        return new McpClientSession(accessToken, sessionId);
+    }
+
+    private Map<String, Object> mcpRequest(
+            McpClientSession session,
+            String id,
+            String method,
+            Map<String, Object> params
+    ) throws Exception {
+        var result = restTestClient.post()
+                .uri("/mcp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.ACCEPT, MCP_ACCEPT)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + session.accessToken())
+                .header(MCP_SESSION_ID_HEADER, session.sessionId())
+                .body(Map.of(
+                        "jsonrpc", "2.0",
+                        "id", id,
+                        "method", method,
+                        "params", params
+                ))
+                .exchange()
+                .expectStatus().isOk()
+                .returnResult(String.class);
+
+        return parseSseJsonRpcResponse(result.getResponseBody());
+    }
+
+    private Map<String, Object> callTool(
+            McpClientSession session,
+            String toolName,
+            Map<String, Object> arguments,
+            String requestId
+    ) throws Exception {
+        Map<String, Object> response = mcpRequest(session, requestId, "tools/call", Map.of(
+                "name", toolName,
+                "arguments", arguments
+        ));
+        assertThat(response)
+                .withFailMessage("Expected MCP tools/call response to contain a result but got: %s", response)
+                .containsKey("result");
+        return castMap(response.get("result"));
+    }
+
+    private Map<String, Object> awaitAuditStatus(
+            McpClientSession session,
+            String jobId,
+            String expectedStatus,
+            Duration timeout
+    ) throws Exception {
+        Instant deadline = Instant.now().plus(timeout);
+        while (Instant.now().isBefore(deadline)) {
+            Map<String, Object> toolResult = callTool(session, "audit_report_get", Map.of("jobId", jobId), "poll-" + UUID.randomUUID());
+            Map<String, Object> structuredContent = castMap(toolResult.get("structuredContent"));
+            if (expectedStatus.equals(String.valueOf(structuredContent.get("status")))) {
+                return structuredContent;
+            }
+            Thread.sleep(250);
+        }
+        throw new AssertionError("Timed out waiting for audit " + jobId + " to reach " + expectedStatus);
+    }
+
+    private void expectUnauthorizedMcpInitialization(String accessToken) {
+        restTestClient.post()
+                .uri("/mcp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.ACCEPT, MCP_ACCEPT)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .body(initializeRequest("init-auth-failure"))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    private Map<String, Object> initializeRequest(String id) {
+        return Map.of(
+                "jsonrpc", "2.0",
+                "id", id,
+                "method", "initialize",
+                "params", Map.of(
+                        "protocolVersion", "2025-06-18",
+                        "capabilities", Map.of(),
+                        "clientInfo", Map.of(
+                                "name", "claude-code-test",
+                                "version", "1.0.0"
+                        )
+                )
+        );
+    }
+
+    private Map<String, Object> parseSseJsonRpcResponse(String body) throws Exception {
+        String data = body.lines()
+                .filter(line -> line.startsWith("data: "))
+                .map(line -> line.substring("data: ".length()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No SSE data line found in response: " + body));
+        return readJson(data);
+    }
+
+    private Map<String, Object> readJson(String json) throws Exception {
+        return objectMapper.readValue(json, Map.class);
+    }
+
+    private ProjectSummary createProject(String email, String name, String description) {
+        return projectService.createProject(userIdForEmail(email), name, description);
+    }
+
+    private UUID userIdForEmail(String email) {
+        return authUserRepository.findByEmailNormalized(email.toLowerCase())
+                .map(user -> user.getId())
+                .orElseThrow();
+    }
+
     private String buildAuthorizeUri(String codeChallenge, String challengeMethod, String state) {
         return UriComponentsBuilder.fromPath("/oauth2/authorize")
                 .queryParam("response_type", "code")
@@ -445,16 +726,37 @@ class OAuthAuthorizationServerIntegrationTests extends AbstractAuthIntegrationTe
         JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
                 .issuer(oAuthProperties.getIssuer())
                 .subject(UUID.randomUUID().toString())
-                .audience(List.of("seogeo-mcp-test"))
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(300));
-        claims.forEach(claimsBuilder::claim);
+
+        Map<String, Object> mutableClaims = new LinkedHashMap<>(claims);
+        Object audience = mutableClaims.remove("aud");
+        if (audience instanceof String value) {
+            claimsBuilder.audience(List.of(value));
+        } else if (audience instanceof List<?> values) {
+            claimsBuilder.audience(values.stream().map(String::valueOf).toList());
+        }
+
+        mutableClaims.forEach(claimsBuilder::claim);
         return jwtEncoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(SignatureAlgorithm.RS256).build(),
                 claimsBuilder.build()
         )).getTokenValue();
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castMap(Object value) {
+        return (Map<String, Object>) value;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> castListOfMaps(Object value) {
+        return (List<Map<String, Object>>) value;
+    }
+
     private record AuthorizationCodeGrant(String consentUri, String consentState) {
+    }
+
+    private record McpClientSession(String accessToken, String sessionId) {
     }
 }

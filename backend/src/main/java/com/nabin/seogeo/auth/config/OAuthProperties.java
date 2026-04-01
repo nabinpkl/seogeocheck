@@ -107,6 +107,10 @@ public class OAuthProperties {
         this.mcpScope = mcpScope;
     }
 
+    public String getMcpResourceUri() {
+        return issuer.replaceAll("/$", "") + "/mcp";
+    }
+
     public List<Client> getClients() {
         return clients;
     }
