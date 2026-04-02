@@ -1,6 +1,7 @@
 package com.nabin.seogeo.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
@@ -29,6 +30,7 @@ public class McpServerConfiguration {
     McpJsonMapper mcpJsonMapper(ObjectMapper objectMapper) {
         ObjectMapper mcpObjectMapper = objectMapper.copy();
         mcpObjectMapper.registerModule(new JavaTimeModule());
+        mcpObjectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         return new JacksonMcpJsonMapper(mcpObjectMapper);
     }
 
@@ -36,6 +38,7 @@ public class McpServerConfiguration {
     JsonSchemaValidator mcpJsonSchemaValidator(ObjectMapper objectMapper) {
         ObjectMapper validatorObjectMapper = objectMapper.copy();
         validatorObjectMapper.registerModule(new JavaTimeModule());
+        validatorObjectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         return new DefaultJsonSchemaValidator(validatorObjectMapper);
     }
 
@@ -65,47 +68,48 @@ public class McpServerConfiguration {
             McpJsonMapper mcpJsonMapper,
             JsonSchemaValidator mcpJsonSchemaValidator,
             McpToolHandlerService mcpToolHandlerService,
+            McpMetadataCatalog mcpMetadataCatalog,
             @Value("${spring.application.version:0.0.1-SNAPSHOT}") String applicationVersion
     ) {
         return McpServer.sync(transportProvider)
                 .jsonMapper(mcpJsonMapper)
                 .jsonSchemaValidator(mcpJsonSchemaValidator)
                 .serverInfo("seogeo", applicationVersion)
-                .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
+                .instructions(mcpMetadataCatalog.serverInstructions())
+                .capabilities(McpSchema.ServerCapabilities.builder()
+                        .resources(false, false)
+                        .tools(false)
+                        .build())
+                .resources(overviewResourceSpecification(mcpMetadataCatalog))
                 .tools(
-                        projectsListSpecification(mcpJsonMapper, mcpToolHandlerService),
-                        projectGetSpecification(mcpJsonMapper, mcpToolHandlerService),
-                        projectAuditsListSpecification(mcpJsonMapper, mcpToolHandlerService),
-                        auditStartSpecification(mcpJsonMapper, mcpToolHandlerService),
-                        auditReportGetSpecification(mcpJsonMapper, mcpToolHandlerService)
+                        projectsListSpecification(mcpJsonMapper, mcpToolHandlerService, mcpMetadataCatalog),
+                        projectGetSpecification(mcpJsonMapper, mcpToolHandlerService, mcpMetadataCatalog),
+                        projectAuditsListSpecification(mcpJsonMapper, mcpToolHandlerService, mcpMetadataCatalog),
+                        auditStartSpecification(mcpJsonMapper, mcpToolHandlerService, mcpMetadataCatalog),
+                        auditReportGetSpecification(mcpJsonMapper, mcpToolHandlerService, mcpMetadataCatalog)
                 )
                 .build();
     }
 
+    private McpServerFeatures.SyncResourceSpecification overviewResourceSpecification(McpMetadataCatalog metadataCatalog) {
+        return new McpServerFeatures.SyncResourceSpecification(
+                metadataCatalog.overviewResource(),
+                (exchange, request) -> metadataCatalog.readOverviewResource()
+        );
+    }
+
     private McpServerFeatures.SyncToolSpecification projectsListSpecification(
             McpJsonMapper jsonMapper,
-            McpToolHandlerService toolHandlerService
+            McpToolHandlerService toolHandlerService,
+            McpMetadataCatalog metadataCatalog
     ) {
         return McpServerFeatures.SyncToolSpecification.builder()
                 .tool(McpSchema.Tool.builder()
                         .name("projects_list")
                         .title("List Projects")
-                        .description("List projects visible to the authenticated SEOGEO account.")
-                        .inputSchema(jsonMapper, """
-                                {
-                                  "type": "object",
-                                  "properties": {},
-                                  "additionalProperties": false
-                                }
-                                """)
-                        .outputSchema(jsonMapper, """
-                                {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object"
-                                  }
-                                }
-                                """)
+                        .description("Start here to discover projects and slugs visible to the authenticated SEOGEO account.")
+                        .inputSchema(jsonMapper, metadataCatalog.projectsListInputSchema())
+                        .outputSchema(jsonMapper, metadataCatalog.projectsListOutputSchema())
                         .build())
                 .callHandler(toolHandlerService::projectsList)
                 .build();
@@ -113,117 +117,64 @@ public class McpServerConfiguration {
 
     private McpServerFeatures.SyncToolSpecification projectGetSpecification(
             McpJsonMapper jsonMapper,
-            McpToolHandlerService toolHandlerService
+            McpToolHandlerService toolHandlerService,
+            McpMetadataCatalog metadataCatalog
     ) {
         return toolSpecification(
                 jsonMapper,
                 "project_get",
                 "Get Project",
-                "Read one project visible to the authenticated SEOGEO account.",
-                """
-                        {
-                          "type": "object",
-                          "properties": {
-                            "slug": {
-                              "type": "string"
-                            }
-                          },
-                          "required": ["slug"],
-                          "additionalProperties": false
-                        }
-                        """,
-                objectOutputSchema(),
+                "Read one project summary using a slug returned by projects_list.",
+                metadataCatalog.projectGetInputSchema(),
+                metadataCatalog.projectSummaryOutputSchema(),
                 toolHandlerService::projectGet
         );
     }
 
     private McpServerFeatures.SyncToolSpecification projectAuditsListSpecification(
             McpJsonMapper jsonMapper,
-            McpToolHandlerService toolHandlerService
+            McpToolHandlerService toolHandlerService,
+            McpMetadataCatalog metadataCatalog
     ) {
         return toolSpecification(
                 jsonMapper,
                 "project_audits_list",
                 "List Project Audits",
-                "List audit history for one project visible to the authenticated SEOGEO account.",
-                """
-                        {
-                          "type": "object",
-                          "properties": {
-                            "projectSlug": {
-                              "type": "string"
-                            },
-                            "trackedUrl": {
-                              "type": "string"
-                            }
-                          },
-                          "required": ["projectSlug"],
-                          "additionalProperties": false
-                        }
-                        """,
-                """
-                        {
-                          "type": "array",
-                          "items": {
-                            "type": "object"
-                          }
-                        }
-                        """,
+                "List audit history for one project slug returned by projects_list, optionally filtered to one tracked URL bucket.",
+                metadataCatalog.projectAuditsListInputSchema(),
+                metadataCatalog.projectAuditsListOutputSchema(),
                 toolHandlerService::projectAuditsList
         );
     }
 
     private McpServerFeatures.SyncToolSpecification auditStartSpecification(
             McpJsonMapper jsonMapper,
-            McpToolHandlerService toolHandlerService
+            McpToolHandlerService toolHandlerService,
+            McpMetadataCatalog metadataCatalog
     ) {
         return toolSpecification(
                 jsonMapper,
                 "audit_start",
                 "Start Audit",
-                "Start an owned SEOGEO audit for the authenticated account.",
-                """
-                        {
-                          "type": "object",
-                          "properties": {
-                            "url": {
-                              "type": "string"
-                            },
-                            "projectSlug": {
-                              "type": "string"
-                            }
-                          },
-                          "required": ["url"],
-                          "additionalProperties": false
-                        }
-                        """,
-                objectOutputSchema(),
+                "Start an audit for a website and return the jobId used by audit_report_get.",
+                metadataCatalog.auditStartInputSchema(),
+                metadataCatalog.auditStartOutputSchema(),
                 toolHandlerService::auditStart
         );
     }
 
     private McpServerFeatures.SyncToolSpecification auditReportGetSpecification(
             McpJsonMapper jsonMapper,
-            McpToolHandlerService toolHandlerService
+            McpToolHandlerService toolHandlerService,
+            McpMetadataCatalog metadataCatalog
     ) {
         return toolSpecification(
                 jsonMapper,
                 "audit_report_get",
                 "Get Audit Report",
-                "Read an owned SEOGEO audit report or current run status.",
-                """
-                        {
-                          "type": "object",
-                          "properties": {
-                            "jobId": {
-                              "type": "string"
-                            }
-                          },
-                          "required": ["jobId"],
-                          "additionalProperties": false
-                        }
-                        """,
-                objectOutputSchema(),
+                "Poll an audit job until status is VERIFIED or FAILED. The jobId comes from audit_start or project_audits_list.",
+                metadataCatalog.auditReportGetInputSchema(),
+                metadataCatalog.auditReportGetOutputSchema(),
                 toolHandlerService::auditReportGet
         );
     }
@@ -247,14 +198,6 @@ public class McpServerConfiguration {
                         .build())
                 .callHandler(callHandler)
                 .build();
-    }
-
-    private String objectOutputSchema() {
-        return """
-                {
-                  "type": "object"
-                }
-                """;
     }
 
     private McpTransportContext extractTransportContext(HttpServletRequest request) {

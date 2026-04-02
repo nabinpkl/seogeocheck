@@ -1,5 +1,8 @@
 package com.nabin.seogeo.mcp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.nabin.seogeo.audit.domain.AccountAuditSummary;
 import com.nabin.seogeo.audit.service.OwnedAuditService;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
@@ -22,15 +25,20 @@ public class McpToolHandlerService {
 
     private static final Logger log = LoggerFactory.getLogger(McpToolHandlerService.class);
 
+    private final ObjectMapper structuredContentObjectMapper;
     private final McpAuthenticationContext mcpAuthenticationContext;
     private final ProjectService projectService;
     private final OwnedAuditService ownedAuditService;
 
     public McpToolHandlerService(
+            ObjectMapper objectMapper,
             McpAuthenticationContext mcpAuthenticationContext,
             ProjectService projectService,
             OwnedAuditService ownedAuditService
     ) {
+        this.structuredContentObjectMapper = objectMapper.copy()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         this.mcpAuthenticationContext = mcpAuthenticationContext;
         this.projectService = projectService;
         this.ownedAuditService = ownedAuditService;
@@ -168,7 +176,7 @@ public class McpToolHandlerService {
     private McpSchema.CallToolResult success(Object body) {
         return McpSchema.CallToolResult.builder()
                 .content(List.of())
-                .structuredContent(body)
+                .structuredContent(normalizeStructuredContent(body))
                 .isError(false)
                 .build();
     }
@@ -191,13 +199,13 @@ public class McpToolHandlerService {
         response.put("isDefault", summary.isDefault());
         response.put("name", summary.name());
         response.put("description", summary.description());
-        response.put("createdAt", summary.createdAt());
-        response.put("updatedAt", summary.updatedAt());
+        response.put("createdAt", summary.createdAt().toString());
+        response.put("updatedAt", summary.updatedAt().toString());
         response.put("trackedUrlCount", summary.trackedUrlCount());
         response.put("verifiedUrlCount", summary.verifiedUrlCount());
         response.put("auditCount", summary.auditCount());
         response.put("activeAuditCount", summary.activeAuditCount());
-        response.put("latestAuditAt", summary.latestAuditAt());
+        response.put("latestAuditAt", summary.latestAuditAt() == null ? null : summary.latestAuditAt().toString());
         response.put("projectScore", summary.projectScore());
         response.put("scoreTrend", summary.scoreTrend() == null ? null : Map.of(
                 "improvedUrlCount", summary.scoreTrend().improvedUrlCount(),
@@ -222,8 +230,8 @@ public class McpToolHandlerService {
         response.put("jobId", summary.jobId());
         response.put("targetUrl", summary.targetUrl());
         response.put("status", summary.status().name());
-        response.put("createdAt", summary.createdAt());
-        response.put("completedAt", summary.completedAt());
+        response.put("createdAt", summary.createdAt().toString());
+        response.put("completedAt", summary.completedAt() == null ? null : summary.completedAt().toString());
         response.put("score", summary.score());
         response.put("projectSlug", summary.projectSlug());
         response.put("projectName", summary.projectName());
@@ -237,5 +245,9 @@ public class McpToolHandlerService {
         response.put("status", status);
         response.put("message", message);
         return response;
+    }
+
+    private Object normalizeStructuredContent(Object body) {
+        return structuredContentObjectMapper.convertValue(structuredContentObjectMapper.valueToTree(body), Object.class);
     }
 }

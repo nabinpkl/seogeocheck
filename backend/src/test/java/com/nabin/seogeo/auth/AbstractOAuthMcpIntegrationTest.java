@@ -210,6 +210,7 @@ public abstract class AbstractOAuthMcpIntegrationTest extends AbstractAuthIntegr
         Map<String, Object> initializeResult = castMap(body.get("result"));
         assertThat(initializeResult).containsKey("serverInfo");
         assertThat(initializeResult).containsKey("capabilities");
+        assertThat(initializeResult).containsKey("instructions");
 
         restTestClient.post()
                 .uri("/mcp")

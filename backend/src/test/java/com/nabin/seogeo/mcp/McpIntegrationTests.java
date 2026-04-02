@@ -34,14 +34,34 @@ class McpIntegrationTests extends AbstractOAuthMcpIntegrationTest {
     private OwnedAuditService ownedAuditService;
 
     @Test
-    void initializeAndListToolsExposeTheToolsOnlyMcpSurface() throws Exception {
+    void initializeResourceDiscoveryAndToolsListExposeTheSelfDescribingMcpSurface() throws Exception {
         String sessionCookie = verifyAndLogin("mcp-init@example.com", "CorrectHorseBattery1!");
         McpClientSession mcpSession = initializeMcpSession(authorizeAccessToken(sessionCookie, "mcp-init-state", "mcp-init-verifier"));
 
-        Map<String, Object> response = mcpRequest(mcpSession, "tools-list-1", "tools/list", Map.of());
-        Map<String, Object> result = castMap(response.get("result"));
-        List<Map<String, Object>> tools = castListOfMaps(result.get("tools"));
+        Map<String, Object> resourcesResponse = mcpRequest(mcpSession, "resources-list-1", "resources/list", Map.of());
+        List<Map<String, Object>> resources = castListOfMaps(castMap(resourcesResponse.get("result")).get("resources"));
+        assertThat(resources).hasSize(1);
+        assertThat(resources.getFirst())
+                .containsEntry("uri", "seogeo://guide/overview")
+                .containsEntry("mimeType", "text/markdown");
 
+        Map<String, Object> overviewResponse = mcpRequest(
+                mcpSession,
+                "resources-read-1",
+                "resources/read",
+                Map.of("uri", "seogeo://guide/overview")
+        );
+        List<Map<String, Object>> contents = castListOfMaps(castMap(overviewResponse.get("result")).get("contents"));
+        assertThat(contents).hasSize(1);
+        assertThat(String.valueOf(contents.getFirst().get("text")))
+                .contains("SEOGEO MCP")
+                .contains("projects_list")
+                .contains("audit_start")
+                .contains("audit_report_get")
+                .contains("default project");
+
+        Map<String, Object> response = mcpRequest(mcpSession, "tools-list-1", "tools/list", Map.of());
+        List<Map<String, Object>> tools = castListOfMaps(castMap(response.get("result")).get("tools"));
         assertThat(tools).extracting(tool -> String.valueOf(tool.get("name")))
                 .containsExactlyInAnyOrder(
                         "projects_list",
@@ -50,6 +70,19 @@ class McpIntegrationTests extends AbstractOAuthMcpIntegrationTest {
                         "audit_start",
                         "audit_report_get"
                 );
+
+        Map<String, Object> projectsListTool = findTool(tools, "projects_list");
+        assertThat(String.valueOf(projectsListTool.get("description"))).contains("Start here");
+        assertThat(castMap(projectsListTool.get("outputSchema"))).containsEntry("type", "array");
+
+        Map<String, Object> auditStartTool = findTool(tools, "audit_start");
+        Map<String, Object> auditStartProperties = castMap(castMap(castMap(auditStartTool.get("inputSchema")).get("properties")).get("url"));
+        assertThat(String.valueOf(auditStartProperties.get("description"))).contains("Bare domains are accepted");
+        assertThat(auditStartProperties).containsEntry("format", "uri-reference");
+
+        Map<String, Object> auditReportTool = findTool(tools, "audit_report_get");
+        Map<String, Object> auditReportOutput = castMap(auditReportTool.get("outputSchema"));
+        assertThat(castListOfMaps(auditReportOutput.get("oneOf"))).hasSize(2);
     }
 
     @Test
@@ -234,6 +267,13 @@ class McpIntegrationTests extends AbstractOAuthMcpIntegrationTest {
     private UUID userIdForEmail(String email) {
         return authUserRepository.findByEmailNormalized(email.toLowerCase())
                 .map(user -> user.getId())
+                .orElseThrow();
+    }
+
+    private Map<String, Object> findTool(List<Map<String, Object>> tools, String name) {
+        return tools.stream()
+                .filter(tool -> name.equals(String.valueOf(tool.get("name"))))
+                .findFirst()
                 .orElseThrow();
     }
 }
