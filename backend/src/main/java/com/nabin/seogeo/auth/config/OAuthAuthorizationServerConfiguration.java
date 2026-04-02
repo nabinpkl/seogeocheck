@@ -9,12 +9,14 @@ import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2ClientRegistrationEndpointConfigurer;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.jackson.SecurityJacksonModules;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -32,6 +34,7 @@ import org.springframework.security.oauth2.server.authorization.JdbcOAuth2Author
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationProvider;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
@@ -48,11 +51,13 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import com.nabin.seogeo.auth.domain.AuthAccountKind;
 import com.nabin.seogeo.auth.domain.AuthenticatedUser;
 import com.nabin.seogeo.auth.persistence.AuthUserEntity;
 import com.nabin.seogeo.auth.persistence.AuthUserRepository;
+import com.nabin.seogeo.auth.service.OAuthDynamicClientRegistrationConverter;
 
 import java.util.Optional;
 import java.util.Set;
@@ -108,6 +113,7 @@ public class OAuthAuthorizationServerConfiguration {
                 .authorizationEndpoint("/oauth2/authorize")
                 .tokenEndpoint("/oauth2/token")
                 .tokenRevocationEndpoint("/oauth2/revoke")
+                .clientRegistrationEndpoint("/oauth2/register")
                 .jwkSetEndpoint("/oauth2/jwks")
                 .build();
     }
@@ -123,7 +129,13 @@ public class OAuthAuthorizationServerConfiguration {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource, OAuthProperties oAuthProperties) {
+    @Primary
+    JwtDecoder authorizationServerJwtDecoder(JWKSource<SecurityContext> jwkSource) {
+        return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+    }
+
+    @Bean
+    JwtDecoder mcpJwtDecoder(JWKSource<SecurityContext> jwkSource, OAuthProperties oAuthProperties) {
         JwtDecoder decoder = OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
         if (decoder instanceof org.springframework.security.oauth2.jwt.NimbusJwtDecoder nimbusJwtDecoder) {
             nimbusJwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
@@ -162,6 +174,13 @@ public class OAuthAuthorizationServerConfiguration {
                 return;
             }
 
+            context.getClaims().claim("scope", context.getAuthorizedScopes());
+
+            if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+                context.getClaims().subject(context.getRegisteredClient().getClientId());
+                return;
+            }
+
             String principalName = context.getAuthorization().getPrincipalName();
             Optional<AuthUserEntity> userOptional = authUserRepository.findById(UUID.fromString(principalName));
             if (userOptional.isEmpty()) {
@@ -173,7 +192,6 @@ public class OAuthAuthorizationServerConfiguration {
             AuthUserEntity user = userOptional.get();
             context.getClaims().subject(principalName);
             context.getClaims().claim("aud", oAuthProperties.getMcpResourceUri());
-            context.getClaims().claim("scope", String.join(" ", context.getAuthorizedScopes()));
             context.getClaims().claim("account_kind", user.getAccountKind().name());
             context.getClaims().claim("email_verified", user.getEmailVerifiedAt() != null);
         };
@@ -186,7 +204,8 @@ public class OAuthAuthorizationServerConfiguration {
             OAuthLoginRedirectEntryPoint oauthLoginRedirectEntryPoint,
             RegisteredClientRepository registeredClientRepository,
             OAuthAuthorizationUserGuardFilter oauthAuthorizationUserGuardFilter,
-            OAuthProperties oAuthProperties
+            OAuthProperties oAuthProperties,
+            OAuthDynamicClientRegistrationConverter dynamicClientRegistrationConverter
     ) throws Exception {
         http.oauth2AuthorizationServer((authorizationServer) ->
                 authorizationServer
@@ -196,6 +215,7 @@ public class OAuthAuthorizationServerConfiguration {
                                             grantTypes.clear();
                                             grantTypes.add(AuthorizationGrantType.AUTHORIZATION_CODE.getValue());
                                             grantTypes.add(AuthorizationGrantType.REFRESH_TOKEN.getValue());
+                                            grantTypes.add(AuthorizationGrantType.CLIENT_CREDENTIALS.getValue());
                                         })
                                         .responseTypes((responseTypes) -> {
                                             responseTypes.clear();
@@ -204,10 +224,12 @@ public class OAuthAuthorizationServerConfiguration {
                                         .tokenEndpointAuthenticationMethods((authenticationMethods) -> {
                                             authenticationMethods.clear();
                                             authenticationMethods.add("none");
+                                            authenticationMethods.add("client_secret_basic");
                                         })
                                         .tokenRevocationEndpointAuthenticationMethods((authenticationMethods) -> {
                                             authenticationMethods.clear();
                                             authenticationMethods.add("none");
+                                            authenticationMethods.add("client_secret_basic");
                                         })
                                         .scopes((scopes) -> {
                                             scopes.clear();
@@ -229,6 +251,12 @@ public class OAuthAuthorizationServerConfiguration {
                                         new PublicRefreshTokenClientAuthenticationProvider(registeredClientRepository)
                                 )
                         )
+                        .clientRegistrationEndpoint((clientRegistrationEndpoint) ->
+                                configureClientRegistrationEndpoint(
+                                        clientRegistrationEndpoint,
+                                        dynamicClientRegistrationConverter
+                                )
+                        )
         );
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
@@ -245,6 +273,8 @@ public class OAuthAuthorizationServerConfiguration {
                         .requestMatchers(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/.well-known/oauth-authorization-server"))
                         .permitAll()
                         .requestMatchers(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/.well-known/oauth-authorization-server/**"))
+                        .permitAll()
+                        .requestMatchers(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/oauth2/register"))
                         .permitAll()
                         .requestMatchers(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/oauth2/jwks"))
                         .permitAll()
@@ -263,11 +293,26 @@ public class OAuthAuthorizationServerConfiguration {
         return http.build();
     }
 
+    private static void configureClientRegistrationEndpoint(
+            OAuth2ClientRegistrationEndpointConfigurer clientRegistrationEndpoint,
+            OAuthDynamicClientRegistrationConverter dynamicClientRegistrationConverter
+    ) {
+        clientRegistrationEndpoint.authenticationProviders((authenticationProviders) ->
+                authenticationProviders.replaceAll((authenticationProvider) -> {
+                    if (authenticationProvider instanceof OAuth2ClientRegistrationAuthenticationProvider provider) {
+                        provider.setRegisteredClientConverter(dynamicClientRegistrationConverter);
+                        provider.setOpenRegistrationAllowed(true);
+                    }
+                    return authenticationProvider;
+                })
+        );
+    }
+
     @Bean
     @Order(2)
     SecurityFilterChain mcpSecurityFilterChain(
             HttpSecurity http,
-            JwtDecoder jwtDecoder,
+            @Qualifier("mcpJwtDecoder") JwtDecoder jwtDecoder,
             OAuthProperties oAuthProperties
     ) throws Exception {
         http

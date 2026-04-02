@@ -2,6 +2,7 @@ package com.nabin.seogeo.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nabin.seogeo.auth.config.OAuthProperties;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -31,8 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class AbstractOAuthMcpIntegrationTest extends AbstractAuthIntegrationTest {
 
-    protected static final String CLIENT_ID = "claude-code-test";
-    protected static final String REDIRECT_URI = "https://claude.ai/oauth/callback";
+    protected static final String CLAUDE_CODE_REDIRECT_URI = "https://claude.ai/oauth/callback";
     protected static final String REQUESTED_SCOPE = "seogeo:mcp";
     protected static final String MCP_ACCEPT = "application/json, text/event-stream";
     protected static final String MCP_SESSION_ID_HEADER = "mcp-session-id";
@@ -46,6 +46,53 @@ public abstract class AbstractOAuthMcpIntegrationTest extends AbstractAuthIntegr
     @Autowired
     protected ObjectMapper objectMapper;
 
+    protected String clientId;
+    protected String redirectUri;
+
+    @BeforeEach
+    void registerDefaultClient() {
+        this.redirectUri = defaultRedirectUri();
+        this.clientId = registerPublicMcpClient(defaultClientName(), this.redirectUri);
+    }
+
+    protected String defaultClientName() {
+        return "Claude Code Test";
+    }
+
+    protected String defaultRedirectUri() {
+        return CLAUDE_CODE_REDIRECT_URI;
+    }
+
+    protected String registerPublicMcpClient(String clientName, String redirectUri) {
+        Map<String, Object> registration = registerPublicMcpClientResponse(clientName, List.of(redirectUri));
+        assertThat(registration.get("client_id")).isInstanceOf(String.class);
+        return String.valueOf(registration.get("client_id"));
+    }
+
+    protected Map<String, Object> registerPublicMcpClientResponse(String clientName, String redirectUri) {
+        return registerPublicMcpClientResponse(clientName, List.of(redirectUri));
+    }
+
+    protected Map<String, Object> registerPublicMcpClientResponse(String clientName, List<String> redirectUris) {
+        var result = restTestClient.post()
+                .uri("/oauth2/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of(
+                        "client_name", clientName,
+                        "redirect_uris", redirectUris,
+                        "grant_types", List.of("authorization_code", "refresh_token"),
+                        "response_types", List.of("code"),
+                        "token_endpoint_auth_method", "none",
+                        "scope", REQUESTED_SCOPE
+                ))
+                .exchange()
+                .expectStatus().isCreated()
+                .returnResult(Map.class);
+
+        assertThat(result.getResponseBody()).isNotNull();
+        return result.getResponseBody();
+    }
+
     protected String verifyAndLogin(String email, String password) {
         register(email, password);
         verifyLatestEmailToken();
@@ -53,7 +100,17 @@ public abstract class AbstractOAuthMcpIntegrationTest extends AbstractAuthIntegr
     }
 
     protected AuthorizationCodeGrant startAuthorizationGrant(String sessionCookie, String state, String codeVerifier) {
-        String authorizeUri = buildAuthorizeUri(codeChallenge(codeVerifier), "S256", state);
+        return startAuthorizationGrant(sessionCookie, this.clientId, this.redirectUri, state, codeVerifier);
+    }
+
+    protected AuthorizationCodeGrant startAuthorizationGrant(
+            String sessionCookie,
+            String clientId,
+            String redirectUri,
+            String state,
+            String codeVerifier
+    ) {
+        String authorizeUri = buildAuthorizeUri(clientId, redirectUri, codeChallenge(codeVerifier), "S256", state);
         var result = restTestClient.get()
                 .uri(authorizeUri)
                 .header(HttpHeaders.COOKIE, sessionCookie)
@@ -74,12 +131,22 @@ public abstract class AbstractOAuthMcpIntegrationTest extends AbstractAuthIntegr
     }
 
     protected String approveConsent(String sessionCookie, String consentState, String expectedState) {
+        return approveConsent(sessionCookie, this.clientId, consentState, expectedState, this.redirectUri);
+    }
+
+    protected String approveConsent(
+            String sessionCookie,
+            String clientId,
+            String consentState,
+            String expectedState,
+            String expectedRedirectUri
+    ) {
         var result = restTestClient.post()
                 .uri("/oauth2/authorize")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .header(HttpHeaders.COOKIE, sessionCookie)
                 .body(form(Map.of(
-                        "client_id", CLIENT_ID,
+                        "client_id", clientId,
                         "state", consentState,
                         "scope", REQUESTED_SCOPE
                 )))
@@ -88,20 +155,29 @@ public abstract class AbstractOAuthMcpIntegrationTest extends AbstractAuthIntegr
                 .returnResult(String.class);
 
         String location = result.getResponseHeaders().getFirst(HttpHeaders.LOCATION);
-        assertThat(location).startsWith(REDIRECT_URI);
+        assertThat(location).startsWith(expectedRedirectUri);
         assertThat(location).contains("state=" + expectedState);
         return UriComponentsBuilder.fromUriString(location).build().getQueryParams().getFirst("code");
     }
 
     protected Map<String, Object> exchangeAuthorizationCode(String code, String codeVerifier) {
+        return exchangeAuthorizationCode(this.clientId, code, this.redirectUri, codeVerifier);
+    }
+
+    protected Map<String, Object> exchangeAuthorizationCode(
+            String clientId,
+            String code,
+            String redirectUri,
+            String codeVerifier
+    ) {
         var result = restTestClient.post()
                 .uri("/oauth2/token")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(form(Map.of(
                         "grant_type", "authorization_code",
-                        "client_id", CLIENT_ID,
+                        "client_id", clientId,
                         "code", code,
-                        "redirect_uri", REDIRECT_URI,
+                        "redirect_uri", redirectUri,
                         "code_verifier", codeVerifier
                 )))
                 .exchange()
@@ -231,7 +307,7 @@ public abstract class AbstractOAuthMcpIntegrationTest extends AbstractAuthIntegr
                         "protocolVersion", "2025-06-18",
                         "capabilities", Map.of(),
                         "clientInfo", Map.of(
-                                "name", "claude-code-test",
+                                "name", "claude-code",
                                 "version", "1.0.0"
                         )
                 )
@@ -275,10 +351,20 @@ public abstract class AbstractOAuthMcpIntegrationTest extends AbstractAuthIntegr
     }
 
     protected String buildAuthorizeUri(String codeChallenge, String challengeMethod, String state) {
+        return buildAuthorizeUri(this.clientId, this.redirectUri, codeChallenge, challengeMethod, state);
+    }
+
+    protected String buildAuthorizeUri(
+            String clientId,
+            String redirectUri,
+            String codeChallenge,
+            String challengeMethod,
+            String state
+    ) {
         return UriComponentsBuilder.fromPath("/oauth2/authorize")
                 .queryParam("response_type", "code")
-                .queryParam("client_id", CLIENT_ID)
-                .queryParam("redirect_uri", REDIRECT_URI)
+                .queryParam("client_id", clientId)
+                .queryParam("redirect_uri", redirectUri)
                 .queryParam("scope", REQUESTED_SCOPE)
                 .queryParam("state", state)
                 .queryParam("code_challenge", codeChallenge)

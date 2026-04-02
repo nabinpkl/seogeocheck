@@ -60,6 +60,7 @@ public abstract class AbstractAuthIntegrationTest {
         jdbcTemplate.update("delete from spring_session");
         jdbcTemplate.update("delete from oauth2_authorization_consent");
         jdbcTemplate.update("delete from oauth2_authorization");
+        jdbcTemplate.update("delete from oauth2_registered_client");
         jdbcTemplate.update("delete from audit_claim_tokens");
         jdbcTemplate.update("delete from audit_run_summary_high_issues");
         jdbcTemplate.update("delete from audit_run_summaries");
