@@ -90,6 +90,7 @@ The sections below describe both the logical execution tiers and the deployment 
 
 ### Schema-First Contract Rule
 - Signed audit reports, projected SSE payloads, and worker progress envelopes must be owned by shared JSON Schema documents under the repository-level `schemas/` directory.
+- Shared schemas are split into explicit lanes: `schemas/audit/internal/*` for worker/API canonical contracts and `schemas/audit/public/*` for API/frontend/MCP consumer DTOs. Do not expose internal schemas directly on client-facing surfaces.
 - Node/TypeScript runtimes validate those payloads with Ajv, while the Java tier validates the same schemas with a Java JSON Schema validator before persistence, projection, or signing.
 - Local TypeScript and Java wire models should be generated from the shared schemas rather than hand-maintained as separate sources of truth.
 

@@ -6,10 +6,10 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
-import com.nabin.seogeo.audit.contract.generated.ReportCheck;
-import com.nabin.seogeo.audit.contract.generated.ReportSummary;
-import com.nabin.seogeo.audit.contract.generated.Signature;
+import com.nabin.seogeo.audit.contract.internal.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.internal.generated.ReportCheck;
+import com.nabin.seogeo.audit.contract.internal.generated.ReportSummary;
+import com.nabin.seogeo.audit.contract.internal.generated.Signature;
 import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
 import com.nabin.seogeo.audit.domain.SeoAuditCheck;
@@ -111,7 +111,7 @@ public class AuditReportSigner {
         signature.setAlgorithm(HMAC_SHA_256);
         signature.setValue(signatureValue);
         report.setSignature(signature);
-        auditContractSchemaValidator.validateReportPayload(report);
+        auditContractSchemaValidator.validateInternalReportPayload(report);
 
         return new AuditReportRecord(
                 jobId,

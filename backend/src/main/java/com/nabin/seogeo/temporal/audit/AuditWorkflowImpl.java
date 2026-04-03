@@ -1,6 +1,6 @@
 package com.nabin.seogeo.temporal.audit;
 
-import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
+import com.nabin.seogeo.audit.contract.consumer.generated.AuditStreamEventSchema;
 import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import io.temporal.activity.ActivityOptions;

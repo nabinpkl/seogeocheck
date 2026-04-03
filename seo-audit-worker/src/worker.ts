@@ -194,7 +194,7 @@ async function runSeoAudit(jobId: string, targetUrl: string) {
       await emitProgressEvent(createCheckEvent(jobId, check));
     }
     await emitProgressEvent(
-      createStageEvent(jobId, "finalizing_report", "Preparing the final signed report.")
+      createStageEvent(jobId, "finalizing_report", "Preparing the final report.")
     );
 
     auditResult = buildSeoAuditResultFromEvaluation(evaluation);

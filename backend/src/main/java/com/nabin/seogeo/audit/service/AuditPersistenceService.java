@@ -2,9 +2,9 @@ package com.nabin.seogeo.audit.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
-import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
-import com.nabin.seogeo.audit.contract.generated.ReportCheck;
+import com.nabin.seogeo.audit.contract.internal.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.consumer.generated.AuditStreamEventSchema;
+import com.nabin.seogeo.audit.contract.internal.generated.ReportCheck;
 import com.nabin.seogeo.audit.domain.AccountAuditSummary;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditReportRecord;
@@ -322,7 +322,7 @@ public class AuditPersistenceService {
     }
 
     @Transactional(readOnly = true)
-    public AuditReportSchema readReportPayload(String jobId) {
+    public AuditReportSchema readInternalReportPayload(String jobId) {
         AuditReportRecord report = findReport(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Report not found for audit " + jobId));
         return readJson(report.reportJson(), AuditReportSchema.class);

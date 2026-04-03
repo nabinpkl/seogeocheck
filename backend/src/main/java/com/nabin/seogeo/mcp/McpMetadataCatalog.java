@@ -165,7 +165,7 @@ public class McpMetadataCatalog {
                 - Discover projects and their slugs.
                 - Inspect audit history for a project or tracked URL.
                 - Start a new audit for a website.
-                - Poll for the signed final audit report.
+                - Poll for the final client-facing audit report.
                 
                 ## Core Terms
                 - **Project**: A workspace bucket that owns audit history.
@@ -173,7 +173,7 @@ public class McpMetadataCatalog {
                 - **Project slug**: The stable identifier returned by `projects_list` and accepted by `project_get` and `project_audits_list`.
                 - **Tracked URL**: The normalized URL bucket that groups repeated audits for the same target inside one project.
                 - **Audit job**: The asynchronous audit run identified by `jobId`.
-                - **Final report**: The canonical signed JSON audit report returned by `audit_report_get` when status becomes `VERIFIED`.
+                - **Final report**: The concise audit result returned by `audit_report_get` when status becomes `VERIFIED`.
                 
                 ## Recommended Workflow
                 1. Call `projects_list` to discover projects and slugs.
@@ -193,12 +193,12 @@ public class McpMetadataCatalog {
 
     private ObjectNode auditReportFinalSchema() {
         ObjectNode schema = baseObjectSchema();
-        schema.put("description", "Final signed audit report. Poll audit_report_get until status is VERIFIED.");
+        schema.put("description", "Final client-facing audit report. Poll audit_report_get until status is VERIFIED.");
         ObjectNode properties = schema.putObject("properties");
         stringProperty(properties, "jobId", "Audit job identifier.");
         enumProperty(properties, "status", "Final audit state.", List.of("VERIFIED"));
-        ObjectNode report = loadCanonicalAuditReportSchema();
-        report.put("description", "Canonical signed audit report JSON object.");
+        ObjectNode report = loadPublicAuditReportSchema();
+        report.put("description", "Consumer-facing audit report JSON object.");
         properties.set("report", report);
         required(schema, "jobId", "status", "report");
         return schema;
@@ -288,8 +288,8 @@ public class McpMetadataCatalog {
         return schema;
     }
 
-    private ObjectNode loadCanonicalAuditReportSchema() {
-        JsonNode resolved = resolveSchema("audit/audit-report.schema.json");
+    private ObjectNode loadPublicAuditReportSchema() {
+        JsonNode resolved = resolveSchema("audit/public/audit-report.schema.json");
         if (!(resolved instanceof ObjectNode objectNode)) {
             throw new IllegalStateException("Expected audit report schema to resolve to a JSON object.");
         }

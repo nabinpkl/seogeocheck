@@ -1,0 +1,186 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'org.jsonschema2pojo:jsonschema2pojo-core:1.2.2'
+		classpath 'org.jsonschema2pojo:jsonschema2pojo-gradle-plugin:1.2.2'
+	}
+}
+
+import com.sun.codemodel.JCodeModel
+import org.jsonschema2pojo.AnnotationStyle
+import org.jsonschema2pojo.DefaultGenerationConfig
+import org.jsonschema2pojo.Jackson2Annotator
+import org.jsonschema2pojo.SchemaGenerator
+import org.jsonschema2pojo.SchemaMapper
+import org.jsonschema2pojo.SchemaStore
+import org.jsonschema2pojo.rules.RuleFactory
+
+def internalGeneratedDir = 'generated/sources/jsonschema2pojo/internal/java'
+def consumerGeneratedDir = 'generated/sources/jsonschema2pojo/consumer/java'
+
+def configureJsonSchemaGeneration = { extension, List<String> sources, String outputDir, String targetPackage ->
+	extension.source = files(sources)
+	extension.targetDirectory = file("${layout.buildDirectory.get().asFile}/${outputDir}")
+	extension.targetPackage = targetPackage
+	extension.annotationStyle = 'jackson2'
+	extension.includeAdditionalProperties = true
+	extension.includeConstructors = false
+	extension.includeSetters = true
+	extension.initializeCollections = false
+	extension.generateBuilders = false
+	extension.includeHashcodeAndEquals = true
+	extension.includeToString = true
+	extension.usePrimitives = false
+	extension.useOptionalForGetters = false
+}
+
+sourceSets {
+	main {
+		java {
+			srcDir layout.buildDirectory.dir(internalGeneratedDir)
+			srcDir layout.buildDirectory.dir(consumerGeneratedDir)
+		}
+	}
+}
+
+jsonSchema2Pojo {
+	configureJsonSchemaGeneration(
+		delegate,
+		[
+			'../schemas/audit/internal/audit-report.schema.json',
+			'../schemas/audit/internal/audit-worker-progress-event.schema.json'
+		],
+		internalGeneratedDir,
+		'com.nabin.seogeo.audit.contract.internal.generated'
+	)
+}
+
+def consumerSchemaPaths = [
+	'../schemas/audit/public/audit-report.schema.json',
+	'../schemas/audit/public/audit-stream-event.schema.json'
+]
+def consumerTargetDirectory = file("${layout.buildDirectory.get().asFile}/${consumerGeneratedDir}")
+def consumerTargetPackage = 'com.nabin.seogeo.audit.contract.consumer.generated'
+def consumerJsonSchemaConfig = new Expando(
+	sourceFiles: files(consumerSchemaPaths).files,
+	targetDirectory: consumerTargetDirectory,
+	targetPackage: consumerTargetPackage
+)
+configureJsonSchemaGeneration(
+	consumerJsonSchemaConfig,
+	consumerSchemaPaths,
+	consumerGeneratedDir,
+	consumerTargetPackage
+)
+
+def schemaClassName = { String fileName ->
+	def suffix = '.schema.json'
+	def baseName = fileName.endsWith(suffix)
+		? fileName.substring(0, fileName.length() - suffix.length())
+		: fileName.substring(0, fileName.lastIndexOf('.json'))
+	return baseName
+		.split(/[-_]/)
+		.collect { segment -> segment.isEmpty() ? segment : segment.substring(0, 1).toUpperCase() + segment.substring(1) }
+		.join('') + 'Schema'
+}
+
+def generateSchemaSources = { List<File> sourceFiles, File outputDir, String targetPackage ->
+	delete(outputDir)
+	outputDir.mkdirs()
+
+	def generationConfig = new DefaultGenerationConfig() {
+		@Override
+		Iterator<URL> getSource() {
+			return sourceFiles.collect { file -> file.toURI().toURL() }.iterator()
+		}
+
+		@Override
+		File getTargetDirectory() {
+			return outputDir
+		}
+
+		@Override
+		String getTargetPackage() {
+			return targetPackage
+		}
+
+		@Override
+		AnnotationStyle getAnnotationStyle() {
+			return AnnotationStyle.JACKSON2
+		}
+
+		@Override
+		boolean isIncludeAdditionalProperties() {
+			return true
+		}
+
+		@Override
+		boolean isIncludeConstructors() {
+			return false
+		}
+
+		@Override
+		boolean isIncludeSetters() {
+			return true
+		}
+
+		@Override
+		boolean isInitializeCollections() {
+			return false
+		}
+
+		@Override
+		boolean isGenerateBuilders() {
+			return false
+		}
+
+		@Override
+		boolean isIncludeHashcodeAndEquals() {
+			return true
+		}
+
+		@Override
+		boolean isIncludeToString() {
+			return true
+		}
+
+		@Override
+		boolean isUsePrimitives() {
+			return false
+		}
+
+		@Override
+		boolean isUseOptionalForGetters() {
+			return false
+		}
+	}
+
+	def codeModel = new JCodeModel()
+	def mapper = new SchemaMapper(
+		new RuleFactory(generationConfig, new Jackson2Annotator(generationConfig), new SchemaStore()),
+		new SchemaGenerator()
+	)
+	sourceFiles.each { File schemaFile ->
+		mapper.generate(codeModel, schemaClassName(schemaFile.name), targetPackage, schemaFile.toURI().toURL())
+	}
+	codeModel.build(outputDir)
+}
+
+tasks.register('generateConsumerJsonSchema2Pojo') {
+	inputs.files(files(consumerJsonSchemaConfig.sourceFiles))
+	outputs.dir(consumerJsonSchemaConfig.targetDirectory)
+	doLast {
+		generateSchemaSources(
+			consumerJsonSchemaConfig.sourceFiles.toList(),
+			consumerJsonSchemaConfig.targetDirectory,
+			consumerJsonSchemaConfig.targetPackage
+		)
+	}
+}
+
+tasks.named('compileJava') {
+	dependsOn tasks.named('generateJsonSchema2Pojo')
+	dependsOn tasks.named('generateConsumerJsonSchema2Pojo')
+}

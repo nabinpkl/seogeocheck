@@ -3,10 +3,10 @@ package com.nabin.seogeo.audit;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nabin.seogeo.audit.config.AuditProperties;
-import com.nabin.seogeo.audit.contract.generated.AuditDiagnostics;
-import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
-import com.nabin.seogeo.audit.contract.generated.AuditScoring;
-import com.nabin.seogeo.audit.contract.generated.ReportCheckMetadata;
+import com.nabin.seogeo.audit.contract.internal.generated.AuditDiagnostics;
+import com.nabin.seogeo.audit.contract.internal.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.internal.generated.AuditScoring;
+import com.nabin.seogeo.audit.contract.internal.generated.ReportCheckMetadata;
 import com.nabin.seogeo.audit.domain.SeoAuditCheck;
 import com.nabin.seogeo.audit.domain.SeoAuditResult;
 import com.nabin.seogeo.audit.service.AuditContractSchemaValidator;
@@ -163,9 +163,9 @@ class AuditReportSignerTests {
         Map<String, Object> metadata = (Map<String, Object>) ((Map<String, Object>) ((List<?>) payload.get("checks")).getFirst()).get("metadata");
         metadata.put("unexpected", true);
 
-        assertThatThrownBy(() -> validator.validateReportPayload(payload))
+        assertThatThrownBy(() -> validator.validateInternalReportPayload(payload))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid audit report");
+                .hasMessageContaining("Invalid internal audit report");
     }
 
     @Test

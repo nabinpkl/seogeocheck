@@ -57,10 +57,10 @@ function buildLivePhase(args: {
   }
 
   if (pendingReport || status === "COMPLETE") {
-    return {
-      phaseLabel: "Finalizing report",
-      phaseDetail: "Preparing the signed report and locking in your final results.",
-    };
+      return {
+        phaseLabel: "Finalizing report",
+        phaseDetail: "Preparing the final report and locking in your final results.",
+      };
   }
 
   if (isPending || status === "QUEUED") {
@@ -80,7 +80,7 @@ function buildLivePhase(args: {
       phaseDetail:
         typeof latestStageEvent.message === "string" && latestStageEvent.message.trim().length > 0
           ? latestStageEvent.message
-          : "Preparing the signed report and locking in your final results.",
+          : "Preparing the final report and locking in your final results.",
     };
   }
 

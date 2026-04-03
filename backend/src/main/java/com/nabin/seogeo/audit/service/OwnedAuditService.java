@@ -1,6 +1,6 @@
 package com.nabin.seogeo.audit.service;
 
-import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.consumer.generated.AuditReportSchema;
 import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.persistence.AuditRunEntity;
 import com.nabin.seogeo.project.service.ProjectService;
@@ -20,15 +20,18 @@ public class OwnedAuditService {
     private final AuditOrchestrationService auditOrchestrationService;
     private final AuditPersistenceService auditPersistenceService;
     private final ProjectService projectService;
+    private final AuditConsumerReportProjector auditConsumerReportProjector;
 
     public OwnedAuditService(
             AuditOrchestrationService auditOrchestrationService,
             AuditPersistenceService auditPersistenceService,
-            ProjectService projectService
+            ProjectService projectService,
+            AuditConsumerReportProjector auditConsumerReportProjector
     ) {
         this.auditOrchestrationService = auditOrchestrationService;
         this.auditPersistenceService = auditPersistenceService;
         this.projectService = projectService;
+        this.auditConsumerReportProjector = auditConsumerReportProjector;
     }
 
     public OwnedAuditStartResult startOwnedAudit(UUID ownerUserId, String rawUrl, String requestedProjectSlug) {
@@ -47,7 +50,10 @@ public class OwnedAuditService {
         AuditRunEntity run = requireVisibleRun(ownerUserId, jobId);
 
         if (auditPersistenceService.findReport(jobId).isPresent()) {
-            return OwnedAuditReportResult.finalReport(jobId, auditPersistenceService.readReportPayload(jobId));
+            return OwnedAuditReportResult.finalReport(
+                    jobId,
+                    auditConsumerReportProjector.project(auditPersistenceService.readInternalReportPayload(jobId))
+            );
         }
 
         if (run.getStatus() == AuditStatus.FAILED) {

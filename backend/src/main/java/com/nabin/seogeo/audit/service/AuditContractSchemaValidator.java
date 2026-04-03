@@ -20,9 +20,10 @@ public class AuditContractSchemaValidator {
 
     private static final String SCHEMA_ID_PREFIX = "https://seogeo.dev/schemas/";
     private static final String CLASSPATH_SCHEMA_PREFIX = "classpath:";
-    private static final String REPORT_SCHEMA = "https://seogeo.dev/schemas/audit/audit-report.schema.json";
-    private static final String STREAM_EVENT_SCHEMA = "https://seogeo.dev/schemas/audit/audit-stream-event.schema.json";
-    private static final String WORKER_PROGRESS_SCHEMA = "https://seogeo.dev/schemas/audit/audit-worker-progress-event.schema.json";
+    private static final String INTERNAL_REPORT_SCHEMA = "https://seogeo.dev/schemas/audit/internal/audit-report.schema.json";
+    private static final String PUBLIC_REPORT_SCHEMA = "https://seogeo.dev/schemas/audit/public/audit-report.schema.json";
+    private static final String STREAM_EVENT_SCHEMA = "https://seogeo.dev/schemas/audit/public/audit-stream-event.schema.json";
+    private static final String WORKER_PROGRESS_SCHEMA = "https://seogeo.dev/schemas/audit/internal/audit-worker-progress-event.schema.json";
 
     private final ObjectMapper objectMapper;
     private final SchemaRegistry schemaRegistry;
@@ -38,8 +39,12 @@ public class AuditContractSchemaValidator {
         );
     }
 
-    public void validateReportPayload(Object payload) {
-        validateNode(readTree(payload), REPORT_SCHEMA, "audit report");
+    public void validateInternalReportPayload(Object payload) {
+        validateNode(readTree(payload), INTERNAL_REPORT_SCHEMA, "internal audit report");
+    }
+
+    public void validatePublicReportPayload(Object payload) {
+        validateNode(readTree(payload), PUBLIC_REPORT_SCHEMA, "public audit report");
     }
 
     public void validateStreamEventPayload(Object payload) {

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seogeo.dev/schemas/audit/internal/audit-report.schema.json",
+  "title": "AuditReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "jobId",
+    "status",
+    "generatedAt",
+    "targetUrl",
+    "reportType",
+    "indexabilityVerdict",
+    "summary",
+    "checks",
+    "scoring",
+    "auditDiagnostics",
+    "signature"
+  ],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "$ref": "./report/common.schema.json#/$defs/auditStatus"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "targetUrl": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reportType": {
+      "type": "string",
+      "const": "SEO_SIGNALS_SIGNED_AUDIT"
+    },
+    "indexabilityVerdict": {
+      "$ref": "./report/common.schema.json#/$defs/indexabilityVerdictLabel"
+    },
+    "summary": {
+      "$ref": "./report/common.schema.json#/$defs/reportSummary"
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "$ref": "./report/checks.schema.json#/$defs/reportCheck"
+      }
+    },
+    "scoring": {
+      "$ref": "./report/scoring.schema.json#/$defs/auditScoring"
+    },
+    "auditDiagnostics": {
+      "$ref": "./report/diagnostics.schema.json#/$defs/auditDiagnostics"
+    },
+    "signature": {
+      "$ref": "./report/common.schema.json#/$defs/signature"
+    }
+  }
+}

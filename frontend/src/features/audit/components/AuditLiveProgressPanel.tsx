@@ -158,7 +158,7 @@ export function AuditLiveProgressPanel({
                 </div>
                 <p className="text-sm leading-6 text-slate-500">
                   {liveScoreState === "final"
-                    ? "The signed report is ready and the final score is locked in."
+                    ? "The final report is ready and the final score is locked in."
                     : evaluatedChecksCount === 1
                       ? "Based on the first scored signal. This will keep adjusting as more checks finish."
                       : `Based on ${evaluatedChecksCount} scored signals so far. This will keep adjusting as more checks finish.`}

@@ -19,6 +19,8 @@ repositories {
 	mavenCentral()
 }
 
+apply from: 'gradle/jsonschema-codegen.gradle'
+
 dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -58,34 +60,7 @@ sourceSets {
 		resources {
 			srcDir '../schemas'
 		}
-		java {
-			srcDir layout.buildDirectory.dir('generated/sources/jsonschema2pojo/main/java')
-		}
 	}
-}
-
-jsonSchema2Pojo {
-	source = files(
-		'../schemas/audit/audit-report.schema.json',
-		'../schemas/audit/audit-stream-event.schema.json',
-		'../schemas/audit/audit-worker-progress-event.schema.json'
-	)
-	targetDirectory = file("${layout.buildDirectory.get().asFile}/generated/sources/jsonschema2pojo/main/java")
-	targetPackage = 'com.nabin.seogeo.audit.contract.generated'
-	annotationStyle = 'jackson2'
-	includeAdditionalProperties = true
-	includeConstructors = false
-	includeSetters = true
-	initializeCollections = false
-	generateBuilders = false
-	includeHashcodeAndEquals = true
-	includeToString = true
-	usePrimitives = false
-	useOptionalForGetters = false
-}
-
-tasks.named('compileJava') {
-	dependsOn tasks.named('generateJsonSchema2Pojo')
 }
 
 tasks.named('test') {

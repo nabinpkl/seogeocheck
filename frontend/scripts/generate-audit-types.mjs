@@ -6,7 +6,7 @@ import { compileFromFile } from "json-schema-to-typescript";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const frontendDir = resolve(scriptDir, "..");
-const schemaDir = resolve(frontendDir, "..", "schemas", "audit");
+const schemaDir = resolve(frontendDir, "..", "schemas", "audit", "public");
 const outputDir = resolve(frontendDir, "src", "types", "generated");
 
 const schemas = [

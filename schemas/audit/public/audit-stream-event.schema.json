@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seogeo.dev/schemas/audit/public/audit-stream-event.schema.json",
+  "title": "AuditStreamEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "jobId",
+    "eventId",
+    "timestamp",
+    "type",
+    "status",
+    "message"
+  ],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["status", "check", "error", "complete"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["QUEUED", "STREAMING", "COMPLETE", "FAILED", "VERIFIED"]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "type": "string"
+    },
+    "progress": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "ruleId": {
+      "type": "string"
+    },
+    "checkStatus": {
+      "type": "string",
+      "enum": ["issue", "passed", "not_applicable", "system_error"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "instruction": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    },
+    "selector": {
+      "type": "string"
+    },
+    "metric": {
+      "type": "string"
+    },
+    "producer": {
+      "type": "string"
+    },
+    "sourceEventId": {
+      "type": "string"
+    }
+  }
+}

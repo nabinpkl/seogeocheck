@@ -1,6 +1,6 @@
 package com.nabin.seogeo.audit.domain;
 
-import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
+import com.nabin.seogeo.audit.contract.consumer.generated.AuditStreamEventSchema;
 public record AuditEventRecord(
         String jobId,
         long sequence,

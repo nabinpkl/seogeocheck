@@ -4,8 +4,8 @@ import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ErrorObject } from "ajv";
 
-const reportSchemaPath = new URL("../../../schemas/audit/audit-report.schema.json", import.meta.url);
-const reportModuleDirectoryUrl = new URL("../../../schemas/audit/report/", import.meta.url);
+const reportSchemaPath = new URL("../../../schemas/audit/internal/audit-report.schema.json", import.meta.url);
+const reportModuleDirectoryUrl = new URL("../../../schemas/audit/internal/report/", import.meta.url);
 const require = createRequire(import.meta.url);
 
 type JsonData = ReturnType<typeof JSON.parse>;

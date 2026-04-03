@@ -1,6 +1,6 @@
 package com.nabin.seogeo;
 
-import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.consumer.generated.AuditReportSchema;
 import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.persistence.AuditEventRepository;
 import com.nabin.seogeo.audit.persistence.AuditRunRepository;
@@ -132,9 +132,8 @@ class SeoGeoApplicationTests {
 		assertThat(verifiedReport).isNotNull();
 		assertThat(verifiedReport.getJobId()).isEqualTo(auditStart.jobId());
 		assertThat(verifiedReport.getStatus()).isEqualTo(AuditReportSchema.AuditStatus.VERIFIED);
-		assertThat(verifiedReport.getSignature()).isNotNull();
-		assertThat(verifiedReport.getReportType()).isEqualTo("SEO_SIGNALS_SIGNED_AUDIT");
 		assertThat(verifiedReport.getChecks()).isNotEmpty();
+		assertThat(verifiedReport.getActions()).isNotEmpty();
 		assertThat(verifiedReport.getSummary()).isNotNull();
 	}
 

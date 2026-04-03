@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seogeo.dev/schemas/audit/internal/report/diagnostics.schema.json",
+  "$defs": {
+    "auditDiagnosticsCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "worker",
+        "capturePasses"
+      ],
+      "properties": {
+        "worker": {
+          "type": "string",
+          "const": "seo-audit-worker"
+        },
+        "statusCode": {
+          "$ref": "./common.schema.json#/$defs/nullableInteger"
+        },
+        "contentType": {
+          "$ref": "./common.schema.json#/$defs/nullableString"
+        },
+        "capturePasses": {
+          "type": "array",
+          "items": {
+            "$ref": "./common.schema.json#/$defs/evidenceSource"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "auditDiagnosticsSurfaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceHtml",
+        "renderComparison"
+      ],
+      "properties": {
+        "sourceHtml": {
+          "$ref": "./controls.schema.json#/$defs/surfaceSummary"
+        },
+        "renderedDom": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "./controls.schema.json#/$defs/surfaceSummary"
+            }
+          ]
+        },
+        "renderComparison": {
+          "$ref": "./controls.schema.json#/$defs/renderComparison"
+        }
+      }
+    },
+    "auditDiagnosticsControls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "xRobotsTag",
+        "robotsControl",
+        "canonicalControl",
+        "canonicalSelfReferenceControl",
+        "canonicalTargetControl",
+        "metaRefreshControl",
+        "alternateLanguageControl",
+        "linkDiscoveryControl",
+        "internalLinkCoverageControl",
+        "titleControl",
+        "metaDescriptionControl",
+        "headingControl",
+        "headingQualityControl",
+        "bodyImageAltControl",
+        "soft404Control",
+        "langControl",
+        "socialMetadataControl",
+        "socialUrlControl",
+        "metadataAlignmentControl",
+        "robotsPreviewControl",
+        "viewportControl",
+        "faviconControl",
+        "headHygieneControl",
+        "structuredDataControl",
+        "robotsTxt",
+        "redirectChain"
+      ],
+      "properties": {
+        "xRobotsTag": {
+          "$ref": "./controls.schema.json#/$defs/xRobotsTag"
+        },
+        "robotsControl": {
+          "$ref": "./controls.schema.json#/$defs/robotsControl"
+        },
+        "canonicalControl": {
+          "$ref": "./controls.schema.json#/$defs/canonicalControl"
+        },
+        "canonicalSelfReferenceControl": {
+          "$ref": "./controls.schema.json#/$defs/canonicalSelfReferenceControl"
+        },
+        "canonicalTargetControl": {
+          "$ref": "./controls.schema.json#/$defs/canonicalTargetControl"
+        },
+        "metaRefreshControl": {
+          "$ref": "./controls.schema.json#/$defs/metaRefreshControl"
+        },
+        "alternateLanguageControl": {
+          "$ref": "./controls.schema.json#/$defs/alternateLanguageControl"
+        },
+        "linkDiscoveryControl": {
+          "$ref": "./controls.schema.json#/$defs/linkDiscoveryControl"
+        },
+        "internalLinkCoverageControl": {
+          "$ref": "./controls.schema.json#/$defs/internalLinkCoverageControl"
+        },
+        "titleControl": {
+          "$ref": "./controls.schema.json#/$defs/titleControl"
+        },
+        "metaDescriptionControl": {
+          "$ref": "./controls.schema.json#/$defs/metaDescriptionControl"
+        },
+        "headingControl": {
+          "$ref": "./controls.schema.json#/$defs/headingControl"
+        },
+        "headingQualityControl": {
+          "$ref": "./controls.schema.json#/$defs/headingQualityControl"
+        },
+        "bodyImageAltControl": {
+          "$ref": "./controls.schema.json#/$defs/bodyImageAltControl"
+        },
+        "soft404Control": {
+          "$ref": "./controls.schema.json#/$defs/soft404Control"
+        },
+        "langControl": {
+          "$ref": "./controls.schema.json#/$defs/langControl"
+        },
+        "socialMetadataControl": {
+          "$ref": "./controls.schema.json#/$defs/socialMetadataControl"
+        },
+        "socialUrlControl": {
+          "$ref": "./controls.schema.json#/$defs/socialUrlControl"
+        },
+        "metadataAlignmentControl": {
+          "$ref": "./controls.schema.json#/$defs/metadataAlignmentControl"
+        },
+        "robotsPreviewControl": {
+          "$ref": "./controls.schema.json#/$defs/robotsPreviewControl"
+        },
+        "viewportControl": {
+          "$ref": "./controls.schema.json#/$defs/viewportControl"
+        },
+        "faviconControl": {
+          "$ref": "./controls.schema.json#/$defs/faviconControl"
+        },
+        "headHygieneControl": {
+          "$ref": "./controls.schema.json#/$defs/headHygieneControl"
+        },
+        "structuredDataControl": {
+          "$ref": "./controls.schema.json#/$defs/structuredDataControl"
+        },
+        "robotsTxt": {
+          "$ref": "./controls.schema.json#/$defs/robotsTxt"
+        },
+        "redirectChain": {
+          "$ref": "./controls.schema.json#/$defs/redirectChain"
+        }
+      }
+    },
+    "indexabilitySignals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blockingSignals",
+        "riskSignals",
+        "unknownSignals"
+      ],
+      "properties": {
+        "blockingSignals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "riskSignals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unknownSignals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "auditDiagnosticsAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "indexabilitySignals"
+      ],
+      "properties": {
+        "indexabilitySignals": {
+          "$ref": "#/$defs/indexabilitySignals"
+        }
+      }
+    },
+    "auditDiagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capture",
+        "surfaces",
+        "controls",
+        "analysis"
+      ],
+      "properties": {
+        "capture": {
+          "$ref": "#/$defs/auditDiagnosticsCapture"
+        },
+        "surfaces": {
+          "$ref": "#/$defs/auditDiagnosticsSurfaces"
+        },
+        "controls": {
+          "$ref": "#/$defs/auditDiagnosticsControls"
+        },
+        "sitewide": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "./sitewide.schema.json#/$defs/sitewideSummary"
+            }
+          ]
+        },
+        "analysis": {
+          "$ref": "#/$defs/auditDiagnosticsAnalysis"
+        }
+      }
+    }
+  }
+}

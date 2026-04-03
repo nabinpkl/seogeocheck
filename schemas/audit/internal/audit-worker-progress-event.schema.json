@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seogeo.dev/schemas/audit/internal/audit-worker-progress-event.schema.json",
+  "title": "AuditWorkerProgressEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "eventId",
+    "jobId",
+    "producer",
+    "eventType",
+    "status",
+    "emittedAt",
+    "message"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "jobId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producer": {
+      "type": "string",
+      "const": "seo-audit-worker"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": ["status", "check", "error"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["STREAMING", "FAILED"]
+    },
+    "emittedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "type": ["string", "null"]
+    },
+    "progress": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "ruleId": {
+      "type": ["string", "null"]
+    },
+    "checkStatus": {
+      "type": ["string", "null"],
+      "enum": ["issue", "passed", "not_applicable", "system_error", null]
+    },
+    "severity": {
+      "type": ["string", "null"],
+      "enum": ["high", "medium", "low", null]
+    },
+    "instruction": {
+      "type": ["string", "null"]
+    },
+    "detail": {
+      "type": ["string", "null"]
+    },
+    "selector": {
+      "type": ["string", "null"]
+    },
+    "metric": {
+      "type": ["string", "null"]
+    }
+  }
+}

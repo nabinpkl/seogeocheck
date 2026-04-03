@@ -1,6 +1,6 @@
 package com.nabin.seogeo.audit.domain;
 
-import com.nabin.seogeo.audit.contract.generated.ReportCheckMetadata;
+import com.nabin.seogeo.audit.contract.internal.generated.ReportCheckMetadata;
 
 public record SeoAuditCheck(
         String id,

@@ -1,7 +1,7 @@
 package com.nabin.seogeo.audit.domain;
 
-import com.nabin.seogeo.audit.contract.generated.AuditDiagnostics;
-import com.nabin.seogeo.audit.contract.generated.AuditScoring;
+import com.nabin.seogeo.audit.contract.internal.generated.AuditDiagnostics;
+import com.nabin.seogeo.audit.contract.internal.generated.AuditScoring;
 
 import java.util.List;
 

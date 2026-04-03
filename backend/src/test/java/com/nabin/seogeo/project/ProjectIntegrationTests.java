@@ -1,6 +1,6 @@
 package com.nabin.seogeo.project;
 
-import com.nabin.seogeo.audit.contract.generated.AuditReportSchema;
+import com.nabin.seogeo.audit.contract.consumer.generated.AuditReportSchema;
 import com.nabin.seogeo.auth.persistence.AuthEmailVerificationTokenRepository;
 import com.nabin.seogeo.auth.persistence.AuthUserEntity;
 import com.nabin.seogeo.auth.persistence.AuthPasswordResetTokenRepository;

@@ -1,7 +1,7 @@
 package com.nabin.seogeo.audit.service;
 
-import com.nabin.seogeo.audit.contract.generated.AuditWorkerProgressEventSchema;
-import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
+import com.nabin.seogeo.audit.contract.internal.generated.AuditWorkerProgressEventSchema;
+import com.nabin.seogeo.audit.contract.consumer.generated.AuditStreamEventSchema;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import org.springframework.stereotype.Service;
 

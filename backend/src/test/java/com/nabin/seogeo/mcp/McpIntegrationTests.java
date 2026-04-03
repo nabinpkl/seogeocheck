@@ -224,6 +224,9 @@ class McpIntegrationTests extends AbstractOAuthMcpIntegrationTest {
         Map<String, Object> verifiedPayload = awaitAuditStatus(mcpSession, successJobId, "VERIFIED", Duration.ofSeconds(8));
         assertThat(verifiedPayload).containsEntry("jobId", successJobId);
         assertThat(verifiedPayload.get("report")).isInstanceOf(Map.class);
+        Map<String, Object> verifiedReport = castMap(verifiedPayload.get("report"));
+        assertThat(verifiedReport).containsKeys("summary", "scoring", "checks", "actions");
+        assertThat(verifiedReport).doesNotContainKeys("auditDiagnostics", "signature", "reportType", "indexabilityVerdict");
 
         Map<String, Object> failingStartResult = callTool(
                 mcpSession,

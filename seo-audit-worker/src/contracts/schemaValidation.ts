@@ -28,7 +28,7 @@ addFormats(ajv);
 
 const workerProgressEventSchema = JSON.parse(
   readFileSync(
-    new URL("../../../schemas/audit/audit-worker-progress-event.schema.json", import.meta.url),
+    new URL("../../../schemas/audit/internal/audit-worker-progress-event.schema.json", import.meta.url),
     "utf8"
   )
 );

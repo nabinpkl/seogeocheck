@@ -1,11 +1,12 @@
 package com.nabin.seogeo.controllers;
 
-import com.nabin.seogeo.audit.contract.generated.AuditStreamEventSchema;
+import com.nabin.seogeo.audit.contract.consumer.generated.AuditStreamEventSchema;
 import com.nabin.seogeo.audit.config.AuditProperties;
 import com.nabin.seogeo.audit.domain.AuditEventRecord;
 import com.nabin.seogeo.audit.domain.AuditStatus;
 import com.nabin.seogeo.audit.persistence.AuditRunEntity;
 import com.nabin.seogeo.audit.service.AuditClaimService;
+import com.nabin.seogeo.audit.service.AuditConsumerReportProjector;
 import com.nabin.seogeo.audit.service.AuditOrchestrationService;
 import com.nabin.seogeo.audit.service.AuditPersistenceService;
 import com.nabin.seogeo.audit.service.OwnedAuditService;
@@ -48,6 +49,7 @@ public class AuditController {
     private final ProjectService projectService;
     private final OwnedAuditService ownedAuditService;
     private final AuditProperties auditProperties;
+    private final AuditConsumerReportProjector auditConsumerReportProjector;
 
     public AuditController(
             AuditOrchestrationService auditOrchestrationService,
@@ -55,7 +57,8 @@ public class AuditController {
             AuditClaimService auditClaimService,
             ProjectService projectService,
             OwnedAuditService ownedAuditService,
-            AuditProperties auditProperties
+            AuditProperties auditProperties,
+            AuditConsumerReportProjector auditConsumerReportProjector
     ) {
         this.auditOrchestrationService = auditOrchestrationService;
         this.auditPersistenceService = auditPersistenceService;
@@ -63,6 +66,7 @@ public class AuditController {
         this.projectService = projectService;
         this.ownedAuditService = ownedAuditService;
         this.auditProperties = auditProperties;
+        this.auditConsumerReportProjector = auditConsumerReportProjector;
     }
 
     @PostMapping
@@ -144,7 +148,7 @@ public class AuditController {
                 .orElseThrow(() -> new AuditNotFoundException(jobId));
 
         if (auditPersistenceService.findReport(jobId).isPresent()) {
-            return ResponseEntity.ok(auditPersistenceService.readReportPayload(jobId));
+            return ResponseEntity.ok(auditConsumerReportProjector.project(auditPersistenceService.readInternalReportPayload(jobId)));
         }
 
         if (run.getStatus() == AuditStatus.FAILED) {
