@@ -242,6 +242,26 @@ services:
       - SEO_GEO_AUTH_OAUTH_CLIENTS_0_CLIENT_NAME=${SEO_GEO_AUTH_OAUTH_CLIENTS_0_CLIENT_NAME}
       - SEO_GEO_AUTH_OAUTH_CLIENTS_0_REDIRECT_URIS_0=${SEO_GEO_AUTH_OAUTH_CLIENTS_0_REDIRECT_URIS_0}
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        PORT: ${FRONTEND_PORT:-3000}
+    container_name: seogeo-frontend
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
+    networks:
+      - temporal-network
+    environment:
+      - NODE_ENV=production
+      - PORT=${FRONTEND_PORT:-3000}
+      - BACKEND_URL=http://backend:8080
+      - NEXT_PUBLIC_BACKEND_URL=http://backend:8080
+
 networks:
   temporal-network:
     driver: bridge
