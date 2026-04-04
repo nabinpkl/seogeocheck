@@ -25,7 +25,6 @@ COPY frontend/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY frontend/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY frontend/next.config.ts ./next.config.ts
 COPY frontend/tsconfig.json ./tsconfig.json
-COPY frontend/next-env.d.ts ./next-env.d.ts
 COPY frontend/postcss.config.mjs ./postcss.config.mjs
 COPY frontend/eslint.config.mjs ./eslint.config.mjs
 COPY frontend/components.json ./components.json
