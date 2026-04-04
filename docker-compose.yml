@@ -262,15 +262,15 @@ services:
       - BACKEND_URL=http://backend:8080
       - NEXT_PUBLIC_BACKEND_URL=http://backend:8080
 
-tunnel:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    profiles: ["prod"]
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    command: tunnel --no-autoupdate run
-    networks:
-      - temporal-network
+  tunnel:
+      image: cloudflare/cloudflared:latest
+      restart: unless-stopped
+      profiles: ["prod"]
+      environment:
+        - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+      command: tunnel --no-autoupdate run
+      networks:
+        - temporal-network
 
 networks:
   temporal-network:
