@@ -19,3 +19,5 @@ i.e instead of emitting events as it occured my llm tried to save entire result 
 ## On try for free/ signup page on right side show our dashboard preview so they know what they are dealing with
 
 # SHIP CLI for device auth flow and CI/CD client secret flow
+
+# On the navbar put mcp
