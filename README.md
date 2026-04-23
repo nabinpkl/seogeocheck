@@ -118,7 +118,7 @@ The worker connects to Temporal and polls the SEO signals task queue.
 ## 📂 Project Structure
 
 - `backend/`: Spring Boot API + Java Temporal workflow/activity workers.
-- `frontend/`: Next.js web application.
+- `frontend/`: Next.js with tanstack and zustand.
 - `seo-audit-worker/`: Node.js Temporal worker for custom SEO signal execution.
 - `docker-compose.yml`: Core services and worker topology for Postgres, Temporal, backend, and SEO audit execution.
 - `AGENTS.md`: Machine-readable technical specifications for AI agents.
